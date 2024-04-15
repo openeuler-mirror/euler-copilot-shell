@@ -10,4 +10,5 @@ run_copilot() {
     fi
     stty "${terminal_settings}"
 }
-bind -x '"\C-h": run_copilot'
+
+bind -x '"\C-h": run_copilot' 2>/dev/null
