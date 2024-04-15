@@ -162,4 +162,4 @@ class Spark(LLMService):
         cmds: list = [match.group('code') for match in matches]
         if len(cmds) > 0:
             return cmds[0]
-        return markdown_text
+        return markdown_text.replace('`', '')
