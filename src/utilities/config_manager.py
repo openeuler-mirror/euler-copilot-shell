@@ -35,6 +35,8 @@ def write_config(config):
 
 
 def init_config():
+    if not os.path.exists(CONFIG_DIR):
+        os.makedirs(CONFIG_DIR)
     write_config(EMPTY_CONFIG)
 
 
