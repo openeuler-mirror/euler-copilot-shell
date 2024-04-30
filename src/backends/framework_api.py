@@ -1,7 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
 
 import json
-import os
 import sys
 
 import requests
@@ -11,13 +10,6 @@ from rich.markdown import Markdown
 from rich.spinner import Spinner
 
 from backends.llm_service import LLMService
-
-CONFIG_PATH = "/eulercopilot"
-COOKIE_CONFIG = os.path.join(CONFIG_PATH, "cookie")
-CSRF_CONFIG = os.path.join(CONFIG_PATH, "csrf")
-
-BASE_DOMAIN = "qa-robot-openeuler.test.osinfra.cn"
-BASE_URL = f"https://{BASE_DOMAIN}"
 
 
 class Framework(LLMService):
@@ -30,20 +22,9 @@ class Framework(LLMService):
         self.console = Console()
 
     def get_general_answer(self, question: str) -> str:
-        self.endpoint = f"{BASE_URL}/stream/get_stream_answer"
-        cookie = self._read_config(COOKIE_CONFIG)
-        csrf_token = self._read_config(CSRF_CONFIG)
-
-        headers = self._get_headers(cookie, csrf_token)
-
-        user_url = f"{BASE_URL}/rag/authorize/user"
-        r = requests.request("GET", user_url, data="", headers=headers, timeout=10)
-        if r.status_code != 200:
-            sys.stderr.write(f"{r.status_code} 登录凭证已过期，请重新登录\n")
-
+        headers = self._get_headers()
         data = {"question": question, "session_id": self.session_id}
         self._stream_response(headers, data)
-
         return self.content
 
     def get_shell_answer(self, question: str) -> str:
@@ -79,20 +60,9 @@ class Framework(LLMService):
                     self.content += chunk
                     live.update(Markdown(self.content, code_theme='github-dark'), refresh=True)
 
-    def _read_config(self, config_name: str) -> str:
-        try:
-            with open(config_name, "r", encoding="utf-8") as c:
-                return c.read().strip()
-        except FileNotFoundError:
-            with open(config_name, "w", encoding="utf-8") as c:
-                return ""
-
-    def _get_headers(self, cookie: str, csrf_token: str) -> dict:
+    def _get_headers(self) -> dict:
         return {
             "Accept": "application/json",
-            "Accept-Language": "zh-CN,zh-Hans,en-US;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
             "Content-Type": "application/json",
-            "Cookie": cookie,
-            "X-CSRF-Token": csrf_token
+            'Authorization': f'Bearer {self.api_key}'
         }
