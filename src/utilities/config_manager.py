@@ -7,7 +7,7 @@ CONFIG_DIR = os.path.join(os.path.expanduser('~'), '.config/eulercopilot')
 CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
 
 EMPTY_CONFIG = {
-    "backend": "spark",
+    "backend": "openai",
     "query_mode": "shell",
     "spark_app_id": "",
     "spark_api_key": "",
@@ -15,7 +15,10 @@ EMPTY_CONFIG = {
     "spark_url": "wss://spark-api.xf-yun.com/v3.5/chat",
     "spark_domain": "generalv3.5",
     "framework_api_key": "",
-    "framework_url": ""
+    "framework_url": "",
+    "model_url": "http://localhost:1337/v1/chat/completions",
+    "model_api_key": "",
+    "model_name": "_"
 }
 
 

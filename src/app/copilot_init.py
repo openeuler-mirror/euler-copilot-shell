@@ -34,3 +34,10 @@ def setup_copilot():
             _prompt_for_config('framework_url', '请输入你的 EulerCopilot URL：')
         if config.get('framework_api_key') == '':
             _prompt_for_config('framework_api_key', '请输入你的 EulerCopilot API Key：')
+    if config.get('backend') == 'openai':
+        if config.get('model_url') == '':
+            _prompt_for_config('model_url', '请输入你的大模型 URL：')
+        if config.get('model_api_key') == '':
+            _prompt_for_config('model_api_key', '请输入你的大模型 API Key：')
+        if config.get('model_name') == '':
+            _prompt_for_config('model_name', '请输入你的大模型名称：')

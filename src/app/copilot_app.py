@@ -8,7 +8,7 @@ import sys
 import uuid
 from typing import Union
 
-from backends import framework_api, llm_service, spark_api
+from backends import framework_api, llm_service, spark_api, openai_api
 from utilities import config_manager, interact
 
 EXIT_MESSAGE = "\033[33m>>>\033[0m 很高兴为您服务，下次再见～"
@@ -51,6 +51,12 @@ def main(user_input: Union[str, None]):
             api_secret=config.get('spark_api_secret'),
             spark_url=config.get('spark_url'),
             domain=config.get('spark_domain')
+        )
+    elif backend == 'openai':
+        service = openai_api.OpenAI(
+            url=config.get('model_url'),
+            api_key=config.get('model_api_key'),
+            model=config.get('model_name')
         )
 
     if service is None:
