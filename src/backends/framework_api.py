@@ -28,10 +28,10 @@ class Framework(LLMService):
         return self.content
 
     def get_shell_answer(self, question: str) -> str:
-        question = "请用单行shell命令回答以下问题：\n" + question + \
+        query = "请用单行shell命令回答以下问题：\n" + question + \
             "\n\n请直接以纯文本形式回复shell命令，不要添加任何多余内容。\n" + \
             "请注意你是 openEuler 的小助手，你所回答的命令必须被 openEuler 系统支持"
-        return self.get_general_answer(question).replace("`", "")
+        return self._extract_shell_code_blocks(self.get_general_answer(query))
 
     def _stream_response(self, headers, data):
         spinner = Spinner('material')

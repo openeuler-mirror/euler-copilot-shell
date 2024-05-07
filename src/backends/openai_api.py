@@ -1,24 +1,23 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
 
 import json
-import sys
-import re
+from typing import Union
 
 import requests
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.spinner import Spinner
-from utilities.os_info import get_os_info
 
+from utilities.env_info import get_os_info
 from backends.llm_service import LLMService
 
 
-class OpenAI(LLMService):
-    def __init__(self, url, api_key, model = 'qwen-7b', max_tokens = 2048):
+class ChatOpenAI(LLMService):
+    def __init__(self, url: str, api_key: Union[str, None], model: Union[str, None], max_tokens = 2048):
         self.url: str = url
-        self.api_key: str = api_key
-        self.model: str = model
+        self.api_key: Union[str, None] = api_key
+        self.model: Union[str, None] = model
         self.max_tokens: int = max_tokens
         self.answer: str = ''
         self.history: list = []
@@ -35,16 +34,8 @@ class OpenAI(LLMService):
         当前操作系统是：{get_os_info()}，请返回符合当前系统要求的命令。'
         return self._extract_shell_code_blocks(self.get_general_answer(query))
 
-    def _get_length(self, context: list) -> int:
-        length = 0
-        for content in context:
-            temp = content['content']
-            leng = len(temp)
-            length += leng
-        return length
-
     def _check_len(self, context: list) -> list:
-        while self._get_length(context) > self.max_tokens / 2:
+        while self._get_context_length(context) > self.max_tokens / 2:
             del context[0]
         return context
 
@@ -53,12 +44,13 @@ class OpenAI(LLMService):
         history = self._check_len(
             self.history if len(self.history) < 5 else self.history[-5:]
         )
+        history.insert(0, {'content': self._gen_system_prompt(), 'role': 'system'})
         return {
             'messages': history,
             'model': self.model,
             'stream': stream,
             'max_tokens': self.max_tokens,
-            'temperature': 0.7,
+            'temperature': 0.1,
             'top_p': 0.95
         }
 
@@ -73,15 +65,25 @@ class OpenAI(LLMService):
         self.answer = ''
         with Live(console=self.console) as live:
             live.update(spinner, refresh=True)
-            response = requests.post(
-                self.url,
-                headers=self._gen_headers(),
-                data=json.dumps(self._gen_params(query)),
-                stream=True,
-                timeout=60
-            )
+            try:
+                response = requests.post(
+                    self.url,
+                    headers=self._gen_headers(),
+                    data=json.dumps(self._gen_params(query)),
+                    stream=True,
+                    timeout=60
+                )
+            except requests.exceptions.ConnectionError:
+                live.update(Markdown('连接大模型失败'), refresh=True)
+                return
+            except requests.exceptions.Timeout:
+                live.update(Markdown('请求大模型超时'), refresh=True)
+                return
+            except requests.exceptions.RequestException:
+                live.update(Markdown('请求大模型异常'), refresh=True)
+                return
             if response.status_code != 200:
-                sys.stderr.write(f'{response.status_code} 请求失败\n')
+                live.update(Markdown(f'请求失败\n\n状态码: {response.status_code}'), refresh=True)
                 return
             for line in response.iter_lines():
                 if line is None:
@@ -92,18 +94,13 @@ class OpenAI(LLMService):
                 except json.JSONDecodeError:
                     continue
                 else:
-                    chunk = jcontent['choices'][0]['delta']['content']
-                    finish_reason = jcontent['choices'][0]['finish_reason']
-                    self.answer += chunk
-                    live.update(Markdown(self.answer, code_theme='github-dark'), refresh=True)
-                    if finish_reason == 'stop':
-                        self.history.append({'content': self.answer, 'role': 'assistant'})
-                        break
-
-    def _extract_shell_code_blocks(self, markdown_text):
-        shell_code_pattern = re.compile(r'```shell\n(?P<code>(?:\n|.)*?)\n```', re.DOTALL)
-        matches = shell_code_pattern.finditer(markdown_text)
-        cmds: list = [match.group('code') for match in matches]
-        if len(cmds) > 0:
-            return cmds[0]
-        return markdown_text.replace('`', '')
+                    choices = jcontent.get('choices', [])
+                    if choices:
+                        delta = choices[0].get('delta', {})
+                        chunk = delta.get('content', '')
+                        finish_reason = choices[0].get('finish_reason')
+                        self.answer += chunk
+                        live.update(Markdown(self.answer, code_theme='github-dark'), refresh=True)
+                        if finish_reason == 'stop':
+                            self.history.append({'content': self.answer, 'role': 'assistant'})
+                            break

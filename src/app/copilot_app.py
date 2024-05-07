@@ -1,8 +1,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
 # pylint: disable=W0611
 
-import os
+import re
 import readline  # noqa: F401
+import subprocess
 import shlex
 import sys
 import uuid
@@ -14,11 +15,50 @@ from utilities import config_manager, interact
 EXIT_MESSAGE = "\033[33m>>>\033[0m 很高兴为您服务，下次再见～"
 
 
-def execute_shell_command(cmd: str) -> None:
+def check_shell_features(cmd: str) -> bool:
+    patterns = [
+        # 重定向
+        r'\>|\<|\>\>|\<<',
+        # 管道
+        r'\|',
+        # 通配符
+        r'\*|\?',
+        # 美元符号开头的环境变量
+        r'\$[\w_]+',
+        # 历史展开
+        r'!',
+        # 后台运行符号
+        r'&',
+        # 括号命令分组
+        r'\(|\)|\{|\}',
+        # 逻辑操作符
+        r'&&|\|\|',
+        # Shell函数或变量赋值
+        r'\b\w+\s*=\s*[^=\s]+'
+    ]
+
+    for pattern in patterns:
+        if re.search(pattern, cmd):
+            return True
+    return False
+
+
+def execute_shell_command(cmd: str) -> int:
     """Execute a shell command and exit."""
-    shell = os.environ.get("SHELL", "/bin/sh")
-    full_command = f"{shell} -c {shlex.quote(cmd)}"
-    os.system(full_command)
+    if check_shell_features(cmd):
+        try:
+            process = subprocess.Popen(cmd, shell=True)
+        except ValueError as e:
+            print(f'执行命令时出错：{e}')
+            return 1
+    else:
+        try:
+            process = subprocess.Popen(shlex.split(cmd))
+        except FileNotFoundError as e:
+            print(f'命令不存在：{e}')
+            return 1
+    exit_code = process.wait()
+    return exit_code
 
 
 def handle_user_input(service: llm_service.LLMService,
@@ -26,18 +66,18 @@ def handle_user_input(service: llm_service.LLMService,
     """Process user input based on the given flag and backend configuration."""
     if mode == 'shell':
         cmd = service.get_shell_answer(user_input)
+        exit_code: int = 0
         if cmd and interact.query_yes_or_no("\033[33m是否执行命令？\033[0m "):
-            execute_shell_command(cmd)
-        sys.exit(0)
+            exit_code = execute_shell_command(cmd)
+        sys.exit(exit_code)
     elif mode == 'chat':
         service.get_general_answer(user_input)
 
 
-def main(user_input: Union[str, None]):
-    config = config_manager.load_config()
+def main(user_input: Union[str, None], config: dict):
     backend = config.get('backend')
-    mode = config.get('query_mode')
-    service: llm_service.LLMService = None
+    mode = str(config.get('query_mode'))
+    service: Union[llm_service.LLMService, None] = None
     if backend == 'framework':
         service = framework_api.Framework(
             url=config.get('framework_url'),
@@ -53,8 +93,8 @@ def main(user_input: Union[str, None]):
             domain=config.get('spark_domain')
         )
     elif backend == 'openai':
-        service = openai_api.OpenAI(
-            url=config.get('model_url'),
+        service = openai_api.ChatOpenAI(
+            url=str(config.get('model_url')),
             api_key=config.get('model_api_key'),
             model=config.get('model_name')
         )

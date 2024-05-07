@@ -5,7 +5,6 @@ import base64
 import hashlib
 import hmac
 import json
-import re
 import sys
 from datetime import datetime
 from time import mktime
@@ -17,7 +16,7 @@ from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.spinner import Spinner
-from utilities.os_info import get_os_info
+from utilities.env_info import get_os_info
 
 from backends.llm_service import LLMService
 
@@ -70,13 +69,13 @@ class Spark(LLMService):
                                 live.update(f'请求错误: {code}\n{message}', refresh=True)
                                 await websocket.close()
                             else:
-                                choices = data["payload"]["choices"]
-                                status = choices["status"]
-                                content = choices["text"][0]["content"]
+                                choices = data['payload']['choices']
+                                status = choices['status']
+                                content = choices['text'][0]['content']
                                 self.answer += content
                                 live.update(Markdown(self.answer, code_theme='github-dark'), refresh=True)
                                 if status == 2:
-                                    self.history.append({"role": "assistant", "content": self.answer})
+                                    self.history.append({'role': 'assistant', 'content': self.answer})
                                     break
                         except websockets.exceptions.ConnectionClosed:
                             break
@@ -105,61 +104,47 @@ class Spark(LLMService):
 
         # 将请求的鉴权参数组合为字典
         v = {
-            "authorization": authorization,
-            "date": date,
-            "host": self.host
+            'authorization': authorization,
+            'date': date,
+            'host': self.host
         }
         # 拼接鉴权参数，生成url
         url = self.spark_url + '?' + urlencode(v)
         # 此处打印出建立连接时候的url,参考本demo的时候可取消上方打印的注释，比对相同参数时生成的url与自己代码生成的url是否一致
         return url
 
-    def _get_length(self, context: list) -> int:
-        length = 0
-        for content in context:
-            temp = content["content"]
-            leng = len(temp)
-            length += leng
-        return length
-
     def _check_len(self, context: list) -> list:
-        while self._get_length(context) > self.max_tokens / 2:
+        while self._get_context_length(context) > self.max_tokens / 2:
             del context[0]
         return context
 
     def _gen_params(self, query: str):
-        """
+        '''
         通过appid和用户的提问来生成请参数
-        """
-        self.history.append({"role": "user", "content": query})
+        '''
+        self.history.append({'role': 'user', 'content': query})
         history = self._check_len(
             self.history if len(self.history) < 5 else self.history[-5:]
         )
+        if self.domain == 'generalv3.5':
+            history.insert(0, {'role': 'system', 'content': self._gen_system_prompt()})
         data = {
-            "header": {
-                "app_id": self.app_id,
-                "uid": "1234",
+            'header': {
+                'app_id': self.app_id,
+                'uid': '1234',
             },
-            "parameter": {
-                "chat": {
-                    "domain": self.domain,
-                    "temperature": 0.5,
-                    "max_tokens": self.max_tokens,
-                    "auditing": "default",
+            'parameter': {
+                'chat': {
+                    'domain': self.domain,
+                    'temperature': 0.5,
+                    'max_tokens': self.max_tokens,
+                    'auditing': 'default',
                 }
             },
-            "payload": {
-                "message": {
-                    "text": history
+            'payload': {
+                'message': {
+                    'text': history
                 }
             }
         }
         return data
-
-    def _extract_shell_code_blocks(self, markdown_text):
-        shell_code_pattern = re.compile(r'```shell\n(?P<code>(?:\n|.)*?)\n```', re.DOTALL)
-        matches = shell_code_pattern.finditer(markdown_text)
-        cmds: list = [match.group('code') for match in matches]
-        if len(cmds) > 0:
-            return cmds[0]
-        return markdown_text.replace('`', '')

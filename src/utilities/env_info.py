@@ -1,5 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
 
+import os
 import platform
 import re
 import subprocess
@@ -45,3 +46,7 @@ def get_os_info() -> str:
         return _porc_macos_info(_exec_shell_cmd(['sw_vers']))
     else:
         return system
+
+
+def is_root() -> bool:
+    return os.geteuid() == 0

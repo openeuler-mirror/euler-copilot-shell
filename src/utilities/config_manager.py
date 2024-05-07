@@ -7,18 +7,18 @@ CONFIG_DIR = os.path.join(os.path.expanduser('~'), '.config/eulercopilot')
 CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
 
 EMPTY_CONFIG = {
-    "backend": "openai",
+    "backend": "spark",
     "query_mode": "shell",
     "spark_app_id": "",
     "spark_api_key": "",
     "spark_api_secret": "",
     "spark_url": "wss://spark-api.xf-yun.com/v3.5/chat",
     "spark_domain": "generalv3.5",
-    "framework_api_key": "",
     "framework_url": "",
+    "framework_api_key": "",
     "model_url": "http://localhost:1337/v1/chat/completions",
     "model_api_key": "",
-    "model_name": "_"
+    "model_name": ""
 }
 
 
@@ -58,10 +58,11 @@ def select_query_mode(mode: int):
 
 
 def select_backend():
-    backends = ['spark', 'framework']
+    backends = ['framework', 'spark', 'openai']
     print('\n\033[1;33m请选择大模型后端：\033[0m\n')
-    print('\t<1>  讯飞星火大模型 3.5')
-    print('\t<2>  EulerCopilot')
+    print('\t<1>  EulerCopilot')
+    print('\t<2>  讯飞星火大模型 3.5')
+    print('\t<3>  类 ChatGPT（兼容 llama.cpp）')
     print()
     try:
         while True:
