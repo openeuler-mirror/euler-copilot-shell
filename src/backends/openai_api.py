@@ -9,7 +9,6 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.spinner import Spinner
 
-from utilities.env_info import get_os_info
 from backends.llm_service import LLMService
 
 
@@ -29,9 +28,7 @@ class ChatOpenAI(LLMService):
         return self.answer
 
     def get_shell_answer(self, question: str) -> str:
-        query = f'请用单行shell命令回答以下问题：\n{question}\n\
-        \n要求：\n请直接回复命令，不要添加任何多余内容；\n\
-        当前操作系统是：{get_os_info()}，请返回符合当前系统要求的命令。'
+        query = self._gen_shell_prompt(question)
         return self._extract_shell_code_blocks(self.get_general_answer(query))
 
     def _check_len(self, context: list) -> list:
@@ -74,16 +71,16 @@ class ChatOpenAI(LLMService):
                     timeout=60
                 )
             except requests.exceptions.ConnectionError:
-                live.update(Markdown('连接大模型失败'), refresh=True)
+                live.update('连接大模型失败', refresh=True)
                 return
             except requests.exceptions.Timeout:
-                live.update(Markdown('请求大模型超时'), refresh=True)
+                live.update('请求大模型超时', refresh=True)
                 return
             except requests.exceptions.RequestException:
-                live.update(Markdown('请求大模型异常'), refresh=True)
+                live.update('请求大模型异常', refresh=True)
                 return
             if response.status_code != 200:
-                live.update(Markdown(f'请求失败\n\n状态码: {response.status_code}'), refresh=True)
+                live.update(f'请求失败: {response.status_code}', refresh=True)
                 return
             for line in response.iter_lines():
                 if line is None:

@@ -1,36 +1,43 @@
 Name: eulercopilot
 Version: 1.1
-Release: 1%{?dist}%{?_timestamp}
+Release: 1%{?dist}.%{?_timestamp}
 Group: Applications/Utilities
 Summary: EulerCopilot CLI Tool
 Source: %{name}-%{version}.tar.gz
 License: MulanPSL-2.0
 URL: https://www.openeuler.org/zh/
 
-BuildRequires: python3-devel python3-setuptools python3-Cython gcc
+BuildRequires: python3-devel python3-setuptools
+BuildRequires: python3-pip
+BuildRequires: python3-Cython gcc
 
-Requires: python3 python3-pip
+Requires: python3
 
 %description
-EulerCopilot CLI Tool
+EulerCopilot Command Line Tool
 
 %prep
 %setup -q
+python3 -m venv .venv
+.venv/bin/python3 -m pip install -U pip setuptools
+.venv/bin/python3 -m pip install -U Cython pyinstaller
+.venv/bin/python3 -m pip install -U websockets requests rich
 
 %build
-python3 setup.py build_ext
+.venv/bin/python3 setup.py build_ext
+.venv/bin/pyinstaller --onefile --clean \
+    --distpath=%{_builddir}/%{name}-%{version}/dist \
+    --workpath=%{_builddir}/%{name}-%{version}/build \
+    copilot.py
 
 %install
 %define _unpackaged_files_terminate_build 0
-python3 setup.py install --root=%{buildroot} --single-version-externally-managed --record=INSTALLED_FILES
+install -d %{buildroot}/%{_bindir}
+install -c -m 0755 %{_builddir}/%{name}-%{version}/dist/copilot %{buildroot}/%{_bindir}
 install -d %{buildroot}/etc/profile.d
 install -c -m 0755 %{_builddir}/%{name}-%{version}/eulercopilot_shortcut.sh %{buildroot}/etc/profile.d
 
-%files -f INSTALLED_FILES
+%files
 %defattr(-,root,root,-)
+/usr/bin/copilot
 /etc/profile.d/eulercopilot_shortcut.sh
-
-%post
-/usr/bin/python3 -m pip install --upgrade websockets >/dev/null
-/usr/bin/python3 -m pip install --upgrade requests >/dev/null
-/usr/bin/python3 -m pip install --upgrade rich >/dev/null

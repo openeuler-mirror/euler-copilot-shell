@@ -5,7 +5,6 @@ import base64
 import hashlib
 import hmac
 import json
-import sys
 from datetime import datetime
 from time import mktime
 from urllib.parse import urlencode, urlparse
@@ -16,7 +15,6 @@ from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.spinner import Spinner
-from utilities.env_info import get_os_info
 
 from backends.llm_service import LLMService
 
@@ -43,18 +41,16 @@ class Spark(LLMService):
         return self.answer
 
     def get_shell_answer(self, question: str) -> str:
-        query = f'请用单行shell命令回答以下问题：\n{question}\n\
-        \n要求：\n请直接回复命令，不要添加任何多余内容；\n\
-        当前操作系统是：{get_os_info()}，请返回符合当前系统要求的命令。'
+        query = self._gen_shell_prompt(question)
         return self._extract_shell_code_blocks(self.get_general_answer(query))
 
     async def _query_spark_ai(self, query: str):
         url = self._create_url()
         self.answer = ''
         spinner = Spinner('material')
-        try:
-            with Live(console=self.console) as live:
-                live.update(spinner, refresh=True)
+        with Live(console=self.console) as live:
+            live.update(spinner, refresh=True)
+            try:
                 async with websockets.connect(url) as websocket:
                     data = json.dumps(self._gen_params(query))
                     await websocket.send(data)
@@ -80,9 +76,12 @@ class Spark(LLMService):
                         except websockets.exceptions.ConnectionClosed:
                             break
 
-        except websockets.exceptions.InvalidStatusCode:
-            sys.stderr.write('\033[1;31m请求错误！\033[0m\n请检查 appid 和 api_key 是否正确，或检查网络连接是否正常。')
-            print('输入 "copilot --settings" 来查看和编辑配置')
+            except websockets.exceptions.InvalidStatusCode:
+                live.update(f'\033[1;31m请求错误\033[0m\n\
+                            请检查 appid 和 api_key 是否正确，或检查网络连接是否正常。\n\
+                            输入 "vi ~/.config/eulercopilot/config.json" 查看和编辑配置；\n\
+                            或尝试 ping {self.spark_url}',
+                            refresh=True)
 
     def _create_url(self):
         now = datetime.now()  # 生成RFC1123格式的时间戳

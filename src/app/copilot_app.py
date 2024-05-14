@@ -10,9 +10,7 @@ import uuid
 from typing import Union
 
 from backends import framework_api, llm_service, spark_api, openai_api
-from utilities import config_manager, interact
-
-EXIT_MESSAGE = "\033[33m>>>\033[0m 很高兴为您服务，下次再见～"
+from utilities import interact
 
 
 def check_shell_features(cmd: str) -> bool:
@@ -44,7 +42,7 @@ def check_shell_features(cmd: str) -> bool:
 
 
 def execute_shell_command(cmd: str) -> int:
-    """Execute a shell command and exit."""
+    '''Execute a shell command and exit.'''
     if check_shell_features(cmd):
         try:
             process = subprocess.Popen(cmd, shell=True)
@@ -63,15 +61,21 @@ def execute_shell_command(cmd: str) -> int:
 
 def handle_user_input(service: llm_service.LLMService,
                       user_input: str, mode: str) -> None:
-    """Process user input based on the given flag and backend configuration."""
+    '''Process user input based on the given flag and backend configuration.'''
     if mode == 'shell':
         cmd = service.get_shell_answer(user_input)
         exit_code: int = 0
-        if cmd and interact.query_yes_or_no("\033[33m是否执行命令？\033[0m "):
+        if cmd and interact.query_yes_or_no('\n\033[33m是否执行命令？\033[0m '):
             exit_code = execute_shell_command(cmd)
         sys.exit(exit_code)
     elif mode == 'chat':
         service.get_general_answer(user_input)
+
+
+def exit(msg: str = '', code: int = 0):
+    '''Exit the program with a message.'''
+    print(msg)
+    sys.exit(code)
 
 
 def main(user_input: Union[str, None], config: dict):
@@ -100,23 +104,19 @@ def main(user_input: Union[str, None], config: dict):
         )
 
     if service is None:
-        sys.stderr.write("\033[1;31m未正确配置 LLM 后端，请检查配置文件\033[0m")
-        sys.exit(1)
-
-    if mode == 'shell':
-        print("\033[33m当前模式：Shell 命令生成\033[0m")
-    if mode == 'chat':
-        print("\033[33m当前模式：智能问答\033[0m 输入 \"exit\" 或按下 Ctrl+C 退出服务")
-
-    try:
-        while True:
-            if user_input is None:
-                user_input = input("\033[35m>>>\033[0m ")
-            if user_input.lower().startswith('exit'):
-                print(EXIT_MESSAGE)
-                sys.exit(0)
-            handle_user_input(service, user_input, mode)
-            user_input = None  # Reset user_input for next iteration (only if continuing service)
-    except KeyboardInterrupt:
-        print()
-        sys.exit(0)
+        exit('\033[1;31m未正确配置 LLM 后端，请检查配置文件\033[0m', 1)
+    else:
+        if mode == 'shell':
+            print('\033[33m当前模式：Shell 命令生成\033[0m')
+        if mode == 'chat':
+            print('\033[33m当前模式：智能问答\033[0m 输入 \'exit\' 或按下 Ctrl+C 退出服务')
+        try:
+            while True:
+                if user_input is None:
+                    user_input = input('\033[35m>>>\033[0m ')
+                if user_input.lower().startswith('exit'):
+                    exit()
+                handle_user_input(service, user_input, mode)
+                user_input = None  # Reset user_input for next iteration (only if continuing service)
+        except KeyboardInterrupt:
+            exit()

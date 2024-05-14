@@ -6,9 +6,10 @@ import os
 CONFIG_DIR = os.path.join(os.path.expanduser('~'), '.config/eulercopilot')
 CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
 
-EMPTY_CONFIG = {
+DEFAULT_CONFIG = {
     "backend": "spark",
     "query_mode": "shell",
+    "advanced_mode": False,
     "spark_app_id": "",
     "spark_api_key": "",
     "spark_api_secret": "",
@@ -35,16 +36,17 @@ def load_config() -> dict:
 def write_config(config):
     with open(CONFIG_PATH, 'w', encoding='utf-8') as json_file:
         json.dump(config, json_file, indent=4)
+        json_file.write('\n')  # 追加一行空行
 
 
 def init_config():
     if not os.path.exists(CONFIG_DIR):
         os.makedirs(CONFIG_DIR)
-    write_config(EMPTY_CONFIG)
+    write_config(DEFAULT_CONFIG)
 
 
 def update_config(key: str, value):
-    if key not in EMPTY_CONFIG:
+    if key not in DEFAULT_CONFIG:
         return
     config = load_config()
     config.update({key: value})
