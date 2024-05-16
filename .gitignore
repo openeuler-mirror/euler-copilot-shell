@@ -13,7 +13,6 @@
 
 # ide
 .idea
-.vscode
 
 # Cython
 *.c
