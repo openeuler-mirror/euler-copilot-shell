@@ -21,7 +21,7 @@ EulerCopilot Command Line Tool
 python3 -m venv .venv
 .venv/bin/python3 -m pip install -U pip setuptools
 .venv/bin/python3 -m pip install -U Cython pyinstaller
-.venv/bin/python3 -m pip install -U websockets requests rich
+.venv/bin/python3 -m pip install -U websockets requests rich typer
 
 %build
 .venv/bin/python3 setup.py build_ext

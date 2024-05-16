@@ -59,10 +59,11 @@ setup(
         'Operating System :: MacOS :: MacOS X'
     ],
     python_requires='>=3.9',  # Python 版本要求为 3.9 及以上
-    install_requires=[  # 添加项目依赖的库：websockets 和 requests
+    install_requires=[  # 添加项目依赖的库
         'websockets',
         'requests',
         'rich',
+        'typer',
     ],
     entry_points={
         'console_scripts': ['copilot=copilot:run_command_line']
