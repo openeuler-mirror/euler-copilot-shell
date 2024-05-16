@@ -3,7 +3,7 @@
 import re
 from abc import ABC, abstractmethod
 
-from utilities.env_info import get_os_info, is_root
+from copilot.utilities.env_info import get_os_info, is_root
 
 
 class LLMService(ABC):

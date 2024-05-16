@@ -25,9 +25,9 @@ cython_compile_options = {
 
 # 定义 Cython 编译规则
 cython_files = []
-cython_files += add_py_files('app')
-cython_files += add_py_files('backends')
-cython_files += add_py_files('utilities')
+cython_files += add_py_files('copilot/app')
+cython_files += add_py_files('copilot/backends')
+cython_files += add_py_files('copilot/utilities')
 
 extensions = [Extension(f.replace("/", ".")[:-3], [f]) for f in cython_files]
 
@@ -39,13 +39,14 @@ setup(
     author='Hongyu Shi',
     author_email='shihongyu15@huawei.com',
     url='https://gitee.com/openeuler-customization/euler-copilot-shell',
-    py_modules=['copilot'],
+    py_modules=['copilot.__init__', 'copilot.__main__'],
     ext_modules=cythonize(
         extensions,
         compiler_directives=cython_compile_options['compiler_directives'],
         annotate=cython_compile_options['annotate'],
         language_level=cython_compile_options['language_level']
     ),
+    packages=['copilot'],
     cmdclass={'build_ext': build_ext},
     include_package_data=True,
     zip_safe=False,
@@ -66,6 +67,6 @@ setup(
         'typer',
     ],
     entry_points={
-        'console_scripts': ['copilot=copilot:run_command_line']
+        'console_scripts': ['copilot=copilot.__main__:entry_point']
     }
 )

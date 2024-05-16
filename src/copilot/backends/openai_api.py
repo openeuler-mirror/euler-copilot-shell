@@ -9,7 +9,7 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.spinner import Spinner
 
-from backends.llm_service import LLMService
+from copilot.backends.llm_service import LLMService
 
 
 class ChatOpenAI(LLMService):

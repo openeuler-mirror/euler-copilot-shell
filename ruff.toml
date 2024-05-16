@@ -1,0 +1,12 @@
+# Allow imports relative to the "src" and "test" directories.
+src = ["src"]
+
+# Allow lines to be as long as 120.
+line-length = 120
+
+# Always generate Python 3.9-compatible code.
+target-version = "py39"
+
+[format]
+# Prefer single quotes over double quotes.
+quote-style = "single"

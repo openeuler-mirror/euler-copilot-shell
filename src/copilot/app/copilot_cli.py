@@ -1,11 +1,15 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
 
+# pylint: disable=R0911,R0912,R0913
+
 import os
 from typing import Optional
 
 import typer
-from rich import print
-from utilities.config_manager import (
+
+from copilot.app.copilot_app import main
+from copilot.app.copilot_init import setup_copilot
+from copilot.utilities.config_manager import (
     CONFIG_PATH,
     DEFAULT_CONFIG,
     edit_config,
@@ -14,16 +18,16 @@ from utilities.config_manager import (
     select_query_mode,
 )
 
-from app.copilot_app import main
-from app.copilot_init import setup_copilot
-
-config: dict = load_config()
-BACKEND: str = config.get('backend', DEFAULT_CONFIG['backend'])
-ADVANCED_MODE: bool = config.get('advanced_mode', DEFAULT_CONFIG['advanced_mode'])
+CONFIG: dict = load_config()
+BACKEND: str = CONFIG.get('backend', DEFAULT_CONFIG['backend'])
+ADVANCED_MODE: bool = CONFIG.get('advanced_mode', DEFAULT_CONFIG['advanced_mode'])
 CONFIG_INITIALIZED: bool = os.path.exists(CONFIG_PATH)
 
 app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={
+        'help_option_names': ['-h', '--help'],
+        'allow_interspersed_args': True
+    },
     add_completion=False
 )
 
@@ -78,14 +82,16 @@ def cli(
         setup_copilot()
         return
     if backend:
-        select_backend()
+        if ADVANCED_MODE:
+            select_backend()
         return
     if settings:
-        edit_config()
+        if ADVANCED_MODE:
+            edit_config()
         return
 
     if sum(map(bool, [shell, chat, diagnose, tuning])) > 1:
-        print('只能选择一种模式')
+        print('\033[1;31m当前版本只能选择一种问答模式\033[0m')
         return
 
     if shell:
@@ -96,20 +102,29 @@ def cli(
         select_query_mode(1)
         if not question:
             return
-    elif diagnose and BACKEND == 'framework':
-        select_query_mode(2)
-        if not question:
+    elif diagnose:
+        if BACKEND == 'framework':
+            select_query_mode(2)
+            if not question:
+                return
+        else:
+            print('\033[33m当前大模型后端不支持智能诊断功能\033[0m')
+            print('\033[33m推荐使用 EulerCopilot 智能体框架\033[0m')
             return
-    elif tuning and BACKEND == 'framework':
-        select_query_mode(3)
-        if not question:
+    elif tuning:
+        if BACKEND == 'framework':
+            select_query_mode(3)
+            if not question:
+                return
+        else:
+            print('\033[33m当前大模型后端不支持智能调参功能\033[0m')
+            print('\033[33m推荐使用 EulerCopilot 智能体框架\033[0m')
             return
 
     if question:
         question = question.strip()
 
-    config = load_config()
-    main(question, config)
+    main(question, load_config())
 
 
 def entry_point() -> None:
