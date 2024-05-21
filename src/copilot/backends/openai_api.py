@@ -6,10 +6,10 @@ from typing import Union
 import requests
 from rich.console import Console
 from rich.live import Live
-from rich.markdown import Markdown
 from rich.spinner import Spinner
 
 from copilot.backends.llm_service import LLMService
+from copilot.utilities.markdown_renderer import MarkdownRenderer
 
 
 class ChatOpenAI(LLMService):
@@ -60,7 +60,7 @@ class ChatOpenAI(LLMService):
     def _stream_response(self, query: str):
         spinner = Spinner('material')
         self.answer = ''
-        with Live(console=self.console) as live:
+        with Live(console=self.console, vertical_overflow='visible') as live:
             live.update(spinner, refresh=True)
             try:
                 response = requests.post(
@@ -97,7 +97,7 @@ class ChatOpenAI(LLMService):
                         chunk = delta.get('content', '')
                         finish_reason = choices[0].get('finish_reason')
                         self.answer += chunk
-                        live.update(Markdown(self.answer, code_theme='github-dark'), refresh=True)
+                        MarkdownRenderer.update(live, self.answer)
                         if finish_reason == 'stop':
                             self.history.append({'content': self.answer, 'role': 'assistant'})
                             break

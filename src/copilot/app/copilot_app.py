@@ -66,7 +66,7 @@ def handle_user_input(service: llm_service.LLMService,
     if mode == 'shell':
         cmd = service.get_shell_answer(user_input)
         exit_code: int = 0
-        if cmd and interact.query_yes_or_no('\n\033[33m是否执行命令？\033[0m '):
+        if cmd and interact.query_yes_or_no('\033[33m是否执行命令？\033[0m '):
             exit_code = execute_shell_command(cmd)
         sys.exit(exit_code)
     elif mode == 'chat':

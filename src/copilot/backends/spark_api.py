@@ -13,10 +13,10 @@ from wsgiref.handlers import format_date_time
 import websockets
 from rich.console import Console
 from rich.live import Live
-from rich.markdown import Markdown
 from rich.spinner import Spinner
 
 from copilot.backends.llm_service import LLMService
+from copilot.utilities.markdown_renderer import MarkdownRenderer
 
 
 class Spark(LLMService):
@@ -48,7 +48,7 @@ class Spark(LLMService):
         url = self._create_url()
         self.answer = ''
         spinner = Spinner('material')
-        with Live(console=self.console) as live:
+        with Live(console=self.console, vertical_overflow='visible') as live:
             live.update(spinner, refresh=True)
             try:
                 async with websockets.connect(url) as websocket:
@@ -69,7 +69,7 @@ class Spark(LLMService):
                                 status = choices['status']
                                 content = choices['text'][0]['content']
                                 self.answer += content
-                                live.update(Markdown(self.answer, code_theme='github-dark'), refresh=True)
+                                MarkdownRenderer.update(live, self.answer)
                                 if status == 2:
                                     self.history.append({'role': 'assistant', 'content': self.answer})
                                     break
