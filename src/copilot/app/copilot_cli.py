@@ -77,7 +77,7 @@ def cli(
         hidden=(not ADVANCED_MODE)
     )
 ) -> None:
-    '''EulerCopilot 命令行助手'''
+    '''NeoCopilot 命令行助手'''
     if init:
         setup_copilot()
         return
@@ -109,7 +109,7 @@ def cli(
                 return
         else:
             print('\033[33m当前大模型后端不支持智能诊断功能\033[0m')
-            print('\033[33m推荐使用 EulerCopilot 智能体框架\033[0m')
+            print('\033[33m推荐使用 NeoCopilot 智能体框架\033[0m')
             return
     elif tuning:
         if BACKEND == 'framework':
@@ -118,7 +118,7 @@ def cli(
                 return
         else:
             print('\033[33m当前大模型后端不支持智能调参功能\033[0m')
-            print('\033[33m推荐使用 EulerCopilot 智能体框架\033[0m')
+            print('\033[33m推荐使用 NeoCopilot 智能体框架\033[0m')
             return
 
     if question:
