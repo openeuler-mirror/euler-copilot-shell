@@ -1,7 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
 
 import json
-import sys
 
 import requests
 from rich.console import Console
@@ -17,13 +16,13 @@ class Framework(LLMService):
         self.endpoint: str = url
         self.api_key: str = api_key
         self.session_id: str = session_id
-        self.content: str = ""
+        self.content: str = ''
         # 富文本显示
         self.console = Console()
 
     def get_general_answer(self, question: str) -> str:
         headers = self._get_headers()
-        data = {"question": question, "session_id": self.session_id}
+        data = {'question': question, 'session_id': self.session_id}
         self._stream_response(headers, data)
         return self.content
 
@@ -35,32 +34,50 @@ class Framework(LLMService):
         spinner = Spinner('material')
         with Live(console=self.console, vertical_overflow='visible') as live:
             live.update(spinner, refresh=True)
-            response = requests.post(
-                self.endpoint,
-                headers=headers,
-                json=data,
-                stream=True,
-                timeout=60
-            )
+            try:
+                response = requests.post(
+                    self.endpoint,
+                    headers=headers,
+                    json=data,
+                    stream=True,
+                    timeout=60
+                )
+            except requests.exceptions.ConnectionError:
+                live.update('NeoCopilot 智能体连接失败', refresh=True)
+                return
+            except requests.exceptions.Timeout:
+                live.update('NeoCopilot 智能体请求超时', refresh=True)
+                return
+            except requests.exceptions.RequestException:
+                live.update('NeoCopilot 智能体请求异常', refresh=True)
+                return
             if response.status_code != 200:
-                sys.stderr.write(f"{response.status_code} 请求失败\n")
+                live.update(f'请求失败: {response.status_code}', refresh=True)
                 return
             for line in response.iter_lines():
                 if line is None:
                     continue
-                content = line.decode('utf-8').strip("data: ")
+                content = line.decode('utf-8').strip('data: ')
                 try:
                     jcontent = json.loads(content)
                 except json.JSONDecodeError:
-                    continue
+                    if content == '[ERROR]':
+                        MarkdownRenderer.update(live, 'NeoCopilot 智能体系统繁忙，请稍候再试')
+                        self.content = ''
+                    elif content == '[SENSITIVE]':
+                        MarkdownRenderer.update(live, '检测到违规信息，请重新提问')
+                        self.content = ''
+                    elif content != '[DONE]':
+                        MarkdownRenderer.update(live, f'NeoCopilot 智能体返回了未知内容：{content}')
+                    break
                 else:
-                    chunk = jcontent.get("content", "")
+                    chunk = jcontent.get('content', '')
                     self.content += chunk
                     MarkdownRenderer.update(live, self.content)
 
     def _get_headers(self) -> dict:
         return {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.api_key}'
         }

@@ -54,7 +54,12 @@ def execute_shell_command(cmd: str) -> int:
         try:
             process = subprocess.Popen(shlex.split(cmd))
         except FileNotFoundError as e:
-            print(f'命令不存在：{e}')
+            builtin_cmds = ['source', 'history', 'cd', 'export', 'alias', 'test']
+            cmd_prefix = cmd.split()[0]
+            if cmd_prefix in builtin_cmds:
+                print(f'不支持执行 Shell 内置命令 "{cmd_prefix}"，请复制后手动执行')
+            else:
+                print(f'命令不存在：{e}')
             return 1
     exit_code = process.wait()
     return exit_code
