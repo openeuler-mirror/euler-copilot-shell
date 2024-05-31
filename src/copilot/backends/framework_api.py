@@ -1,6 +1,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
 
 import json
+import re
+import socket
+import subprocess
 
 import requests
 from rich.console import Console
@@ -30,6 +33,38 @@ class Framework(LLMService):
         query = self._gen_shell_prompt(question)
         return self._extract_shell_code_blocks(self.get_general_answer(query))
 
+    def diagnose(self, question: str) -> str:
+        # 确保用户输入的问题中包含有效的IP地址，若没有，则诊断本机
+        if not self._contains_valid_ip(question):
+            local_ip = self._get_local_ip()
+            if local_ip:
+                question = f'当前机器的IP为 {local_ip}，' + question
+        headers = self._get_headers()
+        data = {
+            'question': question,
+            'session_id': self.session_id,
+            'user_selected_plugins': [
+                {
+                    'plugin_name': 'Diagnostic'
+                }
+            ]
+        }
+        self._stream_response(headers, data)
+        return self.content
+
+    def tuning(self, question: str):
+        headers = self._get_headers()
+        data = {
+            'question': question,
+            'session_id': self.session_id,
+            'user_selected_plugins': [
+                {
+                    'plugin_name': 'tuning'
+                }
+            ]
+        }
+        self._stream_response(headers, data)
+
     def _stream_response(self, headers, data):
         spinner = Spinner('material')
         with Live(console=self.console, vertical_overflow='visible') as live:
@@ -40,7 +75,7 @@ class Framework(LLMService):
                     headers=headers,
                     json=data,
                     stream=True,
-                    timeout=60
+                    timeout=300
                 )
             except requests.exceptions.ConnectionError:
                 live.update('NeoCopilot 智能体连接失败', refresh=True)
@@ -61,6 +96,8 @@ class Framework(LLMService):
                 try:
                     jcontent = json.loads(content)
                 except json.JSONDecodeError:
+                    if content == '':
+                        continue
                     if content == '[ERROR]':
                         MarkdownRenderer.update(live, 'NeoCopilot 智能体系统繁忙，请稍候再试')
                         self.content = ''
@@ -81,3 +118,26 @@ class Framework(LLMService):
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.api_key}'
         }
+
+    def _contains_valid_ip(self, text: str) -> bool:
+        ip_pattern = r'\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
+        match = re.search(ip_pattern, text)
+        return bool(match)
+
+    def _get_local_ip(self) -> str:
+        try:
+            process = subprocess.run(
+                ['hostname', '-I'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            try:
+                ip_list = socket.gethostbyname_ex(socket.gethostname())[2]
+            except socket.gaierror:
+                return ''
+            return ip_list[-1]
+        if process.stdout:
+            ip_address = process.stdout.decode('utf-8').strip().split(' ', maxsplit=1)[0]
+            return ip_address
+        return ''

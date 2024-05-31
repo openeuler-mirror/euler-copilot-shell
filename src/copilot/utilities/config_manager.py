@@ -54,7 +54,7 @@ def update_config(key: str, value):
 
 
 def select_query_mode(mode: int):
-    modes = ['shell', 'chat']
+    modes = ['shell', 'chat', 'diagnose', 'tuning']
     if mode < len(modes):
         update_config('query_mode', modes[mode])
 

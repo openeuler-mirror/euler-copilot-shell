@@ -76,6 +76,15 @@ def handle_user_input(service: llm_service.LLMService,
         sys.exit(exit_code)
     elif mode == 'chat':
         service.get_general_answer(user_input)
+    elif mode == 'diagnose':
+        if isinstance(service, framework_api.Framework):
+            report = service.diagnose(user_input)
+            if report:
+                sys.exit(0)
+            sys.exit(1)
+    elif mode == 'tuning':
+        if isinstance(service, framework_api.Framework):
+            service.tuning(user_input)
 
 
 def exit_copilot(msg: str = '', code: int = 0):
