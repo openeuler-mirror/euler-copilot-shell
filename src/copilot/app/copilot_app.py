@@ -6,7 +6,6 @@ import re
 import readline  # noqa: F401
 import shlex
 import subprocess
-import sys
 import uuid
 from typing import Union
 
@@ -66,34 +65,34 @@ def execute_shell_command(cmd: str) -> int:
 
 
 def handle_user_input(service: llm_service.LLMService,
-                      user_input: str, mode: str) -> None:
+                      user_input: str, mode: str) -> int:
     '''Process user input based on the given flag and backend configuration.'''
     if mode == 'shell':
         cmd = service.get_shell_answer(user_input)
         exit_code: int = 0
         if cmd and interact.query_yes_or_no('\033[33m是否执行命令？\033[0m '):
             exit_code = execute_shell_command(cmd)
-        sys.exit(exit_code)
+        return exit_code
     elif mode == 'chat':
         service.get_general_answer(user_input)
+        return -1
     elif mode == 'diagnose':
         if isinstance(service, framework_api.Framework):
             report = service.diagnose(user_input)
             if report:
-                sys.exit(0)
-            sys.exit(1)
+                return 0
+        return 1
     elif mode == 'tuning':
         if isinstance(service, framework_api.Framework):
-            service.tuning(user_input)
+            report = service.tuning(user_input)
+            if report:
+                return 0
+        return 1
+    else:
+        return 1
 
 
-def exit_copilot(msg: str = '', code: int = 0):
-    '''Exit the program with a message.'''
-    print(msg)
-    sys.exit(code)
-
-
-def main(user_input: Union[str, None], config: dict):
+def main(user_input: Union[str, None], config: dict) -> int:
     backend = config.get('backend')
     mode = str(config.get('query_mode'))
     service: Union[llm_service.LLMService, None] = None
@@ -119,7 +118,8 @@ def main(user_input: Union[str, None], config: dict):
         )
 
     if service is None:
-        exit_copilot('\033[1;31m未正确配置 LLM 后端，请检查配置文件\033[0m', 1)
+        print('\033[1;31m未正确配置 LLM 后端，请检查配置文件\033[0m')
+        return 1
     else:
         if mode == 'shell':
             print('\033[33m当前模式：Shell 命令生成\033[0m')
@@ -130,8 +130,10 @@ def main(user_input: Union[str, None], config: dict):
                 if user_input is None:
                     user_input = input('\033[35m>>>\033[0m ')
                 if user_input.lower().startswith('exit'):
-                    exit_copilot()
-                handle_user_input(service, user_input, mode)
+                    return 0
+                exit_code = handle_user_input(service, user_input, mode)
+                if exit_code != -1:
+                    return exit_code
                 user_input = None  # Reset user_input for next iteration (only if continuing service)
         except KeyboardInterrupt:
-            exit_copilot()
+            return 0

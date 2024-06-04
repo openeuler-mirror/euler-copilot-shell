@@ -19,7 +19,7 @@ def _exec_shell_cmd(cmd: list) -> Union[subprocess.CompletedProcess, None]:
         )
     except subprocess.CalledProcessError as e:
         sys.stderr.write(e.stderr)
-    except Exception as e:
+    except FileNotFoundError as e:
         sys.stderr.write(str(e))
     else:
         return process

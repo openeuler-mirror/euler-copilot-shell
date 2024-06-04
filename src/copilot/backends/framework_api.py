@@ -52,18 +52,19 @@ class Framework(LLMService):
         self._stream_response(headers, data)
         return self.content
 
-    def tuning(self, question: str):
+    def tuning(self, question: str) -> str:
         headers = self._get_headers()
         data = {
             'question': question,
             'session_id': self.session_id,
             'user_selected_plugins': [
                 {
-                    'plugin_name': 'tuning'
+                    'plugin_name': 'Tuning'
                 }
             ]
         }
         self._stream_response(headers, data)
+        return self.content
 
     def _stream_response(self, headers, data):
         spinner = Spinner('material')

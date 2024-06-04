@@ -34,8 +34,7 @@ class LLMService(ABC):
     def _gen_sudo_prompt(self) -> str:
         if is_root():
             return '当前用户为 root 用户，你生成的 shell 命令不能包涵 sudo'
-        else:
-            return '当前用户为普通用户，若你生成的 shell 命令需要 root 权限，需要包含 sudo'
+        return '当前用户为普通用户，若你生成的 shell 命令需要 root 权限，需要包含 sudo'
 
     def _gen_system_prompt(self) -> str:
         return f'''你是操作系统 {get_os_info()} 的运维助理，你精通当前操作系统的管理和运维，熟悉运维脚本的编写。
@@ -62,7 +61,7 @@ class LLMService(ABC):
         `dnf remove -y package_name`
         你不能输出类似于上述例子的命令！
 
-        由于用户使用命令行与你交互，你需要避免长篇大论，请使用简洁的语言，一般情况下你的回答不应超过300字。
+        由于用户使用命令行与你交互，你需要避免长篇大论，请使用简洁的语言，一般情况下你的回答不应超过1000字。
         '''
 
     def _gen_shell_prompt(self, question: str) -> str:

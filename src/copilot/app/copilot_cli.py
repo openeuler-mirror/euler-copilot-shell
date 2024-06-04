@@ -3,6 +3,7 @@
 # pylint: disable=R0911,R0912,R0913
 
 import os
+import sys
 from typing import Optional
 
 import typer
@@ -76,60 +77,61 @@ def cli(
         rich_help_panel='高级选项',
         hidden=(not ADVANCED_MODE)
     )
-) -> None:
+) -> int:
     '''NeoCopilot 命令行助手'''
     if init:
         setup_copilot()
-        return
+        return 0
     if backend:
         if ADVANCED_MODE:
             select_backend()
-        return
+        return 0
     if settings:
         if ADVANCED_MODE:
             edit_config()
-        return
+        return 0
 
     if sum(map(bool, [shell, chat, diagnose, tuning])) > 1:
         print('\033[1;31m当前版本只能选择一种问答模式\033[0m')
-        return
+        return 1
 
     if shell:
         select_query_mode(0)
         if not question:
-            return
+            return 0
     elif chat:
         select_query_mode(1)
         if not question:
-            return
+            return 0
     elif diagnose:
         if BACKEND == 'framework':
             select_query_mode(2)
             if not question:
-                return
+                return 0
         else:
             print('\033[33m当前大模型后端不支持智能诊断功能\033[0m')
             print('\033[33m推荐使用 NeoCopilot 智能体框架\033[0m')
-            return
+            return 1
     elif tuning:
         if BACKEND == 'framework':
             select_query_mode(3)
             if not question:
-                return
+                return 0
         else:
             print('\033[33m当前大模型后端不支持智能调参功能\033[0m')
             print('\033[33m推荐使用 NeoCopilot 智能体框架\033[0m')
-            return
+            return 1
 
     if question:
         question = question.strip()
 
-    main(question, load_config())
+    return main(question, load_config())
 
 
-def entry_point() -> None:
-    app()
+def entry_point() -> int:
+    return app()
 
 
 if __name__ == '__main__':
-    entry_point()
+    code = entry_point()
+    sys.exit(code)
