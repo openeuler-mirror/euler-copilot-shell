@@ -32,9 +32,9 @@ def setup_copilot():
             _prompt_for_config('spark_api_secret', '请输入你的星火大模型 App Secret：')
     if config.get('backend') == 'framework':
         if config.get('framework_url') == '':
-            _prompt_for_config('framework_url', '请输入 NeoCopilot 智能体 URL：')
+            _prompt_for_config('framework_url', '请输入 EulerCopilot 智能体 URL：')
         if config.get('framework_api_key') == '':
-            _prompt_for_config('framework_api_key', '请输入 NeoCopilot 智能体 API Key：')
+            _prompt_for_config('framework_api_key', '请输入 EulerCopilot 智能体 API Key：')
     if config.get('backend') == 'openai':
         if config.get('model_url') == '':
             _prompt_for_config('model_url', '请输入你的大模型 URL：')

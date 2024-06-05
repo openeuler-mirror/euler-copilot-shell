@@ -2,7 +2,7 @@ Name: eulercopilot
 Version: 1.1
 Release: 1%{?dist}.%{?_timestamp}
 Group: Applications/Utilities
-Summary: NeoCopilot Command Line Tool
+Summary: EulerCopilot 命令行助手
 Source: %{name}-%{version}.tar.gz
 License: MulanPSL-2.0
 URL: https://www.openeuler.org/zh/
@@ -14,7 +14,7 @@ BuildRequires: python3-Cython gcc
 Requires: python3
 
 %description
-NeoCopilot Command Line Tool
+EulerCopilot 命令行助手
 
 %prep
 %setup -q

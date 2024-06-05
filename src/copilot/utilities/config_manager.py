@@ -10,6 +10,7 @@ DEFAULT_CONFIG = {
     "backend": "spark",
     "query_mode": "shell",
     "advanced_mode": False,
+    "debug_mode": False,
     "spark_app_id": "",
     "spark_api_key": "",
     "spark_api_secret": "",
@@ -62,7 +63,7 @@ def select_query_mode(mode: int):
 def select_backend():
     backends = ['framework', 'spark', 'openai']
     print('\n\033[1;33m请选择大模型后端：\033[0m\n')
-    print('\t<1>  NeoCopilot')
+    print('\t<1>  EulerCopilot')
     print('\t<2>  讯飞星火大模型 3.5')
     print('\t<3>  类 ChatGPT（兼容 llama.cpp）')
     print()

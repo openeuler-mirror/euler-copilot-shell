@@ -100,7 +100,8 @@ def main(user_input: Union[str, None], config: dict) -> int:
         service = framework_api.Framework(
             url=config.get('framework_url'),
             api_key=config.get('framework_api_key'),
-            session_id=str(uuid.uuid4().hex)
+            session_id=str(uuid.uuid4().hex),
+            debug_mode=config.get('debug_mode', False)
         )
     elif backend == 'spark':
         service = spark_api.Spark(
@@ -125,6 +126,10 @@ def main(user_input: Union[str, None], config: dict) -> int:
             print('\033[33m当前模式：Shell 命令生成\033[0m')
         if mode == 'chat':
             print('\033[33m当前模式：智能问答\033[0m 输入 \'exit\' 或按下 Ctrl+C 退出服务')
+        if mode == 'diagnose':
+            print('\033[33m当前模式：智能诊断\033[0m')
+        if mode == 'tuning':
+            print('\033[33m当前模式：智能调优\033[0m')
         try:
             while True:
                 if user_input is None:
@@ -136,4 +141,5 @@ def main(user_input: Union[str, None], config: dict) -> int:
                     return exit_code
                 user_input = None  # Reset user_input for next iteration (only if continuing service)
         except KeyboardInterrupt:
+            print()
             return 0

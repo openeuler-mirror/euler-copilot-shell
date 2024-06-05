@@ -15,10 +15,11 @@ from copilot.utilities.markdown_renderer import MarkdownRenderer
 
 
 class Framework(LLMService):
-    def __init__(self, url, api_key, session_id):
+    def __init__(self, url, api_key, session_id, debug_mode=False):
         self.endpoint: str = url
         self.api_key: str = api_key
         self.session_id: str = session_id
+        self.debug_mode: bool = debug_mode
         self.content: str = ''
         # 富文本显示
         self.console = Console()
@@ -67,6 +68,7 @@ class Framework(LLMService):
         return self.content
 
     def _stream_response(self, headers, data):
+        self.content = ''
         spinner = Spinner('material')
         with Live(console=self.console, vertical_overflow='visible') as live:
             live.update(spinner, refresh=True)
@@ -79,13 +81,13 @@ class Framework(LLMService):
                     timeout=300
                 )
             except requests.exceptions.ConnectionError:
-                live.update('NeoCopilot 智能体连接失败', refresh=True)
+                live.update('EulerCopilot 智能体连接失败', refresh=True)
                 return
             except requests.exceptions.Timeout:
-                live.update('NeoCopilot 智能体请求超时', refresh=True)
+                live.update('EulerCopilot 智能体请求超时', refresh=True)
                 return
             except requests.exceptions.RequestException:
-                live.update('NeoCopilot 智能体请求异常', refresh=True)
+                live.update('EulerCopilot 智能体请求异常', refresh=True)
                 return
             if response.status_code != 200:
                 live.update(f'请求失败: {response.status_code}', refresh=True)
@@ -100,13 +102,15 @@ class Framework(LLMService):
                     if content == '':
                         continue
                     if content == '[ERROR]':
-                        MarkdownRenderer.update(live, 'NeoCopilot 智能体系统繁忙，请稍候再试')
-                        self.content = ''
+                        if not self.content:
+                            MarkdownRenderer.update(live, 'EulerCopilot 智能体遇到错误，请联系管理员定位问题')
                     elif content == '[SENSITIVE]':
                         MarkdownRenderer.update(live, '检测到违规信息，请重新提问')
                         self.content = ''
                     elif content != '[DONE]':
-                        MarkdownRenderer.update(live, f'NeoCopilot 智能体返回了未知内容：{content}')
+                        if not self.debug_mode:
+                            continue
+                        MarkdownRenderer.update(live, f'EulerCopilot 智能体返回了未知内容：\n```json\n{content}\n```')
                     break
                 else:
                     chunk = jcontent.get('content', '')
@@ -115,8 +119,9 @@ class Framework(LLMService):
 
     def _get_headers(self) -> dict:
         return {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
+            'Accept': '*/*',
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Connection': 'keep-alive',
             'Authorization': f'Bearer {self.api_key}'
         }
 
