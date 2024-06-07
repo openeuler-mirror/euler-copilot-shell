@@ -122,14 +122,8 @@ def main(user_input: Union[str, None], config: dict) -> int:
         print('\033[1;31m未正确配置 LLM 后端，请检查配置文件\033[0m')
         return 1
     else:
-        if mode == 'shell':
-            print('\033[33m当前模式：Shell 命令生成\033[0m')
         if mode == 'chat':
-            print('\033[33m当前模式：智能问答\033[0m 输入 \'exit\' 或按下 Ctrl+C 退出服务')
-        if mode == 'diagnose':
-            print('\033[33m当前模式：智能诊断\033[0m')
-        if mode == 'tuning':
-            print('\033[33m当前模式：智能调优\033[0m')
+            print('\033[33m输入 \'exit\' 或按下 Ctrl+C 结束对话\033[0m')
         try:
             while True:
                 if user_input is None:

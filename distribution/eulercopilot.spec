@@ -11,7 +11,7 @@ BuildRequires: python3-devel python3-setuptools
 BuildRequires: python3-pip
 BuildRequires: python3-Cython gcc
 
-Requires: python3
+Requires: python3 jq
 
 %description
 EulerCopilot 命令行助手
@@ -35,9 +35,28 @@ python3 -m venv .venv
 install -d %{buildroot}/%{_bindir}
 install -c -m 0755 %{_builddir}/%{name}-%{version}/dist/copilot %{buildroot}/%{_bindir}
 install -d %{buildroot}/etc/profile.d
-install -c -m 0755 %{_builddir}/%{name}-%{version}/eulercopilot_shortcut.sh %{buildroot}/etc/profile.d
+install -c -m 0755 %{_builddir}/%{name}-%{version}/eulercopilot.sh %{buildroot}/etc/profile.d
 
 %files
 %defattr(-,root,root,-)
 /usr/bin/copilot
-/etc/profile.d/eulercopilot_shortcut.sh
+/etc/profile.d/eulercopilot.sh
+
+%pre
+cat << 'EOF' >> /etc/bashrc
+# >>> eulercopilot >>>
+run_after_return() {
+    if [[ "$PS1" == *"\[\033[1;33m"* ]]; then
+        revert_copilot_prompt
+        set_copilot_prompt
+    fi
+}
+PROMPT_COMMAND="${PROMPT_COMMAND:+${PROMPT_COMMAND}; }run_after_return"
+set_copilot_prompt
+# <<< eulercopilot <<<
+EOF
+
+%postun
+if [ ! -f /usr/bin/copilot ]; then
+    sed -i '/# >>> eulercopilot >>>/,/# <<< eulercopilot <<</{d}' /etc/bashrc
+fi
