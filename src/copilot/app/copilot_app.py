@@ -73,23 +73,19 @@ def handle_user_input(service: llm_service.LLMService,
         if cmd and interact.query_yes_or_no('\033[33m是否执行命令？\033[0m '):
             exit_code = execute_shell_command(cmd)
         return exit_code
-    elif mode == 'chat':
+    if mode == 'chat':
         service.get_general_answer(user_input)
         return -1
-    elif mode == 'diagnose':
-        if isinstance(service, framework_api.Framework):
+    if isinstance(service, framework_api.Framework):
+        if mode == 'diagnose':
             report = service.diagnose(user_input)
             if report:
                 return 0
-        return 1
-    elif mode == 'tuning':
-        if isinstance(service, framework_api.Framework):
+        if mode == 'tuning':
             report = service.tuning(user_input)
             if report:
                 return 0
-        return 1
-    else:
-        return 1
+    return 1
 
 
 def main(user_input: Union[str, None], config: dict) -> int:
@@ -121,19 +117,20 @@ def main(user_input: Union[str, None], config: dict) -> int:
     if service is None:
         print('\033[1;31m未正确配置 LLM 后端，请检查配置文件\033[0m')
         return 1
-    else:
-        if mode == 'chat':
-            print('\033[33m输入 \'exit\' 或按下 Ctrl+C 结束对话\033[0m')
-        try:
-            while True:
-                if user_input is None:
-                    user_input = input('\033[35m>>>\033[0m ')
-                if user_input.lower().startswith('exit'):
-                    return 0
-                exit_code = handle_user_input(service, user_input, mode)
-                if exit_code != -1:
-                    return exit_code
-                user_input = None  # Reset user_input for next iteration (only if continuing service)
-        except KeyboardInterrupt:
-            print()
-            return 0
+
+    if mode == 'chat':
+        print('\033[33m输入 \'exit\' 或按下 Ctrl+C 结束对话\033[0m')
+
+    try:
+        while True:
+            if user_input is None:
+                user_input = input('\033[35m>>>\033[0m ')
+            if user_input.lower().startswith('exit'):
+                return 0
+            exit_code = handle_user_input(service, user_input, mode)
+            if exit_code != -1:
+                return exit_code
+            user_input = None  # Reset user_input for next iteration (only if continuing service)
+    except KeyboardInterrupt:
+        print()
+        return 0

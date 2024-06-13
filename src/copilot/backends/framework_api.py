@@ -54,13 +54,18 @@ class Framework(LLMService):
         return self.content
 
     def tuning(self, question: str) -> str:
+        # 确保用户输入的问题中包含有效的IP地址，若没有，则调优本机
+        if not self._contains_valid_ip(question):
+            local_ip = self._get_local_ip()
+            if local_ip:
+                question = f'当前机器的IP为 {local_ip}，' + question
         headers = self._get_headers()
         data = {
             'question': question,
             'session_id': self.session_id,
             'user_selected_plugins': [
                 {
-                    'plugin_name': 'Tuning'
+                    'plugin_name': 'A-Tune'
                 }
             ]
         }
