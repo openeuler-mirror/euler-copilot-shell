@@ -44,11 +44,7 @@ class Framework(LLMService):
         data = {
             'question': question,
             'session_id': self.session_id,
-            'user_selected_plugins': [
-                {
-                    'plugin_name': 'Diagnostic'
-                }
-            ]
+            'user_selected_plugins': [{'plugin_name': 'Diagnostic'}],
         }
         self._stream_response(headers, data)
         return self.content
@@ -63,11 +59,7 @@ class Framework(LLMService):
         data = {
             'question': question,
             'session_id': self.session_id,
-            'user_selected_plugins': [
-                {
-                    'plugin_name': 'A-Tune'
-                }
-            ]
+            'user_selected_plugins': [{'plugin_name': 'A-Tune'}],
         }
         self._stream_response(headers, data)
         return self.content
@@ -78,13 +70,7 @@ class Framework(LLMService):
         with Live(console=self.console, vertical_overflow='visible') as live:
             live.update(spinner, refresh=True)
             try:
-                response = requests.post(
-                    self.endpoint,
-                    headers=headers,
-                    json=data,
-                    stream=True,
-                    timeout=300
-                )
+                response = requests.post(self.endpoint, headers=headers, json=data, stream=True, timeout=300)
             except requests.exceptions.ConnectionError:
                 live.update('EulerCopilot 智能体连接失败', refresh=True)
                 return
@@ -127,21 +113,19 @@ class Framework(LLMService):
             'Accept': '*/*',
             'Content-Type': 'application/json; charset=UTF-8',
             'Connection': 'keep-alive',
-            'Authorization': f'Bearer {self.api_key}'
+            'Authorization': f'Bearer {self.api_key}',
         }
 
     def _contains_valid_ip(self, text: str) -> bool:
-        ip_pattern = r'\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
+        ip_pattern = re.compile(
+            r'(?<![\.\d])(([1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}([1-9]?\d|1\d\d|2[0-4]\d|25[0-5])(?![\.\d])'
+        )
         match = re.search(ip_pattern, text)
         return bool(match)
 
     def _get_local_ip(self) -> str:
         try:
-            process = subprocess.run(
-                ['hostname', '-I'],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                check=True)
+            process = subprocess.run(['hostname', '-I'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except (FileNotFoundError, subprocess.CalledProcessError):
             try:
                 ip_list = socket.gethostbyname_ex(socket.gethostname())[2]
