@@ -21,7 +21,7 @@ if [[ ! -f "$spec_file" ]]; then
 fi
 
 # Remove old builds
-rm -f ~/rpmbuild/RPMS/$(uname -m)/eulercopilot-*
+rm -f ~/rpmbuild/RPMS/"$(uname -m)"/eulercopilot-*
 
 # Build the RPM package using rpmbuild
 rpmbuild --define "_timestamp $(date +%s)" -bb "$spec_file" --nodebuginfo
