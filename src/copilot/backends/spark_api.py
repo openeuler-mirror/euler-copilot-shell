@@ -14,12 +14,15 @@ import websockets
 from rich.console import Console
 from rich.live import Live
 from rich.spinner import Spinner
+from rich.text import Text
 
 from copilot.backends.llm_service import LLMService
 from copilot.utilities.markdown_renderer import MarkdownRenderer
 
 
+# pylint: disable=R0902
 class Spark(LLMService):
+    # pylint: disable=R0913
     def __init__(self, app_id, api_key, api_secret, spark_url, domain, max_tokens=4096):
         self.app_id: str = app_id
         self.api_key: str = api_key
@@ -77,11 +80,15 @@ class Spark(LLMService):
                             break
 
             except websockets.exceptions.InvalidStatusCode:
-                live.update(f'\033[1;31m请求错误\033[0m\n\
-                            请检查 appid 和 api_key 是否正确，或检查网络连接是否正常。\n\
-                            输入 "vi ~/.config/eulercopilot/config.json" 查看和编辑配置；\n\
-                            或尝试 ping {self.spark_url}',
-                            refresh=True)
+                live.update(
+                    Text.from_ansi('\033[1;31m请求错误\033[0m\n\n')\
+                        .append('请检查 appid 和 api_key 是否正确，或检查网络连接是否正常。\n')\
+                        .append('输入 "vi ~/.config/eulercopilot/config.json" 查看和编辑配置；\n')\
+                        .append(f'或尝试 ping {self.spark_url}'),
+                    refresh=True
+                )
+            except Exception:  # pylint: disable=W0718
+                live.update('访问大模型失败，请检查网络连接')
 
     def _create_url(self):
         now = datetime.now()  # 生成RFC1123格式的时间戳

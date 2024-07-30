@@ -64,6 +64,7 @@ class Framework(LLMService):
         self._stream_response(headers, data)
         return self.content
 
+    # pylint: disable=R0912
     def _stream_response(self, headers, data):
         self.content = ''
         spinner = Spinner('material')
