@@ -2,6 +2,7 @@
 
 import re
 from abc import ABC, abstractmethod
+from typing import Any
 
 from copilot.utilities.env_info import get_os_info, is_root
 
@@ -12,7 +13,7 @@ class LLMService(ABC):
         pass
 
     @abstractmethod
-    def get_shell_answer(self, question: str) -> str:
+    def get_shell_answer(self, question: str) -> Any:
         pass
 
     def _extract_shell_code_blocks(self, markdown_text):
@@ -21,7 +22,7 @@ class LLMService(ABC):
         cmds = [match.group('code') for match in matches]
         if cmds:
             return cmds[0]
-        return markdown_text.replace('`', '')
+        # return markdown_text.replace('`', '')
 
     def _get_context_length(self, context: list) -> int:
         length = 0

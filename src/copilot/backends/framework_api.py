@@ -20,7 +20,9 @@ class Framework(LLMService):
         self.api_key: str = api_key
         self.session_id: str = session_id
         self.debug_mode: bool = debug_mode
+        # 缓存
         self.content: str = ''
+        self.sugggestion: str = ''
         # 富文本显示
         self.console = Console()
 
@@ -30,8 +32,9 @@ class Framework(LLMService):
         self._stream_response(headers, data)
         return self.content
 
-    def get_shell_answer(self, question: str) -> str:
-        query = self._gen_shell_prompt(question)
+    def get_shell_answer(self, question: str):
+        # query = self._gen_shell_prompt(question)
+        query = question
         return self._extract_shell_code_blocks(self.get_general_answer(query))
 
     def diagnose(self, question: str) -> str:
@@ -67,6 +70,7 @@ class Framework(LLMService):
     # pylint: disable=R0912
     def _stream_response(self, headers, data):
         self.content = ''
+        self.sugggestion = ''
         spinner = Spinner('material')
         with Live(console=self.console, vertical_overflow='visible') as live:
             live.update(spinner, refresh=True)
@@ -107,7 +111,17 @@ class Framework(LLMService):
                 else:
                     chunk = jcontent.get('content', '')
                     self.content += chunk
-                    MarkdownRenderer.update(live, self.content)
+                    suggestions = jcontent.get('search_suggestions', [])
+                    if suggestions:
+                        self.sugggestion = suggestions[0].strip()
+                    if not self.sugggestion:
+                        MarkdownRenderer.update(live, self.content)
+                    else:
+                        MarkdownRenderer.update(
+                            live,
+                            content=self.content,
+                            sugggestion=f'**你可以继续问** {self.sugggestion}'
+                        )
 
     def _get_headers(self) -> dict:
         return {

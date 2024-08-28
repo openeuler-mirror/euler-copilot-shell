@@ -7,20 +7,20 @@ CONFIG_DIR = os.path.join(os.path.expanduser('~'), '.config/eulercopilot')
 CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
 
 DEFAULT_CONFIG = {
-    "backend": "spark",
-    "query_mode": "shell",
-    "advanced_mode": False,
-    "debug_mode": False,
-    "spark_app_id": "",
-    "spark_api_key": "",
-    "spark_api_secret": "",
-    "spark_url": "wss://spark-api.xf-yun.com/v3.5/chat",
-    "spark_domain": "generalv3.5",
-    "framework_url": "",
-    "framework_api_key": "",
-    "model_url": "http://localhost:1337/v1/chat/completions",
-    "model_api_key": "",
-    "model_name": ""
+    'backend': 'framework',
+    'query_mode': 'chat',
+    'advanced_mode': False,
+    'debug_mode': False,
+    'spark_app_id': '',
+    'spark_api_key': '',
+    'spark_api_secret': '',
+    'spark_url': 'wss://spark-api.xf-yun.com/v3.5/chat',
+    'spark_domain': 'generalv3.5',
+    'framework_url': '',
+    'framework_api_key': '',
+    'model_url': '',
+    'model_api_key': '',
+    'model_name': ''
 }
 
 
@@ -86,7 +86,7 @@ def select_backend():
 def edit_config():
     config = load_config()
     print('\n\033[1;33m当前设置：\033[0m')
-    format_string = "{:<32} {}".format
+    format_string = '{:<32} {}'.format
     for key, value in config.items():
         print(f'- {format_string(key, value)}')
 

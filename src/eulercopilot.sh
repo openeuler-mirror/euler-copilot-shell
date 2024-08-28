@@ -8,9 +8,7 @@ read_query_mode() {
     local query_mode
     query_mode=$(jq '.query_mode' ~/.config/eulercopilot/config.json)
     
-    if [ "$query_mode" = "\"shell\"" ]; then
-        echo "命令生成"
-    elif [ "$query_mode" = "\"chat\"" ]; then
+    if [ "$query_mode" = "\"chat\"" ]; then
         echo "智能问答"
     elif [ "$query_mode" = "\"diagnose\"" ]; then
         echo "智能诊断"

@@ -1,6 +1,9 @@
 # Allow imports relative to the "src" and "test" directories.
 src = ["src"]
 
+# Exclude the ".vscode" directory.
+exclude = [".vscode"]
+
 # Allow lines to be as long as 120.
 line-length = 120
 

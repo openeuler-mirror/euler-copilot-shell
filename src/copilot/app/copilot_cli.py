@@ -38,11 +38,6 @@ def cli(
     question: Optional[str] = typer.Argument(
         None, show_default=False,
         help='通过自然语言提问'),
-    shell: bool = typer.Option(
-        False, '--shell', '-s',
-        help='切换到 Shell 命令模式',
-        rich_help_panel='选择问答模式'
-    ),
     chat: bool = typer.Option(
         False, '--chat', '-c',
         help='切换到智能问答模式',
@@ -82,6 +77,10 @@ def cli(
     if init:
         setup_copilot()
         return 0
+    if not CONFIG_INITIALIZED:
+        print('\033[1;31m请先初始化 copilot 设置\033[0m')
+        print('\033[33m请使用 "copilot --init" 命令初始化\033[0m')
+        return 1
     if backend:
         if ADVANCED_MODE:
             select_backend()
@@ -91,15 +90,11 @@ def cli(
             edit_config()
         return 0
 
-    if sum(map(bool, [shell, chat, diagnose, tuning])) > 1:
+    if sum(map(bool, [chat, diagnose, tuning])) > 1:
         print('\033[1;31m当前版本只能选择一种问答模式\033[0m')
         return 1
 
-    if shell:
-        select_query_mode(0)
-        if not question:
-            return 0
-    elif chat:
+    if chat:
         select_query_mode(1)
         if not question:
             return 0

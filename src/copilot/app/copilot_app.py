@@ -27,6 +27,8 @@ def check_shell_features(cmd: str) -> bool:
         r'!',
         # 后台运行符号
         r'&',
+        # 分号
+        r';',
         # 括号命令分组
         r'\(|\)|\{|\}',
         # 逻辑操作符
@@ -67,14 +69,17 @@ def execute_shell_command(cmd: str) -> int:
 def handle_user_input(service: llm_service.LLMService,
                       user_input: str, mode: str) -> int:
     '''Process user input based on the given flag and backend configuration.'''
-    if mode == 'shell':
-        cmd = service.get_shell_answer(user_input)
-        exit_code: int = 0
-        if cmd and interact.query_yes_or_no('\033[33m是否执行命令？\033[0m '):
-            exit_code = execute_shell_command(cmd)
-        return exit_code
     if mode == 'chat':
-        service.get_general_answer(user_input)
+        cmd = service.get_shell_answer(user_input)
+        if not cmd:
+            return -1
+        exit_code: int = 0
+        print(cmd)  # TODO: Pretty print the command
+        if interact.query_yes_or_no('\033[33m是否执行命令？\033[0m '):
+            exit_code = execute_shell_command(cmd)
+            if exit_code != 0:
+                print(f'命令 "{cmd}" 执行失败，退出码：{exit_code}')
+                return exit_code
         return -1
     if isinstance(service, framework_api.Framework):
         if mode == 'diagnose':
