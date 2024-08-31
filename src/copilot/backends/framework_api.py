@@ -26,16 +26,15 @@ class Framework(LLMService):
         # 富文本显示
         self.console = Console()
 
-    def get_general_answer(self, question: str) -> str:
+    def get_model_output(self, question: str) -> str:
         headers = self._get_headers()
         data = {'question': question, 'session_id': self.session_id}
         self._stream_response(headers, data)
         return self.content
 
-    def get_shell_answer(self, question: str):
-        # query = self._gen_shell_prompt(question)
-        query = question
-        return self._extract_shell_code_blocks(self.get_general_answer(query))
+    def get_shell_commands(self, question: str) -> list:
+        query = self._gen_chat_prompt(question) + self._gen_framework_extra_prompt()
+        return self._extract_shell_code_blocks(self.get_model_output(query))
 
     def diagnose(self, question: str) -> str:
         # 确保用户输入的问题中包含有效的IP地址，若没有，则诊断本机
@@ -67,7 +66,6 @@ class Framework(LLMService):
         self._stream_response(headers, data)
         return self.content
 
-    # pylint: disable=R0912
     def _stream_response(self, headers, data):
         self.content = ''
         self.sugggestion = ''
@@ -88,40 +86,48 @@ class Framework(LLMService):
             if response.status_code != 200:
                 live.update(f'请求失败: {response.status_code}', refresh=True)
                 return
-            for line in response.iter_lines():
-                if line is None:
+            self._handle_response_content(response, live)
+
+    # pylint: disable=R0912
+    def _handle_response_content(
+        self,
+        response: requests.Response,
+        live: Live
+    ):
+        for line in response.iter_lines():
+            if line is None:
+                continue
+            content = line.decode('utf-8').strip('data: ')
+            try:
+                jcontent = json.loads(content)
+            except json.JSONDecodeError:
+                if content == '':
                     continue
-                content = line.decode('utf-8').strip('data: ')
-                try:
-                    jcontent = json.loads(content)
-                except json.JSONDecodeError:
-                    if content == '':
+                if content == '[ERROR]':
+                    if not self.content:
+                        MarkdownRenderer.update(live, 'EulerCopilot 智能体遇到错误，请联系管理员定位问题')
+                elif content == '[SENSITIVE]':
+                    MarkdownRenderer.update(live, '检测到违规信息，请重新提问')
+                    self.content = ''
+                elif content != '[DONE]':
+                    if not self.debug_mode:
                         continue
-                    if content == '[ERROR]':
-                        if not self.content:
-                            MarkdownRenderer.update(live, 'EulerCopilot 智能体遇到错误，请联系管理员定位问题')
-                    elif content == '[SENSITIVE]':
-                        MarkdownRenderer.update(live, '检测到违规信息，请重新提问')
-                        self.content = ''
-                    elif content != '[DONE]':
-                        if not self.debug_mode:
-                            continue
-                        MarkdownRenderer.update(live, f'EulerCopilot 智能体返回了未知内容：\n```json\n{content}\n```')
-                    break
+                    MarkdownRenderer.update(live, f'EulerCopilot 智能体返回了未知内容：\n```json\n{content}\n```')
+                break
+            else:
+                chunk = jcontent.get('content', '')
+                self.content += chunk
+                suggestions = jcontent.get('search_suggestions', [])
+                if suggestions:
+                    self.sugggestion = suggestions[0].strip()
+                if not self.sugggestion:
+                    MarkdownRenderer.update(live, self.content)
                 else:
-                    chunk = jcontent.get('content', '')
-                    self.content += chunk
-                    suggestions = jcontent.get('search_suggestions', [])
-                    if suggestions:
-                        self.sugggestion = suggestions[0].strip()
-                    if not self.sugggestion:
-                        MarkdownRenderer.update(live, self.content)
-                    else:
-                        MarkdownRenderer.update(
-                            live,
-                            content=self.content,
-                            sugggestion=f'**你可以继续问** {self.sugggestion}'
-                        )
+                    MarkdownRenderer.update(
+                        live,
+                        content=self.content,
+                        sugggestion=f'**你可以继续问** {self.sugggestion}'
+                    )
 
     def _get_headers(self) -> dict:
         return {
@@ -151,3 +157,33 @@ class Framework(LLMService):
             ip_address = process.stdout.decode('utf-8').strip().split(' ', maxsplit=1)[0]
             return ip_address
         return ''
+
+    def _gen_framework_extra_prompt(self) -> str:
+        return f'''\n
+你的任务是：
+根据用户输入的问题，提供相应的操作系统的管理和运维解决方案。
+你给出的答案必须符合当前操作系统要求，你不能使用当前操作系统没有的功能。
+
+格式要求：
++ 你的回答必须使用 Markdown 格式，代码块和表格都必须用 Markdown 呈现；
++ 你需要用中文回答问题，除了代码，其他内容都要符合汉语的规范。
+
+其他要求：
++ 如果用户要求安装软件包，请注意 openEuler 使用 dnf 管理软件包，你不能在回答中使用 apt 或其他软件包管理器
++ 请特别注意当前用户的权限：{self._gen_sudo_prompt()}
+
+在给用户返回 shell 命令时，你必须返回安全的命令，不能进行任何危险操作！
+如果涉及到删除文件、清理缓存、删除用户、卸载软件、wget下载文件等敏感操作，你必须生成安全的命令\n
+危险操作举例：\n
++ 例1: 强制删除
+  ```bash
+  rm -rf /path/to/sth
+  ```
++ 例2: 卸载软件包时默认同意
+  ```bash
+  dnf remove -y package_name
+  ```
+你不能输出类似于上述例子的命令！
+
+由于用户使用命令行与你交互，你需要避免长篇大论，请使用简洁的语言，一般情况下你的回答不应超过1000字。
+'''

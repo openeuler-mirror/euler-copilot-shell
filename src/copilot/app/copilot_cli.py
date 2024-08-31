@@ -22,6 +22,7 @@ from copilot.utilities.config_manager import (
 CONFIG: dict = load_config()
 BACKEND: str = CONFIG.get('backend', DEFAULT_CONFIG['backend'])
 ADVANCED_MODE: bool = CONFIG.get('advanced_mode', DEFAULT_CONFIG['advanced_mode'])
+DEBUG_MODE: bool = CONFIG.get('debug_mode', DEFAULT_CONFIG['debug_mode'])
 CONFIG_INITIALIZED: bool = os.path.exists(CONFIG_PATH)
 
 app = typer.Typer(
@@ -29,6 +30,7 @@ app = typer.Typer(
         'help_option_names': ['-h', '--help'],
         'allow_interspersed_args': True
     },
+    pretty_exceptions_show_locals=DEBUG_MODE,
     add_completion=False
 )
 
@@ -95,12 +97,12 @@ def cli(
         return 1
 
     if chat:
-        select_query_mode(1)
+        select_query_mode(0)
         if not question:
             return 0
     elif diagnose:
         if BACKEND == 'framework':
-            select_query_mode(2)
+            select_query_mode(1)
             if not question:
                 return 0
         else:
@@ -109,7 +111,7 @@ def cli(
             return 1
     elif tuning:
         if BACKEND == 'framework':
-            select_query_mode(3)
+            select_query_mode(2)
             if not question:
                 return 0
         else:

@@ -43,16 +43,19 @@ install -c -m 0755 %{_builddir}/%{name}-%{version}/eulercopilot.sh %{buildroot}/
 /etc/profile.d/eulercopilot.sh
 
 %pre
+sed -i '/# >>> eulercopilot >>>/,/# <<< eulercopilot <<</{d}' /etc/bashrc
 cat << 'EOF' >> /etc/bashrc
 # >>> eulercopilot >>>
-run_after_return() {
-    if [[ "$PS1" == *"\[\033[1;33m"* ]]; then
-        revert_copilot_prompt
-        set_copilot_prompt
-    fi
-}
-PROMPT_COMMAND="${PROMPT_COMMAND:+${PROMPT_COMMAND}; }run_after_return"
-set_copilot_prompt
+if type revert_copilot_prompt &> /dev/null && type set_copilot_prompt &> /dev/null; then
+    run_after_return() {
+        if [[ "$PS1" == *"\[\033[1;33m"* ]]; then
+            revert_copilot_prompt
+            set_copilot_prompt
+        fi
+    }
+    PROMPT_COMMAND="${PROMPT_COMMAND:+${PROMPT_COMMAND}; }run_after_return"
+    set_copilot_prompt
+fi
 # <<< eulercopilot <<<
 EOF
 
