@@ -8,18 +8,21 @@ from copilot.utilities.env_info import get_os_info, is_root
 
 class LLMService(ABC):
     @abstractmethod
-    def get_model_output(self, question: str) -> str:
-        pass
-
-    @abstractmethod
     def get_shell_commands(self, question: str) -> list:
         pass
 
-    def _extract_shell_code_blocks(self, markdown_text):
-        shell_code_pattern = re.compile(r'```(?:bash|sh|shell)\n(?P<code>(?:\n|.)*?)\n```', re.DOTALL)
-        matches = shell_code_pattern.finditer(markdown_text)
-        cmds = [match.group('code') for match in matches]
-        return cmds
+    def explain_shell_command(self, cmd: str):
+        query = self._gen_explain_cmd_prompt(cmd)
+        self._query_llm_service(query)
+
+    @abstractmethod
+    def _query_llm_service(self, question: str, *args, **kwargs):
+        pass
+
+    def _extract_shell_code_blocks(self, markdown_text) -> list:
+        pattern = r'```(bash|sh|shell)\n(.*?)(?=\n\s*```)'
+        bash_blocks = re.findall(pattern, markdown_text, re.DOTALL | re.MULTILINE)
+        return '\n'.join([block[1].strip() for block in bash_blocks]).splitlines()
 
     def _get_context_length(self, context: list) -> int:
         length = 0
@@ -82,12 +85,11 @@ dnf remove -y package_name
 '''
 
     def _gen_explain_cmd_prompt(self, cmd: str) -> str:
-        return f'''Shell 命令：
-```bash
+        return f'''```bash
 {cmd}
 ```
 请解释上面的 Shell 命令
 
 要求：
-你要有条理地解释命令中的每个步骤
+先在代码块中打印一次上述命令，再有条理地解释命令中的主要步骤
 '''

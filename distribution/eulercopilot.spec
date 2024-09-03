@@ -11,7 +11,7 @@ BuildRequires: python3-devel python3-setuptools
 BuildRequires: python3-pip
 BuildRequires: python3-Cython gcc
 
-Requires: python3 jq
+Requires: python3 jq hostname
 
 %description
 EulerCopilot 命令行助手
@@ -21,7 +21,8 @@ EulerCopilot 命令行助手
 python3 -m venv .venv
 .venv/bin/python3 -m pip install -U pip setuptools
 .venv/bin/python3 -m pip install -U Cython pyinstaller
-.venv/bin/python3 -m pip install -U websockets requests rich typer
+.venv/bin/python3 -m pip install -U websockets requests
+.venv/bin/python3 -m pip install -U rich typer questionary
 
 %build
 .venv/bin/python3 setup.py build_ext

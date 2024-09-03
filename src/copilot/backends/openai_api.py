@@ -23,13 +23,14 @@ class ChatOpenAI(LLMService):
         # 富文本显示
         self.console = Console()
 
-    def get_model_output(self, question: str) -> str:
-        self._stream_response(question)
-        return self.answer
-
     def get_shell_commands(self, question: str) -> list:
         query = self._gen_chat_prompt(question)
-        return self._extract_shell_code_blocks(self.get_model_output(query))
+        self._query_llm_service(query)
+        return self._extract_shell_code_blocks(self.answer)
+
+    # pylint: disable=W0221
+    def _query_llm_service(self, question: str):
+        self._stream_response(question)
 
     def _check_len(self, context: list) -> list:
         while self._get_context_length(context) > self.max_tokens / 2:

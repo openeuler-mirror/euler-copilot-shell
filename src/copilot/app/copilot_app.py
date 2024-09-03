@@ -9,6 +9,11 @@ import subprocess
 import uuid
 from typing import Union
 
+from rich.console import Console
+from rich.live import Live
+from rich.markdown import Markdown
+from rich.panel import Panel
+
 from copilot.backends import framework_api, llm_service, openai_api, spark_api
 from copilot.utilities import interact
 
@@ -55,7 +60,7 @@ def execute_shell_command(cmd: str) -> int:
         try:
             process = subprocess.Popen(shlex.split(cmd))
         except FileNotFoundError as e:
-            builtin_cmds = ['source', 'history', 'cd', 'export', 'alias', 'test']
+            builtin_cmds = ['.', 'source', 'history', 'cd', 'export', 'alias', 'test']
             cmd_prefix = cmd.split()[0]
             if cmd_prefix in builtin_cmds:
                 print(f'不支持执行 Shell 内置命令 "{cmd_prefix}"，请复制后手动执行')
@@ -66,32 +71,87 @@ def execute_shell_command(cmd: str) -> int:
     return exit_code
 
 
+def print_shell_commands(cmds: list):
+    console = Console()
+    with Live(console=console, vertical_overflow='visible') as live:
+        live.update(
+            Panel(
+                Markdown(
+                    '```bash\n' + '\n\n'.join(cmds) + '\n```',
+                    code_theme='github-dark'
+                ),
+                border_style='gray50'
+            )
+        )
+
+
+def command_interaction_loop(cmds: list, service: llm_service.LLMService) -> int:
+    if not cmds:
+        return -1
+    print_shell_commands(cmds)
+    while True:
+        action = interact.select_action(len(cmds) > 1)
+        if action in ('execute_all', 'execute_selected', 'execute'):
+            exit_code: int = 0
+            selected_cmds = get_selected_cmds(cmds, action)
+            for cmd in selected_cmds:
+                exit_code = execute_shell_command(cmd)
+                if exit_code != 0:
+                    print(f'命令 "{cmd}" 执行中止，退出码：{exit_code}')
+                    break
+            return -1
+        if action == 'explain':
+            service.explain_shell_command(select_one_cmd(cmds))
+        elif action == 'edit':
+            i = select_one_cmd_with_index(cmds)
+            readline.set_startup_hook(lambda: readline.insert_text(cmds[i]))
+            try:
+                cmds[i] = input()
+            finally:
+                readline.set_startup_hook()
+            print_shell_commands(cmds)
+        elif action == 'cancel':
+            return -1
+
+
+def get_selected_cmds(cmds: list, action: str) -> list:
+    if action in ('execute', 'execute_all'):
+        return cmds
+    if action == 'execute_selected':
+        return interact.select_multiple_commands(cmds)
+    return []
+
+
+def select_one_cmd(cmds: list) -> str:
+    if len(cmds) == 1:
+        return cmds[0]
+    return interact.select_command(cmds)
+
+
+def select_one_cmd_with_index(cmds: list) -> int:
+    if len(cmds) == 1:
+        return 0
+    return interact.select_command_with_index(cmds)
+
+
 def handle_user_input(service: llm_service.LLMService,
                       user_input: str, mode: str) -> int:
     '''Process user input based on the given flag and backend configuration.'''
     if mode == 'chat':
-        cmds = service.get_shell_commands(user_input)
-        if not cmds:
-            return -1
-        exit_code: int = 0
-        print(cmds)  # TODO: Pretty print the command
-        if interact.query_yes_or_no('\033[33m是否执行命令？\033[0m '):
-            for cmd in cmds:
-                print(f'执行命令：{cmd}')
-                exit_code = execute_shell_command(cmd)
-                if exit_code != 0:
-                    print(f'命令 "{cmds}" 执行失败，退出码：{exit_code}')
-                    return exit_code
-        return -1
+        cmds = list(
+            dict.fromkeys(  # Remove duplicate commands
+                service.get_shell_commands(user_input)
+            )
+        )
+        return command_interaction_loop(cmds, service)
     if isinstance(service, framework_api.Framework):
+        report: str = ''
         if mode == 'diagnose':
             report = service.diagnose(user_input)
-            if report:
-                return 0
         if mode == 'tuning':
             report = service.tuning(user_input)
-            if report:
-                return 0
+        if report:
+            return 0
     return 1
 
 
@@ -125,8 +185,7 @@ def main(user_input: Union[str, None], config: dict) -> int:
         print('\033[1;31m未正确配置 LLM 后端，请检查配置文件\033[0m')
         return 1
 
-    if mode == 'chat':
-        print('\033[33m输入 \'exit\' 或按下 Ctrl+C 结束对话\033[0m')
+    print('\033[33m输入 "exit" 或按下 Ctrl+C 结束对话\033[0m')
 
     try:
         while True:
