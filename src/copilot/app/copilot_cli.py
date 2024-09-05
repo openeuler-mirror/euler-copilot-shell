@@ -10,6 +10,7 @@ import typer
 
 from copilot.app.copilot_app import main
 from copilot.app.copilot_init import setup_copilot
+from copilot.backends.framework_api import QUERY_MODS
 from copilot.utilities.config_manager import (
     CONFIG_PATH,
     DEFAULT_CONFIG,
@@ -17,6 +18,19 @@ from copilot.utilities.config_manager import (
     load_config,
     select_backend,
     select_query_mode,
+)
+from copilot.utilities.i18n import (
+    BRAND_NAME,
+    cli_help_panel_advanced_options,
+    cli_help_panel_switch_mode,
+    cli_help_prompt_edit_settings,
+    cli_help_prompt_init_settings,
+    cli_help_prompt_question,
+    cli_help_prompt_select_backend,
+    cli_help_prompt_switch_mode,
+    cli_notif_compatibility,
+    cli_notif_no_config,
+    cli_notif_select_one_mode,
 )
 
 CONFIG: dict = load_config()
@@ -39,49 +53,54 @@ app = typer.Typer(
 def cli(
     question: Optional[str] = typer.Argument(
         None, show_default=False,
-        help='通过自然语言提问'),
+        help=cli_help_prompt_question),
     chat: bool = typer.Option(
         False, '--chat', '-c',
-        help='切换到智能问答模式',
-        rich_help_panel='选择问答模式'
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODS["chat"]),
+        rich_help_panel=cli_help_panel_switch_mode
+    ),
+    flow: bool = typer.Option(
+        False, '--flow', '-f',
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODS["flow"]),
+        rich_help_panel=cli_help_panel_switch_mode,
+        hidden=(BACKEND != 'framework'),
     ),
     diagnose: bool = typer.Option(
         False, '--diagnose', '-d',
-        help='切换到智能诊断模式',
-        rich_help_panel='选择问答模式',
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODS["diagnose"]),
+        rich_help_panel=cli_help_panel_switch_mode,
         hidden=(BACKEND != 'framework')
     ),
     tuning: bool = typer.Option(
         False, '--tuning', '-t',
-        help='切换到智能调优模式',
-        rich_help_panel='选择问答模式',
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODS["tuning"]),
+        rich_help_panel=cli_help_panel_switch_mode,
         hidden=(BACKEND != 'framework')
     ),
     init: bool = typer.Option(
         False, '--init',
-        help='初始化 copilot 设置',
+        help=cli_help_prompt_init_settings,
         hidden=(CONFIG_INITIALIZED)
     ),
     backend: bool = typer.Option(
         False, '--backend',
-        help='选择大语言模型后端',
-        rich_help_panel='高级选项',
+        help=cli_help_prompt_select_backend,
+        rich_help_panel=cli_help_panel_advanced_options,
         hidden=(not ADVANCED_MODE)
     ),
     settings: bool = typer.Option(
         False, '--settings',
-        help='编辑 copilot 设置',
-        rich_help_panel='高级选项',
+        help=cli_help_prompt_edit_settings,
+        rich_help_panel=cli_help_panel_advanced_options,
         hidden=(not ADVANCED_MODE)
     )
 ) -> int:
-    '''EulerCopilot 命令行助手'''
+    '''EulerCopilot CLI'''
     if init:
         setup_copilot()
         return 0
     if not CONFIG_INITIALIZED:
-        print('\033[1;31m请先初始化 copilot 设置\033[0m')
-        print('\033[33m请使用 "copilot --init" 命令初始化\033[0m')
+        print(cli_notif_no_config)
         return 1
     if backend:
         if ADVANCED_MODE:
@@ -92,37 +111,47 @@ def cli(
             edit_config()
         return 0
 
-    if sum(map(bool, [chat, diagnose, tuning])) > 1:
-        print('\033[1;31m当前版本只能选择一种问答模式\033[0m')
+    if sum(map(bool, [chat, flow, diagnose, tuning])) > 1:
+        print(cli_notif_select_one_mode)
         return 1
 
     if chat:
         select_query_mode(0)
         if not question:
             return 0
-    elif diagnose:
+    elif flow:
         if BACKEND == 'framework':
             select_query_mode(1)
             if not question:
                 return 0
         else:
-            print('\033[33m当前大模型后端不支持智能诊断功能\033[0m')
-            print('\033[33m推荐使用 EulerCopilot 智能体框架\033[0m')
+            compatibility_notification(QUERY_MODS['flow'])
             return 1
-    elif tuning:
+    elif diagnose:
         if BACKEND == 'framework':
             select_query_mode(2)
             if not question:
                 return 0
         else:
-            print('\033[33m当前大模型后端不支持智能调参功能\033[0m')
-            print('\033[33m推荐使用 EulerCopilot 智能体框架\033[0m')
+            compatibility_notification(QUERY_MODS['diagnose'])
+            return 1
+    elif tuning:
+        if BACKEND == 'framework':
+            select_query_mode(3)
+            if not question:
+                return 0
+        else:
+            compatibility_notification(QUERY_MODS['tuning'])
             return 1
 
     if question:
         question = question.strip()
 
     return main(question, load_config())
+
+
+def compatibility_notification(mode: str):
+    print(cli_notif_compatibility.format(mode=mode, brand_name=BRAND_NAME))
 
 
 def entry_point() -> int:

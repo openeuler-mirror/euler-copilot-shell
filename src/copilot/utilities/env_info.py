@@ -5,10 +5,10 @@ import platform
 import re
 import subprocess
 import sys
-from typing import Union
+from typing import Optional
 
 
-def _exec_shell_cmd(cmd: list) -> Union[subprocess.CompletedProcess, None]:
+def _exec_shell_cmd(cmd: list) -> Optional[subprocess.CompletedProcess]:
     try:
         process = subprocess.run(
             cmd,
@@ -19,13 +19,14 @@ def _exec_shell_cmd(cmd: list) -> Union[subprocess.CompletedProcess, None]:
         )
     except subprocess.CalledProcessError as e:
         sys.stderr.write(e.stderr)
+        return None
     except FileNotFoundError as e:
         sys.stderr.write(str(e))
-    else:
-        return process
+        return None
+    return process
 
 
-def _porc_linux_info(shell_result: Union[subprocess.CompletedProcess, None]):
+def _porc_linux_info(shell_result: Optional[subprocess.CompletedProcess]):
     if shell_result is not None:
         pattern = r'PRETTY_NAME="(.+?)"'
         match = re.search(pattern, shell_result.stdout)
@@ -34,7 +35,7 @@ def _porc_linux_info(shell_result: Union[subprocess.CompletedProcess, None]):
     return 'Unknown Linux distribution'
 
 
-def _porc_macos_info(shell_result: Union[subprocess.CompletedProcess, None]):
+def _porc_macos_info(shell_result: Optional[subprocess.CompletedProcess]):
     if shell_result is not None:
         macos_info = {}
         if shell_result.returncode == 0:

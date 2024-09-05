@@ -2,81 +2,128 @@
 
 import questionary
 
+from copilot.backends.framework_api import PluginData
+from copilot.utilities import i18n
+
 ACTIONS_SINGLE_CMD = [
-    questionary.Choice('解释命令', value='explain', shortcut_key='a'),
-    questionary.Choice('编辑命令', value='edit', shortcut_key='z'),
-    questionary.Choice('执行命令', value='execute', shortcut_key='x'),
-    questionary.Choice('取消', value='cancel', shortcut_key='c'),
+    questionary.Choice(
+        i18n.interact_action_explain,
+        value='explain',
+        shortcut_key='a'
+    ),
+    questionary.Choice(
+        i18n.interact_action_edit,
+        value='edit',
+        shortcut_key='z'
+    ),
+    questionary.Choice(
+        i18n.interact_action_execute,
+        value='execute',
+        shortcut_key='x'
+    ),
+    questionary.Choice(
+        i18n.interact_cancel,
+        value='cancel',
+        shortcut_key='c'
+    )
 ]
 
 ACTIONS_MULTI_CMDS = [
-    questionary.Choice('解释指定命令', value='explain', shortcut_key='a'),
-    questionary.Choice('编辑指定命令', value='edit', shortcut_key='z'),
-    questionary.Choice('执行所有命令', value='execute_all', shortcut_key='x'),
-    questionary.Choice('执行指定命令', value='execute_selected', shortcut_key='s'),
-    questionary.Choice('取消', value='cancel', shortcut_key='c'),
+    questionary.Choice(
+        i18n.interact_action_explain_selected,
+        value='explain',
+        shortcut_key='a'
+    ),
+    questionary.Choice(
+        i18n.interact_action_edit_selected,
+        value='edit',
+        shortcut_key='z'
+    ),
+    questionary.Choice(
+        i18n.interact_action_execute_all,
+        value='execute_all',
+        shortcut_key='x'
+    ),
+    questionary.Choice(
+        i18n.interact_action_execute_selected,
+        value='execute_selected',
+        shortcut_key='s'
+    ),
+    questionary.Choice(
+        i18n.interact_cancel,
+        value='cancel',
+        shortcut_key='c'
+    )
 ]
 
-QUESTIONS = [
-    '选择要执行的操作：',
-    '选择命令：'
+BACKEND_CHOICES = [
+    questionary.Choice(
+        i18n.interact_backend_framework.format(brand_name=i18n.BRAND_NAME),
+        value='framework',
+        shortcut_key='e'
+    ),
+    questionary.Choice(
+        i18n.interact_backend_spark,
+        value='spark',
+        shortcut_key='s'
+    ),
+    questionary.Choice(
+        i18n.interact_backend_openai,
+        value='openai',
+        shortcut_key='o'
+    ),
+    questionary.Choice(
+        i18n.interact_cancel,
+        value='cancel',
+        shortcut_key='c'
+    )
 ]
 
 CUSTOM_STYLE_FANCY = questionary.Style(
     [
-        ('separator', 'fg:#cc5454'),
-        ('qmark', 'fg:#673ab7 bold'),
+        ('separator', 'fg:#00afff'),
+        ('qmark', 'fg:#005f87 bold'),
         ('question', 'bold'),
-        ('selected', 'fg:#cc5454'),
-        ('pointer', 'fg:#673ab7 bold'),
-        ('highlighted', 'fg:#673ab7 bold'),
-        ('answer', 'fg:#f44336 bold'),
-        ('text', 'fg:#FBE9E7'),
-        ('disabled', 'fg:#858585 italic'),
+        ('selected', 'fg:#00afff bold'),
+        ('pointer', 'fg:#005f87 bold'),
+        ('highlighted', 'bold'),
+        ('answer', 'fg:#00afff bold'),
+        ('text', 'fg:#808080'),
+        ('disabled', 'fg:#808080 italic'),
     ]
 )
 
 
-def query_yes_or_no(question: str) -> bool:
-    valid = {'yes': True, 'y': True, 'no': False, 'n': False}
-    prompt = ' [Y/n] '
-
-    while True:
-        choice = input(question + prompt).lower()
-        if choice == '':
-            return valid['y']
-        elif choice in valid:
-            return valid[choice]
-        print('请用 "yes (y)" 或 "no (n)" 回答')
+def select_backend() -> str:
+    return questionary.select(
+        i18n.interact_question_select_backend,
+        choices=BACKEND_CHOICES,
+        use_shortcuts=True,
+        style=CUSTOM_STYLE_FANCY,
+    ).ask()
 
 
 def select_action(has_multi_cmds: bool) -> str:
     return questionary.select(
-        QUESTIONS[0],
+        i18n.interact_question_select_action,
         choices=ACTIONS_MULTI_CMDS if has_multi_cmds else ACTIONS_SINGLE_CMD,
-        pointer=None,
         use_shortcuts=True,
-        use_indicator=True,
         style=CUSTOM_STYLE_FANCY
     ).ask()
 
 
 def select_command(commands: list) -> str:
     return questionary.select(
-        QUESTIONS[1],
+        i18n.interact_question_select_cmd,
         choices=commands,
-        pointer=None,
-        use_indicator=True,
         style=CUSTOM_STYLE_FANCY
     ).ask()
 
 
 def select_command_with_index(commands: list) -> int:
     command = questionary.select(
-        QUESTIONS[1],
+        i18n.interact_question_select_cmd,
         choices=commands,
-        pointer=None,
-        use_indicator=True,
         style=CUSTOM_STYLE_FANCY
     ).ask()
     return commands.index(command)
@@ -84,9 +131,27 @@ def select_command_with_index(commands: list) -> int:
 
 def select_multiple_commands(commands: list) -> list:
     return questionary.checkbox(
-        QUESTIONS[1],
+        i18n.interact_question_select_cmd,
         choices=commands,
-        pointer=None,
-        use_indicator=True,
         style=CUSTOM_STYLE_FANCY
     ).ask()
+
+
+def select_plugins(plugins: list[PluginData]) -> list:
+    return questionary.checkbox(
+        i18n.interact_question_select_plugin,
+        choices=get_plugin_choices(plugins),
+        validate=lambda a: (
+            True if len(a) > 0 else i18n.interact_select_plugins_valiidate
+        ),
+        style=CUSTOM_STYLE_FANCY
+    ).ask()
+
+
+def get_plugin_choices(plugins: list[PluginData]) -> list:
+    return [
+        questionary.Choice(
+            plugin.plugin_name,
+            value=plugin.id
+        ) for plugin in plugins
+    ]

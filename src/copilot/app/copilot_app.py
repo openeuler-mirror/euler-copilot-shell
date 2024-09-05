@@ -6,8 +6,7 @@ import re
 import readline  # noqa: F401
 import shlex
 import subprocess
-import uuid
-from typing import Union
+from typing import Optional
 
 from rich.console import Console
 from rich.live import Live
@@ -15,7 +14,9 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 
 from copilot.backends import framework_api, llm_service, openai_api, spark_api
-from copilot.utilities import interact
+from copilot.utilities import i18n, interact
+
+selected_plugins: list = []
 
 
 def check_shell_features(cmd: str) -> bool:
@@ -54,7 +55,7 @@ def execute_shell_command(cmd: str) -> int:
         try:
             process = subprocess.Popen(cmd, shell=True)
         except ValueError as e:
-            print(f'执行命令时出错：{e}')
+            print(i18n.main_exec_value_error.format(error=e))
             return 1
     else:
         try:
@@ -63,9 +64,9 @@ def execute_shell_command(cmd: str) -> int:
             builtin_cmds = ['.', 'source', 'history', 'cd', 'export', 'alias', 'test']
             cmd_prefix = cmd.split()[0]
             if cmd_prefix in builtin_cmds:
-                print(f'不支持执行 Shell 内置命令 "{cmd_prefix}"，请复制后手动执行')
+                print(i18n.main_exec_builtin_cmd.format(cmd_prefix=cmd_prefix))
             else:
-                print(f'命令不存在：{e}')
+                print(i18n.main_exec_not_found_error.format(error=e))
             return 1
     exit_code = process.wait()
     return exit_code
@@ -97,7 +98,12 @@ def command_interaction_loop(cmds: list, service: llm_service.LLMService) -> int
             for cmd in selected_cmds:
                 exit_code = execute_shell_command(cmd)
                 if exit_code != 0:
-                    print(f'命令 "{cmd}" 执行中止，退出码：{exit_code}')
+                    print(
+                        i18n.main_exec_cmd_failed_with_exit_code.format(
+                            cmd=cmd,
+                            exit_code=exit_code
+                        )
+                    )
                     break
             return -1
         if action == 'explain':
@@ -138,14 +144,13 @@ def handle_user_input(service: llm_service.LLMService,
                       user_input: str, mode: str) -> int:
     '''Process user input based on the given flag and backend configuration.'''
     if mode == 'chat':
-        cmds = list(
-            dict.fromkeys(  # Remove duplicate commands
-                service.get_shell_commands(user_input)
-            )
-        )
+        cmds = list(dict.fromkeys(service.get_shell_commands(user_input)))
         return command_interaction_loop(cmds, service)
     if isinstance(service, framework_api.Framework):
         report: str = ''
+        if mode == 'flow':
+            cmds = list(dict.fromkeys(service.flow(user_input, selected_plugins)))
+            return command_interaction_loop(cmds, service)
         if mode == 'diagnose':
             report = service.diagnose(user_input)
         if mode == 'tuning':
@@ -155,17 +160,26 @@ def handle_user_input(service: llm_service.LLMService,
     return 1
 
 
-def main(user_input: Union[str, None], config: dict) -> int:
+# pylint: disable=W0603
+def main(user_input: Optional[str], config: dict) -> int:
+    global selected_plugins
     backend = config.get('backend')
     mode = str(config.get('query_mode'))
-    service: Union[llm_service.LLMService, None] = None
+    service: Optional[llm_service.LLMService] = None
     if backend == 'framework':
         service = framework_api.Framework(
             url=config.get('framework_url'),
             api_key=config.get('framework_api_key'),
-            session_id=str(uuid.uuid4().hex),
             debug_mode=config.get('debug_mode', False)
         )
+        service.update_session_id()  # get "ECSESSION" cookie
+        service.create_new_conversation()  # get conversation_id from backend
+        if mode == 'flow':  # get plugin list from current backend
+            plugins: list[framework_api.PluginData] = service.get_plugins()
+            if not plugins:
+                print(i18n.main_service_framework_plugin_is_none)
+                return 1
+            selected_plugins = interact.select_plugins(plugins)
     elif backend == 'spark':
         service = spark_api.Spark(
             app_id=config.get('spark_app_id'),
@@ -182,10 +196,10 @@ def main(user_input: Union[str, None], config: dict) -> int:
         )
 
     if service is None:
-        print('\033[1;31m未正确配置 LLM 后端，请检查配置文件\033[0m')
+        print(i18n.main_service_is_none)
         return 1
 
-    print('\033[33m输入 "exit" 或按下 Ctrl+C 结束对话\033[0m')
+    print(i18n.main_exit_prompt)
 
     try:
         while True:

@@ -10,6 +10,8 @@ read_query_mode() {
     
     if [ "$query_mode" = "\"chat\"" ]; then
         echo "智能问答"
+    elif [ "$query_mode" = "\"flow\"" ]; then
+        echo "智能工作流"
     elif [ "$query_mode" = "\"diagnose\"" ]; then
         echo "智能诊断"
     elif [ "$query_mode" = "\"tuning\"" ]; then

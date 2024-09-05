@@ -34,7 +34,7 @@ extensions = [Extension(f.replace("/", ".")[:-3], [f]) for f in cython_files]
 # 定义 setup() 参数
 setup(
     name='copilot',
-    version='1.1',
+    version='1.2',
     description='EulerCopilot CLI Tool',
     author='Hongyu Shi',
     author_email='shihongyu15@huawei.com',
@@ -65,6 +65,7 @@ setup(
         'requests',
         'rich',
         'typer',
+        'questionary'
     ],
     entry_points={
         'console_scripts': ['copilot=copilot.__main__:entry_point']

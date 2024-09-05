@@ -1,8 +1,8 @@
-Name: eulercopilot
-Version: 1.1
-Release: 1%{?dist}.%{?_timestamp}
+Name: eulercopilot-cli
+Version: 1.2
+Release: 1%{?_tag}%{?dist}
 Group: Applications/Utilities
-Summary: EulerCopilot 命令行助手
+Summary: EulerCopilot Command Line Assistant
 Source: %{name}-%{version}.tar.gz
 License: MulanPSL-2.0
 URL: https://www.openeuler.org/zh/
@@ -14,7 +14,7 @@ BuildRequires: python3-Cython gcc
 Requires: python3 jq hostname
 
 %description
-EulerCopilot 命令行助手
+EulerCopilot Command Line Assistant
 
 %prep
 %setup -q

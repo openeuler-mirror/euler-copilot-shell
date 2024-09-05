@@ -3,6 +3,9 @@
 import json
 import os
 
+from copilot.backends.framework_api import QUERY_MODS
+from copilot.utilities import interact
+
 CONFIG_DIR = os.path.join(os.path.expanduser('~'), '.config/eulercopilot')
 CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
 
@@ -55,32 +58,15 @@ def update_config(key: str, value):
 
 
 def select_query_mode(mode: int):
-    modes = ['chat', 'diagnose', 'tuning']
+    modes = list(QUERY_MODS.keys())
     if mode < len(modes):
         update_config('query_mode', modes[mode])
 
 
 def select_backend():
-    backends = ['framework', 'spark', 'openai']
-    print('\n\033[1;33m请选择大模型后端：\033[0m\n')
-    print('\t<1>  EulerCopilot')
-    print('\t<2>  讯飞星火大模型 3.5')
-    print('\t<3>  类 ChatGPT（兼容 llama.cpp）')
-    print()
-    try:
-        while True:
-            backend_input = input('\033[33m>>>\033[0m ').strip()
-            try:
-                backend_index = int(backend_input) - 1
-                backend = backends[backend_index]
-            except (ValueError, TypeError):
-                print('请输入正确的序号')
-                continue
-            else:
-                update_config('backend', backend)
-                break
-    except KeyboardInterrupt:
-        print('\n\033[1;31m用户已取消选择\033[0m\n')
+    backend = interact.select_backend()
+    if backend in ['framework', 'spark', 'openai']:
+        update_config('backend', backend)
 
 
 def edit_config():

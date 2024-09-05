@@ -17,6 +17,14 @@ from rich.spinner import Spinner
 from rich.text import Text
 
 from copilot.backends.llm_service import LLMService
+from copilot.utilities.i18n import (
+    backend_spark_network_error,
+    backend_spark_stream_error,
+    backend_spark_websockets_exceptions_msg_a,
+    backend_spark_websockets_exceptions_msg_b,
+    backend_spark_websockets_exceptions_msg_c,
+    backend_spark_websockets_exceptions_msg_title,
+)
 from copilot.utilities.markdown_renderer import MarkdownRenderer
 
 
@@ -66,7 +74,10 @@ class Spark(LLMService):
                             code = data['header']['code']
                             if code != 0:
                                 message = data['header']['message']
-                                live.update(f'请求错误: {code}\n{message}', refresh=True)
+                                live.update(backend_spark_stream_error.format(
+                                    code=code,
+                                    message=message
+                                ), refresh=True)
                                 await websocket.close()
                             else:
                                 choices = data['payload']['choices']
@@ -82,14 +93,14 @@ class Spark(LLMService):
 
             except websockets.exceptions.InvalidStatusCode:
                 live.update(
-                    Text.from_ansi('\033[1;31m请求错误\033[0m\n\n')\
-                        .append('请检查 appid 和 api_key 是否正确，或检查网络连接是否正常。\n')\
-                        .append('输入 "vi ~/.config/eulercopilot/config.json" 查看和编辑配置；\n')\
-                        .append(f'或尝试 ping {self.spark_url}'),
+                    Text.from_ansi(backend_spark_websockets_exceptions_msg_title)\
+                        .append(backend_spark_websockets_exceptions_msg_a)\
+                        .append(backend_spark_websockets_exceptions_msg_b)\
+                        .append(backend_spark_websockets_exceptions_msg_c.format(spark_url=self.spark_url)),
                     refresh=True
                 )
             except Exception:  # pylint: disable=W0718
-                live.update('访问大模型失败，请检查网络连接')
+                live.update(backend_spark_network_error)
 
     def _create_url(self):
         now = datetime.now()  # 生成RFC1123格式的时间戳

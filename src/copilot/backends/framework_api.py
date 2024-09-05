@@ -4,6 +4,9 @@ import json
 import re
 import socket
 import subprocess
+from dataclasses import dataclass
+from typing import Optional
+from urllib.parse import urljoin
 
 import requests
 from rich.console import Console
@@ -11,17 +14,48 @@ from rich.live import Live
 from rich.spinner import Spinner
 
 from copilot.backends.llm_service import LLMService
+from copilot.utilities.i18n import (
+    BRAND_NAME,
+    backend_framework_auth_invalid_api_key,
+    backend_framework_request_connection_error,
+    backend_framework_request_exceptions,
+    backend_framework_request_timeout,
+    backend_framework_request_too_many_requests,
+    backend_framework_request_unauthorized,
+    backend_framework_response_ended_prematurely,
+    backend_framework_stream_error,
+    backend_framework_stream_sensitive,
+    backend_framework_stream_unknown,
+    backend_framework_sugggestion,
+    backend_general_request_failed,
+    prompt_framework_plugin_ip,
+    prompt_framework_primary,
+    query_mode_chat,
+    query_mode_diagnose,
+    query_mode_flow,
+    query_mode_tuning,
+)
 from copilot.utilities.markdown_renderer import MarkdownRenderer
+from copilot.utilities.shell_script import write_shell_script
+
+QUERY_MODS = {
+    'chat': query_mode_chat,
+    'flow': query_mode_flow,
+    'diagnose': query_mode_diagnose,
+    'tuning': query_mode_tuning,
+}
 
 
 # pylint: disable=R0902
 class Framework(LLMService):
-    def __init__(self, url, api_key, session_id, debug_mode=False):
+    def __init__(self, url, api_key, debug_mode=False):
         self.endpoint: str = url
         self.api_key: str = api_key
-        self.session_id: str = session_id
         self.debug_mode: bool = debug_mode
-        # 缓存
+        # 临时数据
+        self.session_id: str = ''
+        self.plugins: list = []
+        self.conversation_id: str = ''
         self.content: str = ''
         self.commands: list = []
         self.sugggestion: str = ''
@@ -39,19 +73,80 @@ class Framework(LLMService):
         query = self._gen_explain_cmd_prompt(cmd)
         self._query_llm_service(query, show_suggestion=False)
 
+    def update_session_id(self):
+        headers = self._get_headers()
+        try:
+            response = requests.get(
+                urljoin(self.endpoint, 'api/client/session'),
+                headers=headers,
+                timeout=30
+            )
+        except requests.exceptions.RequestException:
+            self.console.print(backend_framework_request_exceptions.format(brand_name=BRAND_NAME))
+            return
+        if response.status_code == 401:
+            self.console.print(backend_framework_auth_invalid_api_key.format(brand_name=BRAND_NAME))
+            return
+        if response.status_code != 200:
+            self.console.print(backend_general_request_failed.format(code=response.status_code))
+            return
+        self.session_id = response.json().get('result', {}).get('session_id', '')
+
+    def create_new_conversation(self):
+        headers = self._get_headers()
+        try:
+            response = requests.post(
+                urljoin(self.endpoint, 'api/client/conversation'),
+                headers=headers,
+                timeout=30
+            )
+        except requests.exceptions.RequestException:
+            self.console.print(backend_framework_request_exceptions.format(brand_name=BRAND_NAME))
+            return
+        if response.status_code == 401:
+            self.console.print(backend_framework_auth_invalid_api_key.format(brand_name=BRAND_NAME))
+            return
+        if response.status_code != 200:
+            self.console.print(backend_general_request_failed.format(code=response.status_code))
+            return
+        self.conversation_id = response.json().get('result', {}).get('conversation_id', '')
+
+    def get_plugins(self) -> list:
+        headers = self._get_headers()
+        try:
+            response = requests.get(
+                urljoin(self.endpoint, 'api/client/plugin'),
+                headers=headers,
+                timeout=30
+            )
+        except requests.exceptions.RequestException:
+            self.console.print(backend_framework_request_exceptions.format(brand_name=BRAND_NAME))
+            return []
+        if response.status_code == 401:
+            self.console.print(backend_framework_auth_invalid_api_key.format(brand_name=BRAND_NAME))
+            return []
+        if response.status_code != 200:
+            self.console.print(backend_general_request_failed.format(code=response.status_code))
+            return []
+        self.session_id = self._reset_session_from_cookie(response.headers.get('set-cookie', ''))
+        plugins = response.json().get('result', [])
+        if plugins:
+            self.plugins = [PluginData(**plugin) for plugin in plugins]
+        return self.plugins
+
+    def flow(self, question: str, plugins: list) -> list:
+        self._query_llm_service(question, user_selected_plugins=plugins)
+        if self.commands:
+            return self.commands
+        return self._extract_shell_code_blocks(self.content)
+
     def diagnose(self, question: str) -> str:
         # 确保用户输入的问题中包含有效的IP地址，若没有，则诊断本机
         if not self._contains_valid_ip(question):
             local_ip = self._get_local_ip()
             if local_ip:
-                question = f'当前机器的IP为 {local_ip}，' + question
-        headers = self._get_headers()
-        data = {
-            'question': question,
-            'session_id': self.session_id,
-            'user_selected_plugins': [{'plugin_name': 'Diagnostic'}],
-        }
-        self._stream_response(headers, data)
+                question = f'{prompt_framework_plugin_ip} {local_ip}，' + question
+        self._query_llm_service(question)
         return self.content
 
     def tuning(self, question: str) -> str:
@@ -59,20 +154,25 @@ class Framework(LLMService):
         if not self._contains_valid_ip(question):
             local_ip = self._get_local_ip()
             if local_ip:
-                question = f'当前机器的IP为 {local_ip}，' + question
-        headers = self._get_headers()
-        data = {
-            'question': question,
-            'session_id': self.session_id,
-            'user_selected_plugins': [{'plugin_name': 'A-Tune'}],
-        }
-        self._stream_response(headers, data)
+                question = f'{prompt_framework_plugin_ip} {local_ip}，' + question
+        self._query_llm_service(question)
         return self.content
 
     # pylint: disable=W0221
-    def _query_llm_service(self, question: str, show_suggestion: bool = True):
+    def _query_llm_service(
+        self,
+        question: str,
+        user_selected_plugins: Optional[list] = None,
+        show_suggestion: bool = True
+    ):
+        if not user_selected_plugins:
+            user_selected_plugins = ['auto']
         headers = self._get_headers()
-        data = {'question': question, 'session_id': self.session_id}
+        data = {
+            'question': question, 
+            'conversation_id': self.conversation_id,
+            'user_selected_plugins': user_selected_plugins
+        }
         self._stream_response(headers, data, show_suggestion)
 
     def _stream_response(self, headers, data, show_suggestion: bool = True):
@@ -81,20 +181,44 @@ class Framework(LLMService):
         with Live(console=self.console, vertical_overflow='visible') as live:
             live.update(spinner, refresh=True)
             try:
-                response = requests.post(self.endpoint, headers=headers, json=data, stream=True, timeout=300)
+                stream_answer_url = urljoin(self.endpoint, 'api/client/chat')
+                response = requests.post(
+                    url=stream_answer_url,
+                    headers=headers,
+                    json=data,
+                    stream=True,
+                    timeout=300
+                )
             except requests.exceptions.ConnectionError:
-                live.update('EulerCopilot 智能体连接失败', refresh=True)
+                live.update(
+                    backend_framework_request_connection_error.format(brand_name=BRAND_NAME), refresh=True)
                 return
             except requests.exceptions.Timeout:
-                live.update('EulerCopilot 智能体请求超时', refresh=True)
+                live.update(
+                    backend_framework_request_timeout.format(brand_name=BRAND_NAME), refresh=True)
                 return
             except requests.exceptions.RequestException:
-                live.update('EulerCopilot 智能体请求异常', refresh=True)
+                live.update(
+                    backend_framework_request_exceptions.format(brand_name=BRAND_NAME), refresh=True)
+                return
+            if response.status_code == 401:
+                live.update(
+                    backend_framework_request_unauthorized, refresh=True)
+                return
+            if response.status_code == 429:
+                live.update(
+                    backend_framework_request_too_many_requests, refresh=True)
                 return
             if response.status_code != 200:
-                live.update(f'请求失败: {response.status_code}', refresh=True)
+                live.update(
+                    backend_general_request_failed.format(code=response.status_code), refresh=True)
                 return
-            self._handle_response_stream(live, response, show_suggestion)
+            self.session_id = self._reset_session_from_cookie(response.headers.get('set-cookie', ''))
+            try:
+                self._handle_response_stream(live, response, show_suggestion)
+            except requests.exceptions.ChunkedEncodingError:
+                live.update(backend_framework_response_ended_prematurely, refresh=True)
+                return
 
     def _clear_previous_data(self):
         self.content = ''
@@ -118,14 +242,23 @@ class Framework(LLMService):
                     continue
                 if content == '[ERROR]':
                     if not self.content:
-                        MarkdownRenderer.update(live, 'EulerCopilot 智能体遇到错误，请联系管理员定位问题')
+                        MarkdownRenderer.update(
+                            live,
+                            backend_framework_stream_error.format(brand_name=BRAND_NAME)
+                        )
                 elif content == '[SENSITIVE]':
-                    MarkdownRenderer.update(live, '检测到违规信息，请重新提问')
+                    MarkdownRenderer.update(live, backend_framework_stream_sensitive)
                     self.content = ''
                 elif content != '[DONE]':
                     if not self.debug_mode:
                         continue
-                    MarkdownRenderer.update(live, f'EulerCopilot 智能体返回了未知内容：\n```json\n{content}\n```')
+                    MarkdownRenderer.update(
+                        live,
+                        backend_framework_stream_unknown.format(
+                            brand_name=BRAND_NAME,
+                            content=content
+                        )
+                    )
                 break
             else:
                 self._handle_json_chunk(jcontent, live, show_suggestion)
@@ -133,17 +266,45 @@ class Framework(LLMService):
     def _handle_json_chunk(self, jcontent, live: Live, show_suggestion: bool):
         chunk = jcontent.get('content', '')
         self.content += chunk
+        # 获取推荐问题
         if show_suggestion:
             suggestions = jcontent.get('search_suggestions', [])
             if suggestions:
-                self.sugggestion = suggestions[0].strip()
+                suggested_plugin = suggestions[0].get('name', '')
+                suggested_question = suggestions[0].get('question', '')
+                if suggested_plugin and suggested_question:
+                    self.sugggestion = f'**{suggested_plugin}** {suggested_question}'
+                elif suggested_question:
+                    self.sugggestion = suggested_question
+        # 获取插件返回数据
+        plugin_tool_type = jcontent.get('type', '')
+        if plugin_tool_type == 'extract':
+            data_str = jcontent.get('data', '')
+            if data_str:
+                try:
+                    data = json.loads(data_str)
+                except json.JSONDecodeError:
+                    return
+                # 返回 Markdown 报告
+                output = data.get('output', '')
+                if output:
+                    self.content += output
+                # 返回单行 Shell 命令
+                cmd = data.get('shell', '')
+                if cmd:
+                    self.commands.append(cmd)
+                # 返回 Shell 脚本
+                script = data.get('script', '')
+                if script:
+                    self.commands.append(write_shell_script(script))
+        # 刷新终端
         if not self.sugggestion:
             MarkdownRenderer.update(live, self.content)
         else:
             MarkdownRenderer.update(
                 live,
                 content=self.content,
-                sugggestion=f'**你可以继续问** {self.sugggestion}'
+                sugggestion=backend_framework_sugggestion.format(sugggestion=self.sugggestion),
             )
 
     def _get_headers(self) -> dict:
@@ -152,7 +313,17 @@ class Framework(LLMService):
             'Content-Type': 'application/json; charset=UTF-8',
             'Connection': 'keep-alive',
             'Authorization': f'Bearer {self.api_key}',
+            'Cookie': f'ECSESSION={self.session_id};' if self.session_id else '',
         }
+
+    def _reset_session_from_cookie(self, cookie: str) -> str:
+        if not cookie:
+            return ''
+        for item in cookie.split(';'):
+            item = item.strip()
+            if item.startswith('ECSESSION'):
+                return item.split('=')[1]
+        return ''
 
     def _contains_valid_ip(self, text: str) -> bool:
         ip_pattern = re.compile(
@@ -180,31 +351,12 @@ class Framework(LLMService):
         return ''
 
     def _gen_framework_extra_prompt(self) -> str:
-        return f'''你的任务是：
-根据用户输入的问题，提供相应的操作系统的管理和运维解决方案。
-你给出的答案必须符合当前操作系统要求，你不能使用当前操作系统没有的功能。
+        return prompt_framework_primary.format(prompt_general_root=self._gen_sudo_prompt())
 
-格式要求：
-+ 你的回答中的代码块和表格都必须用 Markdown 呈现；
-+ 你需要用中文回答问题，除了代码，其他内容都要符合汉语的规范。
 
-其他要求：
-+ 如果用户要求安装软件包，请注意 openEuler 使用 dnf 管理软件包，你不能在回答中使用 apt 或其他软件包管理器
-+ 请特别注意当前用户的权限：{self._gen_sudo_prompt()}
-
-在给用户返回 shell 命令时，你必须返回安全的命令，不能进行任何危险操作！
-如果涉及到删除文件、清理缓存、删除用户、卸载软件、wget下载文件等敏感操作，你必须生成安全的命令
-
-危险操作举例：
-+ 例1: 强制删除
-  ```bash
-  rm -rf /path/to/sth
-  ```
-+ 例2: 卸载软件包时默认同意
-  ```bash
-  dnf remove -y package_name
-  ```
-你不能输出类似于上述例子的命令！
-
-由于用户使用命令行与你交互，你需要避免长篇大论，请使用简洁的语言，一般情况下你的回答不应超过1000字。
-'''
+@dataclass
+class PluginData:
+    id: str
+    plugin_name: str
+    plugin_description: str
+    plugin_auth: Optional[dict] = None

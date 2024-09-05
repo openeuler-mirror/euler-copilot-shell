@@ -1,7 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
 
 import json
-from typing import Union
+from typing import Optional
 
 import requests
 from rich.console import Console
@@ -9,14 +9,20 @@ from rich.live import Live
 from rich.spinner import Spinner
 
 from copilot.backends.llm_service import LLMService
+from copilot.utilities.i18n import (
+    backend_general_request_failed,
+    backend_openai_request_connection_error,
+    backend_openai_request_exceptions,
+    backend_openai_request_timeout,
+)
 from copilot.utilities.markdown_renderer import MarkdownRenderer
 
 
 class ChatOpenAI(LLMService):
-    def __init__(self, url: str, api_key: Union[str, None], model: Union[str, None], max_tokens = 2048):
+    def __init__(self, url: str, api_key: Optional[str], model: Optional[str], max_tokens = 2048):
         self.url: str = url
-        self.api_key: Union[str, None] = api_key
-        self.model: Union[str, None] = model
+        self.api_key: Optional[str] = api_key
+        self.model: Optional[str] = model
         self.max_tokens: int = max_tokens
         self.answer: str = ''
         self.history: list = []
@@ -72,16 +78,16 @@ class ChatOpenAI(LLMService):
                     timeout=60
                 )
             except requests.exceptions.ConnectionError:
-                live.update('连接大模型失败', refresh=True)
+                live.update(backend_openai_request_connection_error, refresh=True)
                 return
             except requests.exceptions.Timeout:
-                live.update('请求大模型超时', refresh=True)
+                live.update(backend_openai_request_timeout, refresh=True)
                 return
             except requests.exceptions.RequestException:
-                live.update('请求大模型异常', refresh=True)
+                live.update(backend_openai_request_exceptions, refresh=True)
                 return
             if response.status_code != 200:
-                live.update(f'请求失败: {response.status_code}', refresh=True)
+                live.update(backend_general_request_failed.format(code=response.status_code), refresh=True)
                 return
             for line in response.iter_lines():
                 if line is None:
