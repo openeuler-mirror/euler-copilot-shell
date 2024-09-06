@@ -3,11 +3,28 @@
 import json
 import os
 
-from copilot.backends.framework_api import QUERY_MODS
-from copilot.utilities import interact
+from copilot.backends.framework_api import QUERY_MODE
+from copilot.utilities import i18n, interact
 
 CONFIG_DIR = os.path.join(os.path.expanduser('~'), '.config/eulercopilot')
 CONFIG_PATH = os.path.join(CONFIG_DIR, 'config.json')
+
+CONFIG_ENTRY_NAME = {
+    'backend': i18n.settings_config_entry_backend,
+    'query_mode': i18n.settings_config_entry_query_mode,
+    'advanced_mode': i18n.settings_config_entry_advanced_mode,
+    'debug_mode': i18n.settings_config_entry_debug_mode,
+    'spark_app_id': i18n.settings_config_entry_spark_app_id,
+    'spark_api_key': i18n.settings_config_entry_spark_api_key,
+    'spark_api_secret': i18n.settings_config_entry_spark_api_secret,
+    'spark_url': i18n.settings_config_entry_spark_url,
+    'spark_domain': i18n.settings_config_entry_spark_domain,
+    'framework_url': i18n.settings_config_entry_framework_url.format(brand_name=i18n.BRAND_NAME),
+    'framework_api_key': i18n.settings_config_entry_framework_api_key.format(brand_name=i18n.BRAND_NAME),
+    'model_url': i18n.settings_config_entry_model_url,
+    'model_api_key': i18n.settings_config_entry_model_api_key,
+    'model_name': i18n.settings_config_entry_model_name
+}
 
 DEFAULT_CONFIG = {
     'backend': 'framework',
@@ -37,7 +54,7 @@ def load_config() -> dict:
     return config
 
 
-def write_config(config):
+def write_config(config: dict):
     with open(CONFIG_PATH, 'w', encoding='utf-8') as json_file:
         json.dump(config, json_file, indent=4)
         json_file.write('\n')  # 追加一行空行
@@ -58,7 +75,7 @@ def update_config(key: str, value):
 
 
 def select_query_mode(mode: int):
-    modes = list(QUERY_MODS.keys())
+    modes = list(QUERY_MODE.keys())
     if mode < len(modes):
         update_config('query_mode', modes[mode])
 
@@ -69,30 +86,12 @@ def select_backend():
         update_config('backend', backend)
 
 
-def edit_config():
+def config_to_markdown() -> str:
     config = load_config()
-    print('\n\033[1;33m当前设置：\033[0m')
-    format_string = '{:<32} {}'.format
-    for key, value in config.items():
-        print(f'- {format_string(key, value)}')
-
-    print('\n\033[33m输入要修改的设置项以修改设置：\033[0m')
-    print('示例：')
-    print('>>> spark_api_key（按下回车）')
-    print('<<< （在此处输入你的星火大模型 API Key）')
-    print('* 输入空白值以退出程序')
-    print('* 建议在管理员指导下操作')
-    try:
-        while True:
-            key = input('\033[35m>>>\033[0m ')
-            if key in config:
-                value = input('\033[33m<<<\033[0m ')
-                if value == '':
-                    break
-                config[key] = value
-            elif key == '':
-                break
-            else:
-                print('输入有误，请重试')
-    except KeyboardInterrupt:
-        print('\n\033[1;31m用户已取消编辑\033[0m\n')
+    config_table = '\n'.join([
+        f'| {CONFIG_ENTRY_NAME.get(key)} | {value} |' for key, value in config.items()
+    ])
+    return f'### {i18n.settings_markdown_title}\n\n\
+        | {i18n.settings_markdown_header_key} \
+        | {i18n.settings_markdown_header_value} |\n\
+        | ----------- | ----------- |\n{config_table}'

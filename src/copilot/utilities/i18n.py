@@ -37,9 +37,13 @@ interact_backend_spark = _('讯飞星火大模型')
 interact_backend_openai = _('OpenAI 兼容模式')
 interact_cancel = _('取消')
 
+interact_question_yes_or_no = _('是否{question_body}：')
+interact_question_input_text = _('请输入{question_body}：')
 interact_question_select_action = _('选择要执行的操作：')
 interact_question_select_cmd = _('选择命令：')
+interact_question_select_settings_entry = _('选择设置项：')
 interact_question_select_backend = _('请选择大模型后端：')
+interact_question_select_query_mode = _('请选择问答模式：')
 interact_question_select_plugin = _('请选择插件：')
 interact_select_plugins_valiidate = _('请选择至少一个插件')
 
@@ -50,7 +54,7 @@ backend_framework_request_timeout = _('{brand_name} 智能体请求超时，请�
 backend_framework_request_exceptions = _('{brand_name} 智能体请求异常，请检查网络连接')
 backend_framework_request_unauthorized = _('当前会话已过期，请退出后重试')
 backend_framework_request_too_many_requests = _('请求过于频繁，请稍后再试')
-backend_framework_response_ended_prematurely = _('请求异常中止，请检查网络连接')
+backend_framework_response_ended_prematurely = _('响应异常中止，请检查网络连接')
 backend_framework_stream_error = _('{brand_name} 智能体遇到错误，请联系管理员定位问题')
 backend_framework_stream_unknown = _('{brand_name} 智能体返回了未知内容：\n```json\n{content}\n```')
 backend_framework_stream_sensitive = _('检测到违规信息，请重新提问')
@@ -65,16 +69,32 @@ backend_openai_request_connection_error = _('连接大模型失败')
 backend_openai_request_timeout = _('请求大模型超时')
 backend_openai_request_exceptions = _('请求大模型异常')
 
+settings_markdown_title = _('当前配置')
+settings_markdown_header_key = _('设置项')
+settings_markdown_header_value = _('值')
+settings_config_entry_backend = _('大模型后端')
+settings_config_entry_query_mode = _('问答模式')
+settings_config_entry_advanced_mode = _('启用高级模式')
+settings_config_entry_debug_mode = _('启用调试模式')
+settings_config_entry_spark_app_id = _('星火大模型 App ID')
+settings_config_entry_spark_api_key = _('星火大模型 API Key')
+settings_config_entry_spark_api_secret = _('星火大模型 API Secret')
+settings_config_entry_spark_url = _('星火大模型 URL')
+settings_config_entry_spark_domain = _('星火大模型领域')
+settings_config_entry_framework_url = _('{brand_name} 智能体 URL')
+settings_config_entry_framework_api_key = _('{brand_name} 智能体 API Key')
+settings_config_entry_model_url = _('OpenAI 模型 URL')
+settings_config_entry_model_api_key = _('OpenAI 模型 API Key')
+settings_config_entry_model_name = _('OpenAI 模型名称')
+
 query_mode_chat = _('智能问答')
 query_mode_flow = _('智能工作流')
 query_mode_diagnose = _('智能诊断')
 query_mode_tuning = _('智能调优')
 
-prompt_general_root_true = _('当前用户为 root 用户，你生成的 shell 命令不能包涵 sudo')
-prompt_general_root_false = _('当前用户为普通用户，若你生成的 shell 命令需要 root 权限，需要包含 sudo')
+prompt_general_root_true = _('当前用户为 root 用户，你生成的 shell 命令不能包含 "sudo"')
+prompt_general_root_false = _('当前用户为普通用户，若你生成的 shell 命令需要 root 权限，需要包含 "sudo"')
 prompt_general_system = _('''你是操作系统 {os} 的运维助理，你精通当前操作系统的管理和运维，熟悉运维脚本的编写。
-你的任务是：
-根据用户输入的问题，提供相应的操作系统的管理和运维解决方案，并使用 shell 脚本或其它常用编程语言实现。
 你给出的答案必须符合当前操作系统要求，你不能使用当前操作系统没有的功能。
 
 格式要求：
@@ -124,32 +144,13 @@ prompt_general_explain_cmd = _('''```bash
 要求：
 先在代码块中打印一次上述命令，再有条理地解释命令中的主要步骤
 ''')
-prompt_framework_primary = _('''你的任务是：
-根据用户输入的问题，提供相应的操作系统的管理和运维解决方案。
-你给出的答案必须符合当前操作系统要求，你不能使用当前操作系统没有的功能。
-
-格式要求：
+prompt_framework_markdown_format = _('''格式要求：
 + 你的回答中的代码块和表格都必须用 Markdown 呈现；
 + 你需要用中文回答问题，除了代码，其他内容都要符合汉语的规范。
-
-其他要求：
-+ 如果用户要求安装软件包，请注意 openEuler 使用 dnf 管理软件包，你不能在回答中使用 apt 或其他软件包管理器
-+ 请特别注意当前用户的权限：{prompt_general_root}
-
-在给用户返回 shell 命令时，你必须返回安全的命令，不能进行任何危险操作！
-如果涉及到删除文件、清理缓存、删除用户、卸载软件、wget下载文件等敏感操作，你必须生成安全的命令
-
-危险操作举例：
-+ 例1: 强制删除
-  ```bash
-  rm -rf /path/to/sth
-  ```
-+ 例2: 卸载软件包时默认同意
-  ```bash
-  dnf remove -y package_name
-  ```
-你不能输出类似于上述例子的命令！
-
-由于用户使用命令行与你交互，你需要避免长篇大论，请使用简洁的语言，一般情况下你的回答不应超过1000字。
 ''')
+prompt_framework_extra_install = _('''其他要求：
++ openEuler 使用 dnf 管理软件包，你不能在回答中使用 apt 或其他软件包管理器
++ {prompt_general_root}
+''')
+prompt_framework_keyword_install = _('安装')
 prompt_framework_plugin_ip = _('当前机器的IP为')

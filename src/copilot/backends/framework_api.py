@@ -28,8 +28,10 @@ from copilot.utilities.i18n import (
     backend_framework_stream_unknown,
     backend_framework_sugggestion,
     backend_general_request_failed,
+    prompt_framework_extra_install,
+    prompt_framework_keyword_install,
+    prompt_framework_markdown_format,
     prompt_framework_plugin_ip,
-    prompt_framework_primary,
     query_mode_chat,
     query_mode_diagnose,
     query_mode_flow,
@@ -38,11 +40,16 @@ from copilot.utilities.i18n import (
 from copilot.utilities.markdown_renderer import MarkdownRenderer
 from copilot.utilities.shell_script import write_shell_script
 
-QUERY_MODS = {
+QUERY_MODE = {
     'chat': query_mode_chat,
     'flow': query_mode_flow,
     'diagnose': query_mode_diagnose,
     'tuning': query_mode_tuning,
+}
+
+FRAMEWORK_LLM_STREAM_BAD_REQUEST_MSG = {
+    401: backend_framework_request_unauthorized,
+    429: backend_framework_request_too_many_requests
 }
 
 
@@ -52,10 +59,11 @@ class Framework(LLMService):
         self.endpoint: str = url
         self.api_key: str = api_key
         self.debug_mode: bool = debug_mode
-        # 临时数据
+        # 临时数据 (本轮对话)
         self.session_id: str = ''
         self.plugins: list = []
         self.conversation_id: str = ''
+        # 临时数据 (本次问答)
         self.content: str = ''
         self.commands: list = []
         self.sugggestion: str = ''
@@ -63,7 +71,9 @@ class Framework(LLMService):
         self.console = Console()
 
     def get_shell_commands(self, question: str) -> list:
-        query = self._gen_chat_prompt(question) + self._gen_framework_extra_prompt()
+        query = self._add_framework_extra_prompt(self._gen_chat_prompt(question))
+        if prompt_framework_keyword_install in question.lower():
+            query = self._add_framework_software_install_prompt(query)
         self._query_llm_service(query)
         if self.commands:
             return self.commands
@@ -140,23 +150,23 @@ class Framework(LLMService):
             return self.commands
         return self._extract_shell_code_blocks(self.content)
 
-    def diagnose(self, question: str) -> str:
+    def diagnose(self, question: str) -> list:
         # 确保用户输入的问题中包含有效的IP地址，若没有，则诊断本机
         if not self._contains_valid_ip(question):
             local_ip = self._get_local_ip()
             if local_ip:
                 question = f'{prompt_framework_plugin_ip} {local_ip}，' + question
-        self._query_llm_service(question)
-        return self.content
+        self._query_llm_service(question, user_selected_plugins=['euler-copilot-rca'])
+        return self._extract_shell_code_blocks(self.content)
 
-    def tuning(self, question: str) -> str:
+    def tuning(self, question: str) -> list:
         # 确保用户输入的问题中包含有效的IP地址，若没有，则调优本机
         if not self._contains_valid_ip(question):
             local_ip = self._get_local_ip()
             if local_ip:
                 question = f'{prompt_framework_plugin_ip} {local_ip}，' + question
-        self._query_llm_service(question)
-        return self.content
+        self._query_llm_service(question, user_selected_plugins=['euler-copilot-tune'])
+        return self._extract_shell_code_blocks(self.content)
 
     # pylint: disable=W0221
     def _query_llm_service(
@@ -178,12 +188,11 @@ class Framework(LLMService):
     def _stream_response(self, headers, data, show_suggestion: bool = True):
         self._clear_previous_data()
         spinner = Spinner('material')
-        with Live(console=self.console, vertical_overflow='visible') as live:
+        with Live(console=self.console) as live:
             live.update(spinner, refresh=True)
             try:
-                stream_answer_url = urljoin(self.endpoint, 'api/client/chat')
                 response = requests.post(
-                    url=stream_answer_url,
+                    urljoin(self.endpoint, 'api/client/chat'),
                     headers=headers,
                     json=data,
                     stream=True,
@@ -201,24 +210,18 @@ class Framework(LLMService):
                 live.update(
                     backend_framework_request_exceptions.format(brand_name=BRAND_NAME), refresh=True)
                 return
-            if response.status_code == 401:
-                live.update(
-                    backend_framework_request_unauthorized, refresh=True)
-                return
-            if response.status_code == 429:
-                live.update(
-                    backend_framework_request_too_many_requests, refresh=True)
-                return
             if response.status_code != 200:
-                live.update(
-                    backend_general_request_failed.format(code=response.status_code), refresh=True)
+                msg = FRAMEWORK_LLM_STREAM_BAD_REQUEST_MSG.get(
+                    response.status_code,
+                    backend_general_request_failed.format(code=response.status_code)
+                )
+                live.update(msg, refresh=True)
                 return
             self.session_id = self._reset_session_from_cookie(response.headers.get('set-cookie', ''))
             try:
                 self._handle_response_stream(live, response, show_suggestion)
             except requests.exceptions.ChunkedEncodingError:
                 live.update(backend_framework_response_ended_prematurely, refresh=True)
-                return
 
     def _clear_previous_data(self):
         self.content = ''
@@ -350,8 +353,12 @@ class Framework(LLMService):
             return ip_address
         return ''
 
-    def _gen_framework_extra_prompt(self) -> str:
-        return prompt_framework_primary.format(prompt_general_root=self._gen_sudo_prompt())
+    def _add_framework_extra_prompt(self, query: str) -> str:
+        return query + '\n\n' + prompt_framework_markdown_format
+
+    def _add_framework_software_install_prompt(self, query: str) -> str:
+        return query + '\n\n' + prompt_framework_extra_install.format(
+            prompt_general_root=self._gen_sudo_prompt())
 
 
 @dataclass

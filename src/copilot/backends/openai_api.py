@@ -67,7 +67,7 @@ class ChatOpenAI(LLMService):
     def _stream_response(self, query: str):
         spinner = Spinner('material')
         self.answer = ''
-        with Live(console=self.console, vertical_overflow='visible') as live:
+        with Live(console=self.console) as live:
             live.update(spinner, refresh=True)
             try:
                 response = requests.post(

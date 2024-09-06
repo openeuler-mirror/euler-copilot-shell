@@ -12,9 +12,11 @@ from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.text import Text
 
 from copilot.backends import framework_api, llm_service, openai_api, spark_api
 from copilot.utilities import i18n, interact
+from copilot.utilities.config_manager import CONFIG_ENTRY_NAME, config_to_markdown, load_config, update_config
 
 selected_plugins: list = []
 
@@ -143,21 +145,56 @@ def select_one_cmd_with_index(cmds: list) -> int:
 def handle_user_input(service: llm_service.LLMService,
                       user_input: str, mode: str) -> int:
     '''Process user input based on the given flag and backend configuration.'''
+    cmds: list = []
     if mode == 'chat':
-        cmds = list(dict.fromkeys(service.get_shell_commands(user_input)))
-        return command_interaction_loop(cmds, service)
+        cmds = service.get_shell_commands(user_input)
     if isinstance(service, framework_api.Framework):
-        report: str = ''
         if mode == 'flow':
-            cmds = list(dict.fromkeys(service.flow(user_input, selected_plugins)))
-            return command_interaction_loop(cmds, service)
+            cmds = service.flow(user_input, selected_plugins)
         if mode == 'diagnose':
-            report = service.diagnose(user_input)
+            cmds = service.diagnose(user_input)
         if mode == 'tuning':
-            report = service.tuning(user_input)
-        if report:
-            return 0
-    return 1
+            cmds = service.tuning(user_input)
+    if cmds:
+        return command_interaction_loop(list(dict.fromkeys(cmds)), service)
+    return -1
+
+
+def edit_config():
+    console = Console()
+    with Live(console=console) as live:
+        live.update(
+            Panel(Markdown(config_to_markdown(), code_theme='github-dark'),
+                  border_style='gray50'))
+    while True:
+        selected_entry = interact.select_settings_entry()
+        if selected_entry == 'cancel':
+            return
+        if selected_entry == 'backend':
+            backend = interact.select_backend()
+            update_config(selected_entry, backend)
+        elif selected_entry == 'query_mode':
+            mode = interact.select_query_mode()
+            update_config(selected_entry, mode)
+        elif selected_entry in ('advanced_mode', 'debug_mode'):
+            update_config(
+                selected_entry,
+                interact.ask_boolean(
+                    i18n.interact_question_yes_or_no.format(
+                        question_body=CONFIG_ENTRY_NAME.get(selected_entry))))
+        else:
+            original_text: str = load_config().get(selected_entry, '')
+            new_text = ''
+            input_prompt = i18n.interact_question_input_text.format(
+                question_body=CONFIG_ENTRY_NAME.get(selected_entry))
+            stylized_input_prompt = Text('❯ ', style='#005f87 bold')\
+                .append(input_prompt, style='bold')
+            readline.set_startup_hook(lambda: readline.insert_text(original_text))
+            try:
+                new_text = console.input(stylized_input_prompt)
+            finally:
+                readline.set_startup_hook()
+                update_config(selected_entry, new_text)
 
 
 # pylint: disable=W0603
@@ -179,7 +216,7 @@ def main(user_input: Optional[str], config: dict) -> int:
             if not plugins:
                 print(i18n.main_service_framework_plugin_is_none)
                 return 1
-            selected_plugins = interact.select_plugins(plugins)
+            selected_plugins = [interact.select_one_plugin(plugins)]
     elif backend == 'spark':
         service = spark_api.Spark(
             app_id=config.get('spark_app_id'),

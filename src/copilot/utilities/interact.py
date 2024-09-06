@@ -2,8 +2,8 @@
 
 import questionary
 
-from copilot.backends.framework_api import PluginData
-from copilot.utilities import i18n
+from copilot.backends.framework_api import QUERY_MODE, PluginData
+from copilot.utilities import config_manager, i18n
 
 ACTIONS_SINGLE_CMD = [
     questionary.Choice(
@@ -98,6 +98,7 @@ def select_backend() -> str:
     return questionary.select(
         i18n.interact_question_select_backend,
         choices=BACKEND_CHOICES,
+        qmark='❯',
         use_shortcuts=True,
         style=CUSTOM_STYLE_FANCY,
     ).ask()
@@ -107,6 +108,7 @@ def select_action(has_multi_cmds: bool) -> str:
     return questionary.select(
         i18n.interact_question_select_action,
         choices=ACTIONS_MULTI_CMDS if has_multi_cmds else ACTIONS_SINGLE_CMD,
+        qmark='❯',
         use_shortcuts=True,
         style=CUSTOM_STYLE_FANCY
     ).ask()
@@ -116,6 +118,7 @@ def select_command(commands: list) -> str:
     return questionary.select(
         i18n.interact_question_select_cmd,
         choices=commands,
+        qmark='❯',
         style=CUSTOM_STYLE_FANCY
     ).ask()
 
@@ -124,6 +127,7 @@ def select_command_with_index(commands: list) -> int:
     command = questionary.select(
         i18n.interact_question_select_cmd,
         choices=commands,
+        qmark='❯',
         style=CUSTOM_STYLE_FANCY
     ).ask()
     return commands.index(command)
@@ -133,25 +137,56 @@ def select_multiple_commands(commands: list) -> list:
     return questionary.checkbox(
         i18n.interact_question_select_cmd,
         choices=commands,
+        qmark='❯',
         style=CUSTOM_STYLE_FANCY
     ).ask()
 
 
-def select_plugins(plugins: list[PluginData]) -> list:
-    return questionary.checkbox(
+def select_one_plugin(plugins: list[PluginData]) -> str:
+    return questionary.select(
         i18n.interact_question_select_plugin,
-        choices=get_plugin_choices(plugins),
-        validate=lambda a: (
-            True if len(a) > 0 else i18n.interact_select_plugins_valiidate
-        ),
+        choices=__get_plugin_choices(plugins),
+        qmark='❯',
         style=CUSTOM_STYLE_FANCY
     ).ask()
 
 
-def get_plugin_choices(plugins: list[PluginData]) -> list:
+def select_settings_entry() -> str:
+    return questionary.select(
+        i18n.interact_question_select_settings_entry,
+        choices=__get_settings_entry_choices(),
+        qmark='❯',
+        style=CUSTOM_STYLE_FANCY,
+    ).ask()
+
+
+def select_query_mode() -> str:
+    return questionary.select(
+        i18n.interact_question_select_query_mode,
+        choices=__get_query_mode_choices(),
+        qmark='❯',
+        style=CUSTOM_STYLE_FANCY,
+    ).ask()
+
+
+def ask_boolean(question: str) -> bool:
+    return questionary.confirm(question, default=False, style=CUSTOM_STYLE_FANCY).ask()
+
+
+def __get_plugin_choices(plugins: list[PluginData]) -> list:
     return [
         questionary.Choice(
             plugin.plugin_name,
             value=plugin.id
         ) for plugin in plugins
     ]
+
+
+def __get_settings_entry_choices() -> list:
+    choices = [questionary.Choice(name, item) for item, name in config_manager.CONFIG_ENTRY_NAME.items()]
+    choices.append(questionary.Choice(i18n.interact_cancel, value='cancel'))
+    return choices
+
+
+def __get_query_mode_choices() -> list:
+    return [questionary.Choice(name, item) for item, name in QUERY_MODE.items()]

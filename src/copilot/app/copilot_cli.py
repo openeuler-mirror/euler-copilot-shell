@@ -8,13 +8,12 @@ from typing import Optional
 
 import typer
 
-from copilot.app.copilot_app import main
+from copilot.app.copilot_app import edit_config, main
 from copilot.app.copilot_init import setup_copilot
-from copilot.backends.framework_api import QUERY_MODS
+from copilot.backends.framework_api import QUERY_MODE
 from copilot.utilities.config_manager import (
     CONFIG_PATH,
     DEFAULT_CONFIG,
-    edit_config,
     load_config,
     select_backend,
     select_query_mode,
@@ -56,24 +55,24 @@ def cli(
         help=cli_help_prompt_question),
     chat: bool = typer.Option(
         False, '--chat', '-c',
-        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODS["chat"]),
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE["chat"]),
         rich_help_panel=cli_help_panel_switch_mode
     ),
     flow: bool = typer.Option(
         False, '--flow', '-f',
-        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODS["flow"]),
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE["flow"]),
         rich_help_panel=cli_help_panel_switch_mode,
         hidden=(BACKEND != 'framework'),
     ),
     diagnose: bool = typer.Option(
         False, '--diagnose', '-d',
-        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODS["diagnose"]),
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE["diagnose"]),
         rich_help_panel=cli_help_panel_switch_mode,
         hidden=(BACKEND != 'framework')
     ),
     tuning: bool = typer.Option(
         False, '--tuning', '-t',
-        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODS["tuning"]),
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE["tuning"]),
         rich_help_panel=cli_help_panel_switch_mode,
         hidden=(BACKEND != 'framework')
     ),
@@ -125,7 +124,7 @@ def cli(
             if not question:
                 return 0
         else:
-            compatibility_notification(QUERY_MODS['flow'])
+            compatibility_notification(QUERY_MODE['flow'])
             return 1
     elif diagnose:
         if BACKEND == 'framework':
@@ -133,7 +132,7 @@ def cli(
             if not question:
                 return 0
         else:
-            compatibility_notification(QUERY_MODS['diagnose'])
+            compatibility_notification(QUERY_MODE['diagnose'])
             return 1
     elif tuning:
         if BACKEND == 'framework':
@@ -141,7 +140,7 @@ def cli(
             if not question:
                 return 0
         else:
-            compatibility_notification(QUERY_MODS['tuning'])
+            compatibility_notification(QUERY_MODE['tuning'])
             return 1
 
     if question:

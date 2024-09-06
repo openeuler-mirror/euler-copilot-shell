@@ -60,7 +60,7 @@ class Spark(LLMService):
         url = self._create_url()
         self.answer = ''
         spinner = Spinner('material')
-        with Live(console=self.console, vertical_overflow='visible') as live:
+        with Live(console=self.console) as live:
             live.update(spinner, refresh=True)
             try:
                 async with websockets.connect(url) as websocket:
