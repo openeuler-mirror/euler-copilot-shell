@@ -24,6 +24,7 @@ fi
 rm -f ~/rpmbuild/RPMS/"$(uname -m)"/eulercopilot-cli-*
 
 # Build the RPM package using rpmbuild
-rpmbuild --define "_tag .a$(date +%s)" --define "dist .oe2203sp3" -bb "$spec_file" --nodebuginfo
+rpmbuild --define "dist .oe2403" -bb "$spec_file" --nodebuginfo
+# rpmbuild --define "_tag .a$(date +%s)" --define "dist .oe2203sp3" -bb "$spec_file" --nodebuginfo
 # rpmbuild --define "_tag .beta3" --define "dist .oe2203sp3" -bb "$spec_file" --nodebuginfo
 # rpmbuild --define "dist .oe2203sp3" -bb "$spec_file" --nodebuginfo

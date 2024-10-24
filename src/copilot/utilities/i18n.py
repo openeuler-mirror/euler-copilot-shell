@@ -3,6 +3,7 @@
 from gettext import gettext as _
 
 BRAND_NAME = 'openEuler Copilot System'
+DOCS_URL = _('https://gitee.com/openeuler/euler-copilot-framework/blob/master/docs/user-guide/README.md')
 
 main_exit_prompt = _('输入 "exit" 或按下 Ctrl+C 结束对话')
 main_service_is_none = _('未正确配置 LLM 后端，请检查配置文件')
@@ -88,6 +89,10 @@ settings_config_entry_model_url = _('OpenAI 模型 URL')
 settings_config_entry_model_api_key = _('OpenAI 模型 API Key')
 settings_config_entry_model_name = _('OpenAI 模型名称')
 settings_config_interact_query_mode_disabled_explain = _('当前后端无法使用{mode}模式')
+settings_init_welcome_msg = _('欢迎使用 {brand_name} 智能体')
+settings_init_welcome_usage_guide = _('使用方法：输入问题，按下 Ctrl+O 提问')
+settings_init_welcome_help_hint = _('更多用法详见命令行帮助："copilot --help"')
+settings_init_welcome_docs_link = _('使用指南：{url}')
 settings_init_framework_api_key_notice_title = _('获取 {brand_name} 智能体 API Key')
 settings_init_framework_api_key_notice_content = _('请前往 {url}，点击右上角头像图标获取 API Key')
 

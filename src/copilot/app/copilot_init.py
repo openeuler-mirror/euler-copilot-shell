@@ -25,6 +25,11 @@ def setup_copilot():
     if not os.path.exists(config_manager.CONFIG_PATH):
         _init_config()
 
+    rprint(f'\n[bold]{i18n.settings_init_welcome_msg.format(brand_name=i18n.BRAND_NAME)}[/bold]\n')
+    rprint(i18n.settings_init_welcome_usage_guide + '\n')
+    rprint(i18n.settings_init_welcome_help_hint)
+    rprint(i18n.settings_init_welcome_docs_link.format(url=i18n.DOCS_URL) + '\n')
+
     config = config_manager.load_config()
     if config.get('backend') == 'spark':
         if config.get('spark_app_id') == '':

@@ -34,11 +34,11 @@ extensions = [Extension(f.replace("/", ".")[:-3], [f]) for f in cython_files]
 # 定义 setup() 参数
 setup(
     name='copilot',
-    version='1.2',
-    description='openEuler Copilot System CLI Tool',
+    version='1.2.1',
+    description='openEuler Copilot System Command Line Assistant',
     author='Hongyu Shi',
     author_email='shihongyu15@huawei.com',
-    url='https://gitee.com/openeuler-customization/euler-copilot-shell',
+    url='https://gitee.com/openeuler/euler-copilot-shell',
     py_modules=['copilot.__init__', 'copilot.__main__'],
     ext_modules=cythonize(
         extensions,

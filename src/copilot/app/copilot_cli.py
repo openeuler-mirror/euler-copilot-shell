@@ -94,7 +94,7 @@ def cli(
         hidden=(not ADVANCED_MODE)
     )
 ) -> int:
-    '''openEuler Copilot System CLI'''
+    '''openEuler Copilot System CLI\n\nPress Ctrl+O to ask a question'''
     if init:
         setup_copilot()
         return 0
