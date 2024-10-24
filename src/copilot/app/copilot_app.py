@@ -97,6 +97,8 @@ def command_interaction_loop(cmds: list, service: llm_service.LLMService) -> int
         if action in ('execute_all', 'execute_selected', 'execute'):
             exit_code: int = 0
             selected_cmds = get_selected_cmds(cmds, action)
+            if not selected_cmds:
+                return -1
             for cmd in selected_cmds:
                 exit_code = execute_shell_command(cmd)
                 if exit_code != 0:
@@ -156,7 +158,7 @@ def handle_user_input(service: llm_service.LLMService,
         if mode == 'tuning':
             cmds = service.tuning(user_input)
     if cmds:
-        return command_interaction_loop(list(dict.fromkeys(cmds)), service)
+        return command_interaction_loop(cmds, service)
     return -1
 
 
@@ -172,16 +174,15 @@ def edit_config():
             return
         if selected_entry == 'backend':
             backend = interact.select_backend()
-            update_config(selected_entry, backend)
+            if selected_entry != 'cancel':
+                update_config(selected_entry, backend)
         elif selected_entry == 'query_mode':
-            mode = interact.select_query_mode()
-            update_config(selected_entry, mode)
+            backend = load_config().get('backend', '')
+            update_config(selected_entry, interact.select_query_mode(backend))
         elif selected_entry in ('advanced_mode', 'debug_mode'):
-            update_config(
-                selected_entry,
-                interact.ask_boolean(
-                    i18n.interact_question_yes_or_no.format(
-                        question_body=CONFIG_ENTRY_NAME.get(selected_entry))))
+            input_prompt = i18n.interact_question_yes_or_no.format(
+                question_body=CONFIG_ENTRY_NAME.get(selected_entry))
+            update_config(selected_entry, interact.ask_boolean(input_prompt))
         else:
             original_text: str = load_config().get(selected_entry, '')
             new_text = ''
@@ -214,7 +215,7 @@ def main(user_input: Optional[str], config: dict) -> int:
         if mode == 'flow':  # get plugin list from current backend
             plugins: list[framework_api.PluginData] = service.get_plugins()
             if not plugins:
-                print(i18n.main_service_framework_plugin_is_none)
+                print(f'\033[1;31m{i18n.main_service_framework_plugin_is_none}\033[0m')
                 return 1
             selected_plugins = [interact.select_one_plugin(plugins)]
     elif backend == 'spark':
@@ -233,15 +234,15 @@ def main(user_input: Optional[str], config: dict) -> int:
         )
 
     if service is None:
-        print(i18n.main_service_is_none)
+        print(f'\033[1;31m{i18n.main_service_is_none}\033[0m')
         return 1
 
-    print(i18n.main_exit_prompt)
+    print(f'\033[33m{i18n.main_exit_prompt}\033[0m')
 
     try:
         while True:
             if user_input is None:
-                user_input = input('\033[35m>>>\033[0m ')
+                user_input = input('\033[35m❯\033[0m ')
             if user_input.lower().startswith('exit'):
                 return 0
             exit_code = handle_user_input(service, user_input, mode)
@@ -249,5 +250,7 @@ def main(user_input: Optional[str], config: dict) -> int:
                 return exit_code
             user_input = None  # Reset user_input for next iteration (only if continuing service)
     except KeyboardInterrupt:
+        if isinstance(service, framework_api.Framework):
+            service.stop()
         print()
         return 0

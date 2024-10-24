@@ -1,8 +1,10 @@
+%global debug_package %{nil}
+
 Name: eulercopilot-cli
 Version: 1.2
-Release: 1%{?_tag}%{?dist}
+Release: 2%{?_tag}%{?dist}
 Group: Applications/Utilities
-Summary: EulerCopilot Command Line Assistant
+Summary: openEuler Copilot System Command Line Assistant
 Source: %{name}-%{version}.tar.gz
 License: MulanPSL-2.0
 URL: https://www.openeuler.org/zh/
@@ -14,7 +16,7 @@ BuildRequires: python3-Cython gcc
 Requires: python3 jq hostname
 
 %description
-EulerCopilot Command Line Assistant
+openEuler Copilot System Command Line Assistant
 
 %prep
 %setup -q

@@ -10,10 +10,10 @@ import typer
 
 from copilot.app.copilot_app import edit_config, main
 from copilot.app.copilot_init import setup_copilot
-from copilot.backends.framework_api import QUERY_MODE
 from copilot.utilities.config_manager import (
     CONFIG_PATH,
     DEFAULT_CONFIG,
+    QUERY_MODE_NAME,
     load_config,
     select_backend,
     select_query_mode,
@@ -55,24 +55,24 @@ def cli(
         help=cli_help_prompt_question),
     chat: bool = typer.Option(
         False, '--chat', '-c',
-        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE["chat"]),
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE_NAME["chat"]),
         rich_help_panel=cli_help_panel_switch_mode
     ),
     flow: bool = typer.Option(
-        False, '--flow', '-f',
-        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE["flow"]),
+        False, '--plugin', '-p',
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE_NAME["flow"]),
         rich_help_panel=cli_help_panel_switch_mode,
         hidden=(BACKEND != 'framework'),
     ),
     diagnose: bool = typer.Option(
         False, '--diagnose', '-d',
-        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE["diagnose"]),
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE_NAME["diagnose"]),
         rich_help_panel=cli_help_panel_switch_mode,
         hidden=(BACKEND != 'framework')
     ),
     tuning: bool = typer.Option(
         False, '--tuning', '-t',
-        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE["tuning"]),
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE_NAME["tuning"]),
         rich_help_panel=cli_help_panel_switch_mode,
         hidden=(BACKEND != 'framework')
     ),
@@ -94,12 +94,12 @@ def cli(
         hidden=(not ADVANCED_MODE)
     )
 ) -> int:
-    '''EulerCopilot CLI'''
+    '''openEuler Copilot System CLI'''
     if init:
         setup_copilot()
         return 0
     if not CONFIG_INITIALIZED:
-        print(cli_notif_no_config)
+        print(f'\033[1;31m{cli_notif_no_config}\033[0m')
         return 1
     if backend:
         if ADVANCED_MODE:
@@ -111,7 +111,7 @@ def cli(
         return 0
 
     if sum(map(bool, [chat, flow, diagnose, tuning])) > 1:
-        print(cli_notif_select_one_mode)
+        print(f'\033[1;31m{cli_notif_select_one_mode}\033[0m')
         return 1
 
     if chat:
@@ -124,7 +124,7 @@ def cli(
             if not question:
                 return 0
         else:
-            compatibility_notification(QUERY_MODE['flow'])
+            compatibility_notification(QUERY_MODE_NAME['flow'])
             return 1
     elif diagnose:
         if BACKEND == 'framework':
@@ -132,7 +132,7 @@ def cli(
             if not question:
                 return 0
         else:
-            compatibility_notification(QUERY_MODE['diagnose'])
+            compatibility_notification(QUERY_MODE_NAME['diagnose'])
             return 1
     elif tuning:
         if BACKEND == 'framework':
@@ -140,7 +140,7 @@ def cli(
             if not question:
                 return 0
         else:
-            compatibility_notification(QUERY_MODE['tuning'])
+            compatibility_notification(QUERY_MODE_NAME['tuning'])
             return 1
 
     if question:
@@ -150,7 +150,8 @@ def cli(
 
 
 def compatibility_notification(mode: str):
-    print(cli_notif_compatibility.format(mode=mode, brand_name=BRAND_NAME))
+    print('\033[33m', cli_notif_compatibility.format(mode=mode, brand_name=BRAND_NAME),
+          '\033[0m', sep='')
 
 
 def entry_point() -> int:

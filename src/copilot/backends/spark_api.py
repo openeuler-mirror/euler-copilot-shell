@@ -93,7 +93,7 @@ class Spark(LLMService):
 
             except websockets.exceptions.InvalidStatusCode:
                 live.update(
-                    Text.from_ansi(backend_spark_websockets_exceptions_msg_title)\
+                    Text.from_ansi(f'\033[1;31m{backend_spark_websockets_exceptions_msg_title}\033[0m\n\n')\
                         .append(backend_spark_websockets_exceptions_msg_a)\
                         .append(backend_spark_websockets_exceptions_msg_b)\
                         .append(backend_spark_websockets_exceptions_msg_c.format(spark_url=self.spark_url)),

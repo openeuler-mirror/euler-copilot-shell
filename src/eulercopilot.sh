@@ -11,7 +11,7 @@ read_query_mode() {
     if [ "$query_mode" = "\"chat\"" ]; then
         echo "智能问答"
     elif [ "$query_mode" = "\"flow\"" ]; then
-        echo "智能工作流"
+        echo "智能插件"
     elif [ "$query_mode" = "\"diagnose\"" ]; then
         echo "智能诊断"
     elif [ "$query_mode" = "\"tuning\"" ]; then
@@ -90,10 +90,10 @@ run_copilot() {
         READLINE_LINE=""
         if [[ "$PS1" == *"\[\033[1;33m"* ]]; then
             revert_prompt
-            printf "\033[1;31m已关闭 EulerCopilot 提示符\033[0m\n"
+            printf "\033[1;31m已关闭 openEuler Copilot System 提示符\033[0m\n"
         else
             set_prompt
-            printf "\033[1;32m已开启 EulerCopilot 提示符\033[0m\n"
+            printf "\033[1;32m已开启 openEuler Copilot System 提示符\033[0m\n"
         fi
     fi
 }

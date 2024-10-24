@@ -25,6 +25,7 @@ from copilot.utilities.i18n import (
     backend_framework_response_ended_prematurely,
     backend_framework_stream_error,
     backend_framework_stream_sensitive,
+    backend_framework_stream_stop,
     backend_framework_stream_unknown,
     backend_framework_sugggestion,
     backend_general_request_failed,
@@ -32,20 +33,9 @@ from copilot.utilities.i18n import (
     prompt_framework_keyword_install,
     prompt_framework_markdown_format,
     prompt_framework_plugin_ip,
-    query_mode_chat,
-    query_mode_diagnose,
-    query_mode_flow,
-    query_mode_tuning,
 )
 from copilot.utilities.markdown_renderer import MarkdownRenderer
 from copilot.utilities.shell_script import write_shell_script
-
-QUERY_MODE = {
-    'chat': query_mode_chat,
-    'flow': query_mode_flow,
-    'diagnose': query_mode_diagnose,
-    'tuning': query_mode_tuning,
-}
 
 FRAMEWORK_LLM_STREAM_BAD_REQUEST_MSG = {
     401: backend_framework_request_unauthorized,
@@ -71,7 +61,7 @@ class Framework(LLMService):
         self.console = Console()
 
     def get_shell_commands(self, question: str) -> list:
-        query = self._add_framework_extra_prompt(self._gen_chat_prompt(question))
+        query = self._add_framework_extra_prompt(question)
         if prompt_framework_keyword_install in question.lower():
             query = self._add_framework_software_install_prompt(query)
         self._query_llm_service(query)
@@ -86,8 +76,9 @@ class Framework(LLMService):
     def update_session_id(self):
         headers = self._get_headers()
         try:
-            response = requests.get(
+            response = requests.post(
                 urljoin(self.endpoint, 'api/client/session'),
+                json={'session_id': self.session_id} if self.session_id else {},
                 headers=headers,
                 timeout=30
             )
@@ -157,6 +148,8 @@ class Framework(LLMService):
             if local_ip:
                 question = f'{prompt_framework_plugin_ip} {local_ip}，' + question
         self._query_llm_service(question, user_selected_plugins=['euler-copilot-rca'])
+        if self.commands:
+            return self.commands
         return self._extract_shell_code_blocks(self.content)
 
     def tuning(self, question: str) -> list:
@@ -166,7 +159,22 @@ class Framework(LLMService):
             if local_ip:
                 question = f'{prompt_framework_plugin_ip} {local_ip}，' + question
         self._query_llm_service(question, user_selected_plugins=['euler-copilot-tune'])
+        if self.commands:
+            return self.commands
         return self._extract_shell_code_blocks(self.content)
+
+    def stop(self):
+        headers = self._get_headers()
+        try:
+            response = requests.post(
+                urljoin(self.endpoint, 'api/client/stop'),
+                headers=headers,
+                timeout=30
+            )
+        except requests.exceptions.RequestException:
+            return
+        if response.status_code == 200:
+            self.console.print(backend_framework_stream_stop.format(brand_name=BRAND_NAME))
 
     # pylint: disable=W0221
     def _query_llm_service(
@@ -176,10 +184,13 @@ class Framework(LLMService):
         show_suggestion: bool = True
     ):
         if not user_selected_plugins:
-            user_selected_plugins = ['auto']
+            user_selected_plugins = []
         headers = self._get_headers()
+        self.update_session_id()
         data = {
-            'question': question, 
+            'session_id': self.session_id,
+            'question': question,
+            'language': 'zh',
             'conversation_id': self.conversation_id,
             'user_selected_plugins': user_selected_plugins
         }
@@ -282,16 +293,17 @@ class Framework(LLMService):
         # 获取插件返回数据
         plugin_tool_type = jcontent.get('type', '')
         if plugin_tool_type == 'extract':
-            data_str = jcontent.get('data', '')
-            if data_str:
-                try:
-                    data = json.loads(data_str)
-                except json.JSONDecodeError:
-                    return
+            data = jcontent.get('data', '')
+            if data:
+                if isinstance(data, str):
+                    try:
+                        data = json.loads(data)
+                    except json.JSONDecodeError:
+                        return
                 # 返回 Markdown 报告
                 output = data.get('output', '')
                 if output:
-                    self.content += output
+                    self.content = output
                 # 返回单行 Shell 命令
                 cmd = data.get('shell', '')
                 if cmd:

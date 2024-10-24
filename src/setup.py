@@ -35,7 +35,7 @@ extensions = [Extension(f.replace("/", ".")[:-3], [f]) for f in cython_files]
 setup(
     name='copilot',
     version='1.2',
-    description='EulerCopilot CLI Tool',
+    description='openEuler Copilot System CLI Tool',
     author='Hongyu Shi',
     author_email='shihongyu15@huawei.com',
     url='https://gitee.com/openeuler-customization/euler-copilot-shell',

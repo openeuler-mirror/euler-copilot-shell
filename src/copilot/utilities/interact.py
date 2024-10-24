@@ -1,8 +1,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
 
+from typing import Optional
+
 import questionary
 
-from copilot.backends.framework_api import QUERY_MODE, PluginData
+from copilot.backends.framework_api import PluginData
 from copilot.utilities import config_manager, i18n
 
 ACTIONS_SINGLE_CMD = [
@@ -160,10 +162,10 @@ def select_settings_entry() -> str:
     ).ask()
 
 
-def select_query_mode() -> str:
+def select_query_mode(backend: str) -> str:
     return questionary.select(
         i18n.interact_question_select_query_mode,
-        choices=__get_query_mode_choices(),
+        choices=__get_query_mode_choices(backend),
         qmark='❯',
         style=CUSTOM_STYLE_FANCY,
     ).ask()
@@ -188,5 +190,18 @@ def __get_settings_entry_choices() -> list:
     return choices
 
 
-def __get_query_mode_choices() -> list:
-    return [questionary.Choice(name, item) for item, name in QUERY_MODE.items()]
+def __get_query_mode_choices(backend: str) -> list:
+    def __disabled(name: str, item: str) -> Optional[str]:
+        return (
+            i18n.settings_config_interact_query_mode_disabled_explain.format(mode=name)
+            if backend != 'framework' and item != 'chat'
+            else None
+        )
+
+    return [
+        questionary.Choice(
+            name,
+            item,
+            disabled=__disabled(name, item)
+        ) for item, name in config_manager.QUERY_MODE_NAME.items()
+    ]

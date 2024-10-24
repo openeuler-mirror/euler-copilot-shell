@@ -29,7 +29,8 @@ class LLMService(ABC):
     def _extract_shell_code_blocks(self, markdown_text) -> list:
         pattern = r'```(bash|sh|shell)\n(.*?)(?=\n\s*```)'
         bash_blocks = re.findall(pattern, markdown_text, re.DOTALL | re.MULTILINE)
-        return '\n'.join([block[1].strip() for block in bash_blocks]).splitlines()
+        cmds = list(dict.fromkeys('\n'.join([block[1].strip() for block in bash_blocks]).splitlines()))
+        return [cmd for cmd in cmds if cmd and not cmd.startswith('#')]  # remove comments and empty lines
 
     def _get_context_length(self, context: list) -> int:
         length = 0

@@ -41,7 +41,7 @@ def create_cache_folder(spec_info, src_dir):
 def copy_files(src_dir, dst_dir):
     for dirpath, _, files in os.walk(src_dir):
         relative_path = os.path.relpath(dirpath, src_dir)
-        target_path = os.path.join(dst_dir, relative_path)
+        target_path = os.path.join(dst_dir, relative_path.strip(f'{os.curdir}{os.sep}'))
 
         if not os.path.exists(target_path):
             os.makedirs(target_path)
@@ -63,7 +63,7 @@ def delete_cache_folder(folder_path):
 
 
 if __name__ == "__main__":
-    SPEC_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "eulercopilot.spec"))
+    SPEC_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "eulercopilot-cli.spec"))
     SRC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 
     info = extract_spec_fields(SPEC_FILE)

@@ -2,11 +2,11 @@
 
 from gettext import gettext as _
 
-BRAND_NAME = 'EulerCopilot'
+BRAND_NAME = 'openEuler Copilot System'
 
-main_exit_prompt = _('\033[33m输入 "exit" 或按下 Ctrl+C 结束对话\033[0m')
-main_service_is_none = _('\033[1;31m未正确配置 LLM 后端，请检查配置文件\033[0m')
-main_service_framework_plugin_is_none = _('\033[1;31m获取插件失败或插件列表为空\n请联系管理员检查后端配置\033[0m')
+main_exit_prompt = _('输入 "exit" 或按下 Ctrl+C 结束对话')
+main_service_is_none = _('未正确配置 LLM 后端，请检查配置文件')
+main_service_framework_plugin_is_none = _('获取插件失败或插件列表为空\n请联系管理员检查后端配置')
 main_exec_builtin_cmd = _('不支持执行 Shell 内置命令 "{cmd_prefix}"，请复制后手动执行')
 main_exec_value_error = _('执行命令时出错：{error}')
 main_exec_not_found_error = _('命令不存在：{error}')
@@ -19,11 +19,11 @@ cli_help_prompt_edit_settings = _('编辑 copilot 设置')
 cli_help_prompt_select_backend = _('选择大语言模型后端')
 cli_help_panel_switch_mode = _('选择问答模式')
 cli_help_panel_advanced_options = _('高级选项')
-cli_notif_select_one_mode = _('\033[1;31m当前版本只能选择一种问答模式\033[0m')
-cli_notif_compatibility = _('\033[33m当前大模型后端不支持{mode}功能\033[0m\n\
-    \033[33m推荐使用 {brand_name} 智能体框架\033[0m')
-cli_notif_no_config = _('\033[1;31m请先初始化 copilot 设置\033[0m\n\
-    \033[33m请使用 "copilot --init" 命令初始化\033[0m')
+cli_notif_select_one_mode = _('当前版本只能选择一种问答模式')
+cli_notif_compatibility = _('当前大模型后端不支持{mode}功能\n\
+推荐使用 {brand_name} 智能体框架')
+cli_notif_no_config = _('请先初始化 copilot 设置\n\
+请使用 "copilot --init" 命令初始化')
 
 interact_action_explain = _('解释命令')
 interact_action_edit = _('编辑命令')
@@ -58,9 +58,10 @@ backend_framework_response_ended_prematurely = _('响应异常中止，请检查
 backend_framework_stream_error = _('{brand_name} 智能体遇到错误，请联系管理员定位问题')
 backend_framework_stream_unknown = _('{brand_name} 智能体返回了未知内容：\n```json\n{content}\n```')
 backend_framework_stream_sensitive = _('检测到违规信息，请重新提问')
+backend_framework_stream_stop = _('{brand_name} 智能体已停止生成内容')
 backend_framework_sugggestion = _('**你可以继续问** {sugggestion}')
 backend_spark_stream_error = _('请求错误: {code}\n{message}')
-backend_spark_websockets_exceptions_msg_title = _('\033[1;31m请求错误\033[0m\n\n')
+backend_spark_websockets_exceptions_msg_title = _('请求错误')
 backend_spark_websockets_exceptions_msg_a = _('请检查 appid 和 api_key 是否正确，或检查网络连接是否正常。\n')
 backend_spark_websockets_exceptions_msg_b = _('输入 "vi ~/.config/eulercopilot/config.json" 查看和编辑配置；\n')
 backend_spark_websockets_exceptions_msg_c = _('或尝试 ping {spark_url}')
@@ -86,9 +87,12 @@ settings_config_entry_framework_api_key = _('{brand_name} 智能体 API Key')
 settings_config_entry_model_url = _('OpenAI 模型 URL')
 settings_config_entry_model_api_key = _('OpenAI 模型 API Key')
 settings_config_entry_model_name = _('OpenAI 模型名称')
+settings_config_interact_query_mode_disabled_explain = _('当前后端无法使用{mode}模式')
+settings_init_framework_api_key_notice_title = _('获取 {brand_name} 智能体 API Key')
+settings_init_framework_api_key_notice_content = _('请前往 {url}，点击右上角头像图标获取 API Key')
 
 query_mode_chat = _('智能问答')
-query_mode_flow = _('智能工作流')
+query_mode_flow = _('智能插件')
 query_mode_diagnose = _('智能诊断')
 query_mode_tuning = _('智能调优')
 

@@ -3,7 +3,6 @@
 import json
 import os
 
-from copilot.backends.framework_api import QUERY_MODE
 from copilot.utilities import i18n, interact
 
 CONFIG_DIR = os.path.join(os.path.expanduser('~'), '.config/eulercopilot')
@@ -26,6 +25,19 @@ CONFIG_ENTRY_NAME = {
     'model_name': i18n.settings_config_entry_model_name
 }
 
+BACKEND_NAME = {
+    'framework': i18n.interact_backend_framework.format(brand_name=i18n.BRAND_NAME),
+    'spark': i18n.interact_backend_spark,
+    'openai': i18n.interact_backend_openai
+}
+
+QUERY_MODE_NAME = {
+    'chat': i18n.query_mode_chat,
+    'flow': i18n.query_mode_flow,
+    'diagnose': i18n.query_mode_diagnose,
+    'tuning': i18n.query_mode_tuning,
+}
+
 DEFAULT_CONFIG = {
     'backend': 'framework',
     'query_mode': 'chat',
@@ -36,7 +48,7 @@ DEFAULT_CONFIG = {
     'spark_api_secret': '',
     'spark_url': 'wss://spark-api.xf-yun.com/v3.5/chat',
     'spark_domain': 'generalv3.5',
-    'framework_url': '',
+    'framework_url': 'https://eulercopilot.gitee.com',
     'framework_api_key': '',
     'model_url': '',
     'model_api_key': '',
@@ -75,7 +87,7 @@ def update_config(key: str, value):
 
 
 def select_query_mode(mode: int):
-    modes = list(QUERY_MODE.keys())
+    modes = list(QUERY_MODE_NAME.keys())
     if mode < len(modes):
         update_config('query_mode', modes[mode])
 
@@ -89,9 +101,18 @@ def select_backend():
 def config_to_markdown() -> str:
     config = load_config()
     config_table = '\n'.join([
-        f'| {CONFIG_ENTRY_NAME.get(key)} | {value} |' for key, value in config.items()
+        f'| {CONFIG_ENTRY_NAME.get(key)} | {__get_config_item_display_name(key, value)} |'
+        for key, value in config.items()
     ])
-    return f'### {i18n.settings_markdown_title}\n\n\
-        | {i18n.settings_markdown_header_key} \
-        | {i18n.settings_markdown_header_value} |\n\
-        | ----------- | ----------- |\n{config_table}'
+    return f'# {i18n.settings_markdown_title}\n\
+| {i18n.settings_markdown_header_key} \
+| {i18n.settings_markdown_header_value} |\n\
+| ----------- | ----------- |\n{config_table}'
+
+
+def __get_config_item_display_name(key, value):
+    if key == 'backend':
+        return BACKEND_NAME.get(value, value)
+    if key == 'query_mode':
+        return QUERY_MODE_NAME.get(value, value)
+    return value
