@@ -1,0 +1,18 @@
+*venv/
+**/__pycache__/
+**/*.pyc
+
+# build
+**/build/
+**/dist/
+**/*.egg-info/
+**/*.so
+**/*.o
+
+.env
+
+# ide
+.idea
+
+# Cython
+*.c
