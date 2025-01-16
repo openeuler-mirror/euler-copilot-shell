@@ -10,12 +10,13 @@ from copilot.utilities.i18n import (
     prompt_general_root_false,
     prompt_general_root_true,
     prompt_general_system,
+    prompt_single_line_cmd,
 )
 
 
 class LLMService(ABC):
     @abstractmethod
-    def get_shell_commands(self, question: str) -> list:
+    def get_shell_commands(self, question: str, single_line_cmd: bool = False) -> list:
         pass
 
     def explain_shell_command(self, cmd: str):
@@ -48,6 +49,9 @@ class LLMService(ABC):
     def _gen_system_prompt(self) -> str:
         return prompt_general_system.format(
             os=get_os_info(), prompt_general_root=self._gen_sudo_prompt())
+
+    def _gen_shell_prompt(self, question: str) -> str:
+        return f'{question}\n\n{prompt_single_line_cmd}'
 
     def _gen_chat_prompt(self, question: str) -> str:
         return prompt_general_chat.format(question=question, os=get_os_info())

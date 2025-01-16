@@ -60,8 +60,11 @@ class Framework(LLMService):
         # 富文本显示
         self.console = Console()
 
-    def get_shell_commands(self, question: str) -> list:
-        query = self._add_framework_extra_prompt(question)
+    def get_shell_commands(self, question: str, single_line_cmd: bool = False) -> list:
+        if single_line_cmd:
+            query = self._gen_shell_prompt(question)
+        else:
+            query = self._add_framework_extra_prompt(question)
         if prompt_framework_keyword_install in question.lower():
             query = self._add_framework_software_install_prompt(query)
         self._query_llm_service(query)
@@ -73,7 +76,7 @@ class Framework(LLMService):
         query = self._gen_explain_cmd_prompt(cmd)
         self._query_llm_service(query, show_suggestion=False)
 
-    def update_session_id(self):
+    def update_session_id(self) -> bool:
         headers = self._get_headers()
         try:
             response = requests.post(
@@ -84,16 +87,17 @@ class Framework(LLMService):
             )
         except requests.exceptions.RequestException:
             self.console.print(backend_framework_request_exceptions.format(brand_name=BRAND_NAME))
-            return
+            return False
         if response.status_code == 401:
             self.console.print(backend_framework_auth_invalid_api_key.format(brand_name=BRAND_NAME))
-            return
+            return False
         if response.status_code != 200:
             self.console.print(backend_general_request_failed.format(code=response.status_code))
-            return
+            return False
         self.session_id = response.json().get('result', {}).get('session_id', '')
+        return True
 
-    def create_new_conversation(self):
+    def create_new_conversation(self) -> bool:
         headers = self._get_headers()
         try:
             response = requests.post(
@@ -103,14 +107,15 @@ class Framework(LLMService):
             )
         except requests.exceptions.RequestException:
             self.console.print(backend_framework_request_exceptions.format(brand_name=BRAND_NAME))
-            return
+            return False
         if response.status_code == 401:
             self.console.print(backend_framework_auth_invalid_api_key.format(brand_name=BRAND_NAME))
-            return
+            return False
         if response.status_code != 200:
             self.console.print(backend_general_request_failed.format(code=response.status_code))
-            return
+            return False
         self.conversation_id = response.json().get('result', {}).get('conversation_id', '')
+        return True
 
     def get_plugins(self) -> list:
         headers = self._get_headers()
@@ -323,13 +328,17 @@ class Framework(LLMService):
             )
 
     def _get_headers(self) -> dict:
-        return {
+        host = self.endpoint.strip('http://').strip('https://').strip('/')
+        headers = {
+            'Host': host,
             'Accept': '*/*',
             'Content-Type': 'application/json; charset=UTF-8',
             'Connection': 'keep-alive',
-            'Authorization': f'Bearer {self.api_key}',
-            'Cookie': f'ECSESSION={self.session_id};' if self.session_id else '',
+            'Authorization': f'Bearer {self.api_key}'
         }
+        if self.session_id:
+            headers['Cookie'] = f'ECSESSION={self.session_id};'
+        return headers
 
     def _reset_session_from_cookie(self, cookie: str) -> str:
         if not cookie:

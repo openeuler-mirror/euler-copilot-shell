@@ -45,8 +45,11 @@ class Spark(LLMService):
         # 富文本显示
         self.console = Console()
 
-    def get_shell_commands(self, question: str) -> list:
-        query = self._gen_chat_prompt(question)
+    def get_shell_commands(self, question: str, single_line_cmd: bool = False) -> list:
+        if single_line_cmd:
+            query = self._gen_shell_prompt(question)
+        else:
+            query = self._gen_chat_prompt(question)
         self._query_llm_service(query)
         return self._extract_shell_code_blocks(self.answer)
 

@@ -1,7 +1,7 @@
 # euler-copilot-shell
 
 #### Description
-A client application that enables developers to interact with the operating system using natural language.
+{**When you're done, you can delete the content in this README and update the file with details for others getting started with your repository**}
 
 #### Software Architecture
 Software architecture description

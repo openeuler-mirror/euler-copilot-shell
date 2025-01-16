@@ -29,6 +29,7 @@ def setup_copilot():
     rprint(i18n.settings_init_welcome_usage_guide + '\n')
     rprint(i18n.settings_init_welcome_help_hint)
     rprint(i18n.settings_init_welcome_docs_link.format(url=i18n.DOCS_URL) + '\n')
+    rprint(i18n.settings_init_welcome_alpha_warning.format(brand_name=i18n.BRAND_NAME) + '\n')
 
     config = config_manager.load_config()
     if config.get('backend') == 'spark':

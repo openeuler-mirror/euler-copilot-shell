@@ -2,7 +2,7 @@
 
 Name: eulercopilot-cli
 Version: 1.2.1
-Release: 4%{?_tag}%{?dist}
+Release: 6%{?_tag}%{?dist}
 Group: Applications/Utilities
 Summary: openEuler Copilot System Command Line Assistant
 Source: %{name}-%{version}.tar.gz

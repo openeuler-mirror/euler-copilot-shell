@@ -150,6 +150,8 @@ def handle_user_input(service: llm_service.LLMService,
     cmds: list = []
     if mode == 'chat':
         cmds = service.get_shell_commands(user_input)
+    if mode == 'shell':
+        cmds = service.get_shell_commands(user_input, single_line_cmd=True)
     if isinstance(service, framework_api.Framework):
         if mode == 'flow':
             cmds = service.flow(user_input, selected_plugins)
@@ -210,8 +212,12 @@ def main(user_input: Optional[str], config: dict) -> int:
             api_key=config.get('framework_api_key'),
             debug_mode=config.get('debug_mode', False)
         )
-        service.update_session_id()  # get "ECSESSION" cookie
-        service.create_new_conversation()  # get conversation_id from backend
+        update_session_success = service.update_session_id()  # get "ECSESSION" cookie
+        if not update_session_success:
+            return 1
+        create_conversation_success = service.create_new_conversation()  # get conversation_id from backend
+        if not create_conversation_success:
+            return 1
         if mode == 'flow':  # get plugin list from current backend
             plugins: list[framework_api.PluginData] = service.get_plugins()
             if not plugins:

@@ -24,6 +24,7 @@ from copilot.utilities.i18n import (
     cli_help_panel_switch_mode,
     cli_help_prompt_edit_settings,
     cli_help_prompt_init_settings,
+    cli_help_prompt_intro,
     cli_help_prompt_question,
     cli_help_prompt_select_backend,
     cli_help_prompt_switch_mode,
@@ -48,7 +49,7 @@ app = typer.Typer(
 )
 
 
-@app.command()
+@app.command(help=f'{BRAND_NAME} CLI\n\n{cli_help_prompt_intro}')
 def cli(
     question: Optional[str] = typer.Argument(
         None, show_default=False,
@@ -56,6 +57,11 @@ def cli(
     chat: bool = typer.Option(
         False, '--chat', '-c',
         help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE_NAME["chat"]),
+        rich_help_panel=cli_help_panel_switch_mode
+    ),
+    shell: bool = typer.Option(
+        False, '--shell', '-s',
+        help=cli_help_prompt_switch_mode.format(mode=QUERY_MODE_NAME["shell"]),
         rich_help_panel=cli_help_panel_switch_mode
     ),
     flow: bool = typer.Option(
@@ -94,7 +100,6 @@ def cli(
         hidden=(not ADVANCED_MODE)
     )
 ) -> int:
-    '''openEuler Copilot System CLI\n\nPress Ctrl+O to ask a question'''
     if init:
         setup_copilot()
         return 0
@@ -118,9 +123,13 @@ def cli(
         select_query_mode(0)
         if not question:
             return 0
+    elif shell:
+        select_query_mode(1)
+        if not question:
+            return 0
     elif flow:
         if BACKEND == 'framework':
-            select_query_mode(1)
+            select_query_mode(2)
             if not question:
                 return 0
         else:
@@ -128,7 +137,7 @@ def cli(
             return 1
     elif diagnose:
         if BACKEND == 'framework':
-            select_query_mode(2)
+            select_query_mode(3)
             if not question:
                 return 0
         else:
@@ -136,7 +145,7 @@ def cli(
             return 1
     elif tuning:
         if BACKEND == 'framework':
-            select_query_mode(3)
+            select_query_mode(4)
             if not question:
                 return 0
         else:

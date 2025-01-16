@@ -2,6 +2,10 @@
 
 # Check if ~/rpmbuild directory exists; if not, run rpmdev-setuptree
 if [ ! -d ~/rpmbuild ]; then
+    if ! command -v rpmdev-setuptree &> /dev/null; then
+        echo "Command \"rpmdevtools\" not found: dnf install rpmdevtools"
+        exit 1
+    fi
     rpmdev-setuptree
 fi
 
@@ -23,8 +27,43 @@ fi
 # Remove old builds
 rm -f ~/rpmbuild/RPMS/"$(uname -m)"/eulercopilot-cli-*
 
+# Read command-line arguments
+use_release=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -t|--tag)
+            custom_tag="$2"
+            shift 2
+            ;;
+        -r|--release)
+            use_release=true
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+# Get dist tag
+dist=$(python3 -c '
+import re
+with open("/etc/openEuler-release", "r") as f:
+    release = f.readline().strip()
+version = re.search(r"(\d+\.\d+)", release).group(1)
+major, minor = version.split(".")
+sp = re.search(r"SP(\d+)", release)
+sp_str = f"sp{sp.group(1)}" if sp else ""
+print(f"oe{major}{minor}{sp_str}")
+')
+
+# Prepare `rpmbuild` command
+if [ "$use_release" = true ]; then
+    rpmbuild_cmd="rpmbuild --define \"dist .${dist}\" -bb \"$spec_file\" --nodebuginfo"
+else
+    tag=${custom_tag:-"a$(date +%s)"}
+    rpmbuild_cmd="rpmbuild --define \"_tag .${tag}\" --define \"dist .${dist}\" -bb \"$spec_file\" --nodebuginfo"
+fi
+
 # Build the RPM package using rpmbuild
-rpmbuild --define "dist .oe2403" -bb "$spec_file" --nodebuginfo
-# rpmbuild --define "_tag .a$(date +%s)" --define "dist .oe2203sp3" -bb "$spec_file" --nodebuginfo
-# rpmbuild --define "_tag .beta3" --define "dist .oe2203sp3" -bb "$spec_file" --nodebuginfo
-# rpmbuild --define "dist .oe2203sp3" -bb "$spec_file" --nodebuginfo
+eval "$rpmbuild_cmd"

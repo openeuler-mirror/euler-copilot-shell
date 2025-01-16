@@ -12,7 +12,9 @@ main_exec_builtin_cmd = _('不支持执行 Shell 内置命令 "{cmd_prefix}"，�
 main_exec_value_error = _('执行命令时出错：{error}')
 main_exec_not_found_error = _('命令不存在：{error}')
 main_exec_cmd_failed_with_exit_code = _('命令 "{cmd}" 执行中止，退出码：{exit_code}')
+main_content_panel_alpha_warning = _('当前为内测版本，请仔细甄别 AI 回答的内容')
 
+cli_help_prompt_intro = _('输入问题后，按下 Ctrl+O 提问 (字母 O)')
 cli_help_prompt_question = _('通过自然语言提问')
 cli_help_prompt_switch_mode = _('切换到{mode}模式')
 cli_help_prompt_init_settings = _('初始化 copilot 设置')
@@ -21,10 +23,8 @@ cli_help_prompt_select_backend = _('选择大语言模型后端')
 cli_help_panel_switch_mode = _('选择问答模式')
 cli_help_panel_advanced_options = _('高级选项')
 cli_notif_select_one_mode = _('当前版本只能选择一种问答模式')
-cli_notif_compatibility = _('当前大模型后端不支持{mode}功能\n\
-推荐使用 {brand_name} 智能体框架')
-cli_notif_no_config = _('请先初始化 copilot 设置\n\
-请使用 "copilot --init" 命令初始化')
+cli_notif_compatibility = _('当前大模型后端不支持{mode}功能\n推荐使用 {brand_name} 智能体框架')
+cli_notif_no_config = _('请先初始化 copilot 设置\n请使用 "copilot --init" 命令初始化')
 
 interact_action_explain = _('解释命令')
 interact_action_edit = _('编辑命令')
@@ -49,10 +49,11 @@ interact_question_select_plugin = _('请选择插件：')
 interact_select_plugins_valiidate = _('请选择至少一个插件')
 
 backend_general_request_failed = _('请求失败: {code}')
-backend_framework_auth_invalid_api_key = _('{brand_name} 智能体 API 密钥无效，请检查配置文件')
+backend_check_config_msg = _('输入 "vi ~/.config/eulercopilot/config.json" 查看和编辑配置')
+backend_framework_auth_invalid_api_key = _('{brand_name} 智能体 API 密钥无效，请检查配置文件\n\n'+ backend_check_config_msg + '\n')
 backend_framework_request_connection_error = _('{brand_name} 智能体连接失败，请检查网络连接')
 backend_framework_request_timeout = _('{brand_name} 智能体请求超时，请检查网络连接')
-backend_framework_request_exceptions = _('{brand_name} 智能体请求异常，请检查网络连接')
+backend_framework_request_exceptions = _('{brand_name} 智能体请求异常，请检查网络连接\n\n' + backend_check_config_msg + '\n')
 backend_framework_request_unauthorized = _('当前会话已过期，请退出后重试')
 backend_framework_request_too_many_requests = _('请求过于频繁，请稍后再试')
 backend_framework_response_ended_prematurely = _('响应异常中止，请检查网络连接')
@@ -64,7 +65,7 @@ backend_framework_sugggestion = _('**你可以继续问** {sugggestion}')
 backend_spark_stream_error = _('请求错误: {code}\n{message}')
 backend_spark_websockets_exceptions_msg_title = _('请求错误')
 backend_spark_websockets_exceptions_msg_a = _('请检查 appid 和 api_key 是否正确，或检查网络连接是否正常。\n')
-backend_spark_websockets_exceptions_msg_b = _('输入 "vi ~/.config/eulercopilot/config.json" 查看和编辑配置；\n')
+backend_spark_websockets_exceptions_msg_b = _(backend_check_config_msg + '；\n')
 backend_spark_websockets_exceptions_msg_c = _('或尝试 ping {spark_url}')
 backend_spark_network_error = _('访问大模型失败，请检查网络连接')
 backend_openai_request_connection_error = _('连接大模型失败')
@@ -90,13 +91,22 @@ settings_config_entry_model_api_key = _('OpenAI 模型 API Key')
 settings_config_entry_model_name = _('OpenAI 模型名称')
 settings_config_interact_query_mode_disabled_explain = _('当前后端无法使用{mode}模式')
 settings_init_welcome_msg = _('欢迎使用 {brand_name} 智能体')
-settings_init_welcome_usage_guide = _('使用方法：输入问题，按下 Ctrl+O 提问')
+settings_init_welcome_usage_guide = _('使用方法：输入问题，按下 Ctrl+O (字母 O) 提问')
 settings_init_welcome_help_hint = _('更多用法详见命令行帮助："copilot --help"')
 settings_init_welcome_docs_link = _('使用指南：{url}')
+settings_init_welcome_alpha_warning = _('{brand_name}（内测版）旨在让内测用户提前体验 \
+openEuler 的智能化能力，帮助发现和修复版本质量、可用性及易用性问题，共同将版本做得更加完善。\
+如果您发现任何问题（包括软件设计、软件功能、不合适的问答对等），欢迎您反馈您的宝贵意见！\n\n\
+[bold]本服务仅限于内测用户学习研究、内部测试目的使用[/bold]。您不得将本服务用于生产环境或任何其他商业目的，\
+否则您自行承担由此造成的所有后果和责任。\n\n\
+内测期间，除正常反馈问题外，应遵守内测用户保密规则：禁止在任何地方传播包括但不限于系统界面、\
+功能点等参与内测得知的有关本服务的各种非公开信息。\n\n\
+[bold]以上规则需严格遵守，如有违反，我们有权撤销您的内测资格，情节严重造成恶劣影响或损失者，我们将保留追究其责任的权利。[/bold]')
 settings_init_framework_api_key_notice_title = _('获取 {brand_name} 智能体 API Key')
 settings_init_framework_api_key_notice_content = _('请前往 {url}，点击右上角头像图标获取 API Key')
 
 query_mode_chat = _('智能问答')
+query_mode_shell = _('智能 Shell')
 query_mode_flow = _('智能插件')
 query_mode_diagnose = _('智能诊断')
 query_mode_tuning = _('智能调优')
@@ -152,6 +162,10 @@ prompt_general_explain_cmd = _('''```bash
 
 要求：
 先在代码块中打印一次上述命令，再有条理地解释命令中的主要步骤
+''')
+prompt_single_line_cmd = _('''要求：
++ 请用单行 Shell 命令回答；
++ 命令请放在代码块中，并标明代码的语言。
 ''')
 prompt_framework_markdown_format = _('''格式要求：
 + 你的回答中的代码块和表格都必须用 Markdown 呈现；

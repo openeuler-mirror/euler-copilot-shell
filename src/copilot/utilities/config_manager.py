@@ -33,6 +33,7 @@ BACKEND_NAME = {
 
 QUERY_MODE_NAME = {
     'chat': i18n.query_mode_chat,
+    'shell': i18n.query_mode_shell,
     'flow': i18n.query_mode_flow,
     'diagnose': i18n.query_mode_diagnose,
     'tuning': i18n.query_mode_tuning,
