@@ -31,9 +31,16 @@ class TUIApplication:
 
     def run(self) -> None:
         """运行 TUI 应用"""
+        palette = [
+            ("header", "white", "dark red"),
+            ("footer", "light gray", "black"),
+            ("input", "light green", "black"),
+            ("output", "default", "default"),
+        ]
         self.frame.focus_position = "footer"  # 设置输入框为焦点
         self.loop = urwid.MainLoop(
             self.frame,
+            palette=palette,
             unhandled_input=self.handle_input,
             event_loop=AsyncioEventLoop(),
             handle_mouse=False,  # 禁用 Urwid 的鼠标事件捕获
@@ -124,7 +131,7 @@ class TUIApplication:
             settings_page,
             self.frame,
             align="center",
-            width=("relative", 75),
+            width=("relative", 60),
             valign="middle",
             height=("relative", 75),
         )

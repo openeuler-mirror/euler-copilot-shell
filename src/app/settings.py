@@ -53,7 +53,7 @@ class SettingsPage(urwid.WidgetWrap):
             self.model_btn.set_label("模型: " + self.selected_model)
             urwid.connect_signal(self.model_btn, "click", self.select_model)
         else:
-            self.model_btn.set_label("")
+            self.model_btn.set_label("暂无可用模型")
 
     def select_model(self, _button: urwid.Button) -> None:
         """点击模型按钮循环切换模型"""
@@ -81,34 +81,52 @@ class SettingsPage(urwid.WidgetWrap):
 
     def _build_ui(self) -> None:
         """构建或重建页面控件"""
-        body_widgets = [self.backend_btn]
-        if self.backend == "openai":
-            self.base_url_edit = urwid.Edit("Base URL: ", self.config_manager.get_base_url())
+        body_widgets: list[urwid.Widget] = [urwid.Padding(self.backend_btn, left=2, right=2)]
+        self.base_url_edit = urwid.Edit(
+            "Base URL: ",
+            self.config_manager.get_base_url()
+            if self.backend == Backend.OPENAI
+            else self.config_manager.get_eulercopilot_url(),
+        )
+        self.api_key_edit = urwid.Edit(
+            "API Key: ",
+            self.config_manager.get_api_key()
+            if self.backend == Backend.OPENAI
+            else self.config_manager.get_eulercopilot_key(),
+        )
+        body_widgets.extend([
+            urwid.Divider(),
+            urwid.Divider("-"),
+            urwid.Divider(),
+            urwid.Padding(self.base_url_edit, left=2, right=2),
+            urwid.Divider(),
+            urwid.Padding(self.api_key_edit, left=2, right=2),
+        ])
+        if self.backend == Backend.OPENAI:
             self.model_btn = urwid.Button("模型: " + self.config_manager.get_model(), on_press=self.select_model)
-            self.api_key_edit = urwid.Edit("API Key: ", self.config_manager.get_api_key())
-            body_widgets = [
-                self.backend_btn,
-                self.base_url_edit,
-                urwid.Text("模型:"),
-                self.model_btn,
-                self.api_key_edit,
-            ]
+            body_widgets.extend([
+                urwid.Divider(),
+                urwid.Divider(),
+                urwid.Padding(urwid.Text("模型:"), left=2, right=2),
+                urwid.Divider(),
+                urwid.Padding(self.model_btn, left=2, right=2),
+            ])
             # 异步加载所有模型
             self.models = []
             self.selected_model = self.config_manager.get_model()
             self.load_models_task = asyncio.ensure_future(self.load_models())
-        else:  # eulercopilot
-            self.base_url_edit = urwid.Edit("Base URL: ", self.config_manager.get_eulercopilot_url())
-            self.api_key_edit = urwid.Edit("API Key: ", self.config_manager.get_eulercopilot_key())
-            body_widgets = [
-                self.backend_btn,
-                self.base_url_edit,
-                self.api_key_edit,
-            ]
         self.save_btn = urwid.Button("保存", self.save_settings)
         self.cancel_btn = urwid.Button("取消", self.close)
-        body_widgets.append(urwid.Columns([self.save_btn, self.cancel_btn], dividechars=2))
+        body_widgets.extend([
+            urwid.Divider(),
+            urwid.Divider("-"),
+            urwid.Divider(),
+            urwid.Columns([
+                urwid.Padding(self.save_btn, left=2, right=2),
+                urwid.Padding(self.cancel_btn, left=2, right=2),
+            ], dividechars=8),
+        ])
         pile = urwid.Pile(body_widgets)
-        fill = urwid.Filler(pile)
+        fill = urwid.Filler(pile, valign="top", top=1, bottom=1)
         self.box = urwid.LineBox(fill, title="设置")
         self._w = self.box
