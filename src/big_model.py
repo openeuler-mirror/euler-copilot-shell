@@ -14,7 +14,7 @@ def validate_url(url: str) -> bool:
     return re.match(r"^https?://", url) is not None
 
 
-class BigModelClient:
+class OpenAIClient:
     """大模型客户端"""
 
     def __init__(self, base_url: str, model: str, api_key: str = "") -> None:
@@ -43,3 +43,11 @@ class BigModelClient:
             content = chunk.choices[0].delta.content
             if content:
                 yield content
+
+    async def get_available_models(self) -> list[str]:
+        """获取当前 LLM 服务中可用的模型，返回名称列表
+
+        调用 LLM 服务的模型列表接口，并解析返回结果提取模型名称。
+        """
+        models_response = await self.client.models.list()
+        return [model.id async for model in models_response]

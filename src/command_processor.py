@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from collections.abc import AsyncGenerator
 
-from big_model import BigModelClient
+from big_model import OpenAIClient
 
 # 定义危险命令黑名单
 BLACKLIST = ["rm", "sudo", "shutdown", "reboot", "mkfs"]
@@ -31,7 +31,7 @@ def execute_command(command: str) -> tuple[bool, str]:
     except Exception as e:
         return False, str(e)
 
-async def process_command(command: str, big_model_client: BigModelClient) -> AsyncGenerator[str, None]:
+async def process_command(command: str, big_model_client: OpenAIClient) -> AsyncGenerator[str, None]:
     """处理用户输入的命令
 
     1. 检查 PATH 中是否存在用户输入的命令（取输入字符串的第一个单词）；

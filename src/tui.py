@@ -6,7 +6,7 @@ from typing import Optional, Union
 import urwid
 from urwid import AsyncioEventLoop
 
-from big_model import BigModelClient
+from big_model import OpenAIClient
 from command_processor import process_command
 
 
@@ -22,7 +22,7 @@ class TUIApplication:
         # frame 的 body 使用输出的 ListBox
         self.frame = urwid.Frame(header=None, body=self.output_listbox, footer=self.footer)
         # 初始化大模型客户端，请根据实际接口地址和密钥进行配置
-        self.big_model_client = BigModelClient(
+        self.big_model_client = OpenAIClient(
             base_url="http://127.0.0.1:1234/v1",
             model="qwen2.5-14b-instruct-1m",
             api_key="lm-studio",
