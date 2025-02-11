@@ -87,10 +87,8 @@ class TUIApplication:
         """显示退出确认对话框"""
         if not isinstance(self.loop, urwid.MainLoop):
             return
-        dialog_text = urwid.Text(self.get_exit_dialog_text(), align="center")
-        filler = urwid.Filler(dialog_text, valign="middle")
         overlay = urwid.Overlay(
-            filler,
+            urwid.Filler(urwid.Text(self.get_exit_dialog_text(), align="center"), valign="middle"),
             self.frame,
             align="center",
             width=("relative", 50),
@@ -103,29 +101,18 @@ class TUIApplication:
 
     def handle_exit_dialog_input(self, key: Union[str, tuple]) -> None:
         """处理退出对话框中的键盘输入"""
-        if not isinstance(self.loop, urwid.MainLoop):
-            return
         if key in ("left", "right"):
             if key == "left":
                 self.exit_dialog_selection = max(self.exit_dialog_selection - 1, 0)
             else:
                 self.exit_dialog_selection = min(self.exit_dialog_selection + 1, 1)
-            # 更新文本
-            if self.exit_dialog and isinstance(self.exit_dialog.top_w, urwid.Filler):
-                text_widget = self.exit_dialog.top_w.original_widget
-                if isinstance(text_widget, urwid.Text):
-                    text_widget.set_text(self.get_exit_dialog_text())
-            self.loop.draw_screen()
+            self._refresh_exit_dialog()
         elif key == "enter":
             if self.exit_dialog_selection == 1:
                 raise urwid.ExitMainLoop
-            self.loop.widget = self.frame
-            self.exit_dialog = None
-            self.loop.draw_screen()
-        elif key in ("esc",):
-            self.loop.widget = self.frame
-            self.exit_dialog = None
-            self.loop.draw_screen()
+            self._restore_main_widget()
+        elif key == "esc":
+            self._restore_main_widget()
 
     def handle_input(self, key: Union[str, tuple[str, int, int, int]]) -> None:
         """处理输入事件"""
@@ -176,3 +163,21 @@ class TUIApplication:
                 first_chunk = False
             else:
                 self.append_output(output, streaming=True)
+
+    def _refresh_exit_dialog(self) -> None:
+        """刷新退出对话框中的文本并重绘屏幕"""
+        if not isinstance(self.loop, urwid.MainLoop):
+            return
+        if self.exit_dialog and isinstance(self.exit_dialog.top_w, urwid.Filler):
+            text_widget = self.exit_dialog.top_w.original_widget
+            if isinstance(text_widget, urwid.Text):
+                text_widget.set_text(self.get_exit_dialog_text())
+        self.loop.draw_screen()
+
+    def _restore_main_widget(self) -> None:
+        """恢复主界面并重绘屏幕"""
+        if not isinstance(self.loop, urwid.MainLoop):
+            return
+        self.loop.widget = self.frame
+        self.exit_dialog = None
+        self.loop.draw_screen()
