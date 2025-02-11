@@ -6,8 +6,10 @@ from typing import Optional, Union
 import urwid
 from urwid import AsyncioEventLoop
 
-from big_model import OpenAIClient
-from command_processor import process_command
+from app.settings import SettingsPage
+from backend.openai import OpenAIClient
+from config import ConfigManager
+from tool.command_processor import process_command
 
 
 class TUIApplication:
@@ -21,12 +23,7 @@ class TUIApplication:
         self.footer = urwid.Padding(self.input_edit)
         # frame 的 body 使用输出的 ListBox
         self.frame = urwid.Frame(header=None, body=self.output_listbox, footer=self.footer)
-        # 初始化大模型客户端，请根据实际接口地址和密钥进行配置
-        self.big_model_client = OpenAIClient(
-            base_url="http://127.0.0.1:1234/v1",
-            model="qwen2.5-14b-instruct-1m",
-            api_key="lm-studio",
-        )
+        self.config_manager = ConfigManager()
         self.loop: Optional[urwid.MainLoop] = None
         # 退出确认对话框
         self.exit_dialog: Optional[urwid.Overlay] = None
@@ -114,6 +111,26 @@ class TUIApplication:
         elif key == "esc":
             self._restore_main_widget()
 
+    def show_settings_page(self) -> None:
+        """显示设置页面"""
+        if not isinstance(self.loop, urwid.MainLoop):
+            return
+        settings_page = SettingsPage(
+            self.config_manager,
+            self._get_llm_client(),
+            self._restore_main_widget,
+        )
+        overlay = urwid.Overlay(
+            settings_page,
+            self.frame,
+            align="center",
+            width=("relative", 75),
+            valign="middle",
+            height=("relative", 75),
+        )
+        self.loop.widget = overlay
+        self.loop.draw_screen()
+
     def handle_input(self, key: Union[str, tuple[str, int, int, int]]) -> None:
         """处理输入事件"""
         # 主界面不存在，直接返回
@@ -132,8 +149,14 @@ class TUIApplication:
             size = self.loop.screen.get_cols_rows()  # 获取屏幕尺寸 (cols, rows)
             self.output_listbox.keypress(size, key)
         elif key == "esc":
-            self.exit_dialog_selection = 0  # 重置为默认选项【取消】
-            self.show_exit_dialog()
+            # 如果当前不在主页，则直接恢复主页
+            if self.loop.widget is not self.frame:
+                self._restore_main_widget()
+            else:
+                self.exit_dialog_selection = 0  # 重置为默认选项【取消】
+                self.show_exit_dialog()
+        elif key == "ctrl a":
+            self.show_settings_page()
 
     def _toggle_focus(self) -> None:
         """切换焦点"""
@@ -157,12 +180,20 @@ class TUIApplication:
     async def _process_command(self, user_input: str) -> None:
         """处理命令"""
         first_chunk = True
-        async for output in process_command(user_input, self.big_model_client):
+        async for output in process_command(user_input, self._get_llm_client()):
             if first_chunk:
                 self.append_output(output, streaming=False)
                 first_chunk = False
             else:
                 self.append_output(output, streaming=True)
+
+    def _get_llm_client(self) -> OpenAIClient:
+        """根据当前设置动态构造大模型客户端"""
+        return OpenAIClient(
+            base_url=self.config_manager.get_base_url(),
+            model=self.config_manager.get_model(),
+            api_key=self.config_manager.get_api_key(),
+        )
 
     def _refresh_exit_dialog(self) -> None:
         """刷新退出对话框中的文本并重绘屏幕"""

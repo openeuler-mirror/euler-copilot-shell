@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from collections.abc import AsyncGenerator
 
-from big_model import OpenAIClient
+from backend.openai import OpenAIClient
 
 # 定义危险命令黑名单
 BLACKLIST = ["rm", "sudo", "shutdown", "reboot", "mkfs"]
@@ -31,7 +31,7 @@ def execute_command(command: str) -> tuple[bool, str]:
     except Exception as e:
         return False, str(e)
 
-async def process_command(command: str, big_model_client: OpenAIClient) -> AsyncGenerator[str, None]:
+async def process_command(command: str, llm_client: OpenAIClient) -> AsyncGenerator[str, None]:
     """处理用户输入的命令
 
     1. 检查 PATH 中是否存在用户输入的命令（取输入字符串的第一个单词）；
@@ -54,9 +54,9 @@ async def process_command(command: str, big_model_client: OpenAIClient) -> Async
                 f"命令 '{command}' 执行失败，错误信息如下：\n{output}\n"
                 "请帮忙分析原因并提供解决建议。"
             )
-            async for suggestion in big_model_client.generate_command_suggestion(query):
+            async for suggestion in llm_client.get_llm_response(query):
                 yield suggestion
     else:
         # 不是已安装的命令，直接询问大模型
-        async for suggestion in big_model_client.generate_command_suggestion(command):
+        async for suggestion in llm_client.get_llm_response(command):
             yield suggestion
