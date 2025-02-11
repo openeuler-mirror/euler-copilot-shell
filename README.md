@@ -13,13 +13,24 @@ This project is a terminal user interface (TUI) application built using Urwid. I
 
 ```text
 smart-shell/
-├── src
-│   ├── main.py            # Entry point of the TUI application
-│   ├── tui.py             # TUI layout and widget definitions
-│   ├── command_processor.py # Command validation and execution logic
-│   └── big_model.py       # Logic for interacting with the big model API
-├── requirements.txt       # Project dependencies
-└── README.md              # Project documentation
+├── README.md                     # Project documentation
+├── requirements.txt              # Project dependencies
+└── src
+    ├── app
+    │   ├── __init__.py
+    │   ├── settings.py
+    │   └── tui.py                # TUI layout and widget definitions
+    ├── backend
+    │   ├── __init__.py
+    │   └── openai.py             # Logic for interacting with the OpenAI API
+    ├── config
+    │   ├── __init__.py
+    │   ├── manager.py
+    │   └── model.py
+    ├── main.py                   # Entry point of the TUI application
+    └── tool
+        ├── __init__.py
+        └── command_processor.py  # Command validation and execution logic
 ```
 
 ## Setup Instructions
@@ -47,9 +58,9 @@ python src/main.py
 
 Once the application is running, you can enter commands directly into the input field. If a command is invalid or cannot be executed, the application will provide suggestions based on your input.
 
-## Big Model Integration
+## LLM Service Integration
 
-The application utilizes a third-party big model to enhance user experience by providing command suggestions. The integration is handled in the `big_model.py` file, which communicates with the big model API to retrieve suggestions based on user input.
+The application utilizes a third-party LLM to enhance user experience by providing command suggestions. The integration is handled in the `backend/openai.py` file, which communicates with the OpenAI-compatible API to retrieve suggestions based on user input.
 
 ## Contributing
 
@@ -57,4 +68,4 @@ Contributions are welcome! Please feel free to submit a pull request or open an 
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for more details.
+This project is licensed under the MulanPSL-2.0 License. See the LICENSE file for more details.
