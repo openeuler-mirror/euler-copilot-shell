@@ -24,7 +24,7 @@ class TUIApplication:
         # 初始化大模型客户端，请根据实际接口地址和密钥进行配置
         self.big_model_client = BigModelClient(
             base_url="http://127.0.0.1:1234/v1",
-            model="deepseek-r1-distill-qwen-32b-mlx",
+            model="qwen2.5-14b-instruct-1m",
             api_key="lm-studio",
         )
         self.loop: Optional[urwid.MainLoop] = None
@@ -45,26 +45,30 @@ class TUIApplication:
 
     def append_output(self, text: str, *, streaming: bool = False) -> None:
         """追加输出文本"""
-        if streaming and self.output_walker:
+        if streaming and self.output_walker and isinstance(self.output_walker[-1], urwid.Text):
             last_widget = self.output_walker[-1]
-            if isinstance(last_widget, urwid.Text):
-                if isinstance(last_widget.text, (bytes, bytearray)):
-                    last_text: str = last_widget.text.decode()
-                elif isinstance(last_widget.text, memoryview):
-                    last_text: str = last_widget.text.tobytes().decode()
-                else:
-                    last_text: str = str(last_widget.text)
-                last_widget.set_text(last_text + text)
+            combined = last_widget.text + text
+            if "\n" in combined:
+                # 对包含换行的情况，更新最后一个 widget 的第一行，并为后续行添加新的 widget
+                # 拆分所有行，如果最后以换行结尾则补一个空字符串作为新行
+                lines = combined.splitlines()
+                if combined.endswith("\n"):
+                    lines.append("")
+                last_widget.set_text(lines[0])
+                for line in lines[1:]:
+                    self.output_walker.append(urwid.Text(line, wrap="any"))
             else:
-                self.output_walker.append(urwid.Text(text))
+                # 否则继续合并到当前 widget 内
+                last_widget.set_text(combined)
         else:
-            # 正常情况：每次新添加一行（支持换行）
+            # 非流式或没有现成 widget，按行拆分后添加
             lines = text.splitlines() or [text]
             for line in lines:
-                self.output_walker.append(urwid.Text(line))
-        # 自动滚动到最后一行
-        self.output_listbox.set_focus(len(self.output_walker) - 1)
-        # 自动刷新屏幕
+                self.output_walker.append(urwid.Text(line, wrap="any"))
+        # 如果当前 ListBox 焦点位于底部，则自动滚动，否则保留位置
+        _, focus_idx = self.output_listbox.get_focus()
+        if focus_idx is None or focus_idx >= len(self.output_walker) - 1:
+            self.output_listbox.set_focus(len(self.output_walker) - 1)
         if isinstance(self.loop, urwid.MainLoop):
             self.loop.draw_screen()
 
@@ -125,25 +129,22 @@ class TUIApplication:
 
     def handle_input(self, key: Union[str, tuple[str, int, int, int]]) -> None:
         """处理输入事件"""
+        # 主界面不存在，直接返回
+        if not isinstance(self.loop, urwid.MainLoop):
+            return
         # 退出对话框优先处理
         if self.exit_dialog is not None:
             self.handle_exit_dialog_input(key)
             return
-        # 处理输入
+        # 处理键盘输入
         if key == "tab":
             self._toggle_focus()
         elif key == "enter":
             self._process_enter_key()
         elif key in ("up", "down", "page up", "page down"):
-            _, focus_idx = self.output_listbox.get_focus()
-            if focus_idx is None:
-                return
-            if key in ("down", "page down") and focus_idx >= len(self.output_walker) - 1:  # 已经在底端，忽略下移操作
-                return
-            if key in ("up", "page up") and focus_idx <= 0:  # 已经在顶端，忽略上移操作
-                return
-            self.output_listbox.keypress((0, 1), key)
-        elif key in ("ctrl c", "ctrl C", "esc"):
+            size = self.loop.screen.get_cols_rows()  # 获取屏幕尺寸 (cols, rows)
+            self.output_listbox.keypress(size, key)
+        elif key == "esc":
             self.exit_dialog_selection = 0  # 重置为默认选项【取消】
             self.show_exit_dialog()
 
