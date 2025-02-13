@@ -47,35 +47,6 @@ class TUIApplication:
         )
         self.loop.run()
 
-    def append_output(self, text: str, *, streaming: bool = False) -> None:
-        """追加输出文本"""
-        if streaming and self.output_walker and isinstance(self.output_walker[-1], urwid.Text):
-            last_widget = self.output_walker[-1]
-            combined = last_widget.text + text
-            if "\n" in combined:
-                # 对包含换行的情况，更新最后一个 widget 的第一行，并为后续行添加新的 widget
-                # 拆分所有行，如果最后以换行结尾则补一个空字符串作为新行
-                lines = combined.splitlines()
-                if combined.endswith("\n"):
-                    lines.append("")
-                last_widget.set_text(lines[0])
-                for line in lines[1:]:
-                    self.output_walker.append(urwid.Text(line, wrap="any"))
-            else:
-                # 否则继续合并到当前 widget 内
-                last_widget.set_text(combined)
-        else:
-            # 非流式或没有现成 widget，按行拆分后添加
-            lines = text.splitlines() or [text]
-            for line in lines:
-                self.output_walker.append(urwid.Text(line, wrap="any"))
-        # 如果当前 ListBox 焦点位于底部，则自动滚动，否则保留位置
-        _, focus_idx = self.output_listbox.get_focus()
-        if focus_idx is None or focus_idx >= len(self.output_walker) - 1:
-            self.output_listbox.set_focus(len(self.output_walker) - 1)
-        if isinstance(self.loop, urwid.MainLoop):
-            self.loop.draw_screen()
-
     def get_exit_dialog_text(self) -> str:
         """返回退出对话框的文本，标记当前选项"""
         options = ["取消", "确认"]
@@ -174,11 +145,40 @@ class TUIApplication:
         if isinstance(self.loop, urwid.MainLoop):
             self.loop.draw_screen()
 
+    def _append_output(self, text: str, *, streaming: bool = False) -> None:
+        """追加输出文本"""
+        if streaming and self.output_walker and isinstance(self.output_walker[-1], urwid.Text):
+            last_widget = self.output_walker[-1]
+            combined = last_widget.text + text
+            if "\n" in combined:
+                # 对包含换行的情况，更新最后一个 widget 的第一行，并为后续行添加新的 widget
+                # 拆分所有行，如果最后以换行结尾则补一个空字符串作为新行
+                lines = combined.splitlines()
+                if combined.endswith("\n"):
+                    lines.append("")
+                last_widget.set_text(lines[0])
+                for line in lines[1:]:
+                    self.output_walker.append(urwid.Text(line, wrap="any"))
+            else:
+                # 否则继续合并到当前 widget 内
+                last_widget.set_text(combined)
+        else:
+            # 非流式或没有现成 widget，按行拆分后添加
+            lines = text.splitlines() or [text]
+            for line in lines:
+                self.output_walker.append(urwid.Text(line, wrap="any"))
+        # 如果当前 ListBox 焦点位于底部，则自动滚动，否则保留位置
+        _, focus_idx = self.output_listbox.get_focus()
+        if focus_idx is None or focus_idx >= len(self.output_walker) - 1:
+            self.output_listbox.set_focus(len(self.output_walker) - 1)
+        if isinstance(self.loop, urwid.MainLoop):
+            self.loop.draw_screen()
+
     def _process_enter_key(self) -> None:
         """处理回车键"""
         user_input = self.input_edit.get_edit_text()
         self.input_edit.set_edit_text("")  # 清空输入框
-        self.append_output(f"> {user_input}")
+        self._append_output(f"> {user_input}")
         async_tasks = set()
         future = asyncio.ensure_future(self._process_command(user_input))
         async_tasks.add(future)
@@ -189,10 +189,10 @@ class TUIApplication:
         first_chunk = True
         async for output in process_command(user_input, self._get_llm_client()):
             if first_chunk:
-                self.append_output(output, streaming=False)
+                self._append_output(output, streaming=False)
                 first_chunk = False
             else:
-                self.append_output(output, streaming=True)
+                self._append_output(output, streaming=True)
 
     def _get_llm_client(self) -> OpenAIClient:
         """根据当前设置动态构造大模型客户端"""
