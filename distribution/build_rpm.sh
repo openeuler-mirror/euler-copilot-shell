@@ -2,7 +2,7 @@
 
 # Check if ~/rpmbuild directory exists; if not, run rpmdev-setuptree
 if [ ! -d ~/rpmbuild ]; then
-    if ! command -v rpmdev-setuptree &> /dev/null; then
+    if ! command -v rpmdev-setuptree &>/dev/null; then
         echo "Command \"rpmdevtools\" not found: dnf install rpmdevtools"
         exit 1
     fi
@@ -31,17 +31,17 @@ rm -f ~/rpmbuild/RPMS/"$(uname -m)"/eulercopilot-cli-*
 use_release=false
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -t|--tag)
-            custom_tag="$2"
-            shift 2
-            ;;
-        -r|--release)
-            use_release=true
-            shift
-            ;;
-        *)
-            shift
-            ;;
+    -t | --tag)
+        custom_tag="$2"
+        shift 2
+        ;;
+    -r | --release)
+        use_release=true
+        shift
+        ;;
+    *)
+        shift
+        ;;
     esac
 done
 

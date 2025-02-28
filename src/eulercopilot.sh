@@ -1,4 +1,4 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 
 read_query_mode() {
     if [ ! -f ~/.config/eulercopilot/config.json ]; then
@@ -7,12 +7,12 @@ read_query_mode() {
 
     local query_mode
     query_mode=$(jq '.query_mode' ~/.config/eulercopilot/config.json)
-    
+
     if [ "$query_mode" = "\"chat\"" ]; then
         echo "智能问答"
     elif [ "$query_mode" = "\"shell\"" ]; then
         echo "智能 SHELL"
-    elif [ "$query_mode" = "\"flow\"" ]; then
+    elif [ "$query_mode" = "\"plugin\"" ]; then
         echo "智能插件"
     elif [ "$query_mode" = "\"diagnose\"" ]; then
         echo "智能诊断"
@@ -92,10 +92,10 @@ run_copilot() {
         READLINE_LINE=""
         if [[ "$PS1" == *"\[\033[1;33m"* ]]; then
             revert_prompt
-            printf "\033[1;31m已关闭 openEuler Copilot System 提示符\033[0m\n"
+            printf "\033[1;31m已关闭 EulerCopilot 提示符\033[0m\n"
         else
             set_prompt
-            printf "\033[1;32m已开启 openEuler Copilot System 提示符\033[0m\n"
+            printf "\033[1;32m已开启 EulerCopilot 提示符\033[0m\n"
         fi
     fi
 }
