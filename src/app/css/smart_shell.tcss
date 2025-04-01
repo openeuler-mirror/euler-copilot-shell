@@ -19,6 +19,15 @@ EulerCopilot {
     padding: 0 1;
 }
 
+/* RichLog样式 - 用于Markdown渲染 */
+RichLog {
+    height: auto;
+    margin: 0;
+    padding: 1 1;
+    border: none;
+    background: transparent;
+}
+
 /* 用户输入的命令行样式 */
 .command-line {
     color: #4caf50;
