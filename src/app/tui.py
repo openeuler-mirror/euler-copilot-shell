@@ -7,14 +7,61 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
 from textual.containers import Container, Horizontal
+from textual.events import Key as KeyEvent
 from textual.screen import ModalScreen
 from textual.visual import VisualType
-from textual.widgets import Button, Footer, Header, Input, Label, RichLog, Static
+from textual.widgets import Button, Footer, Header, Input, Label, Markdown, Static
 
 from app.settings import SettingsScreen
 from backend.openai import OpenAIClient
 from config import ConfigManager
 from tool.command_processor import process_command
+
+
+class FocusableContainer(Container):
+    """可聚焦的容器，用于接收键盘事件处理滚动"""
+
+    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+        """初始化可聚焦的容器"""
+        super().__init__(*args, **kwargs)
+        # 设置为可聚焦
+        self.can_focus = True
+
+    def on_key(self, event: KeyEvent) -> None:
+        """处理键盘事件"""
+        key_handled = True
+
+        if event.key == "up":
+            # 向上滚动
+            self.scroll_up()
+        elif event.key == "down":
+            # 向下滚动
+            self.scroll_down()
+        elif event.key == "page_up":
+            # 向上翻页
+            for _ in range(10):  # 模拟翻页效果
+                self.scroll_up()
+        elif event.key == "page_down":
+            # 向下翻页
+            for _ in range(10):  # 模拟翻页效果
+                self.scroll_down()
+        elif event.key == "home":
+            # 滚动到顶部
+            self.scroll_home()
+        elif event.key == "end":
+            # 滚动到底部
+            self.scroll_end()
+        else:
+            # 其他按键不处理
+            key_handled = False
+            return
+
+        # 只有当我们处理了按键时，才阻止事件传递
+        if key_handled:
+            event.prevent_default()
+            event.stop()
+            # 确保视图更新
+            self.refresh()
 
 
 class OutputLine(Static):
@@ -43,45 +90,20 @@ class OutputLine(Static):
         return self.text_content
 
 
-class MarkdownOutputLine(RichLog):
-    """Markdown输出行组件，使用RichLog直接显示Rich格式化的Markdown"""
+class MarkdownOutputLine(Markdown):
+    """Markdown输出行组件，使用内置的Markdown组件渲染富文本"""
 
-    def __init__(self, markdown: str = "") -> None:
+    def __init__(self, markdown_content: str = "") -> None:
         """初始化支持真正富文本的Markdown输出组件"""
-        # 确保正确初始化，并禁用垂直滚动条
-        super().__init__(highlight=True, markup=True)
-        # 设置重要属性
-        self.show_vertical_scroll = False  # 禁用垂直滚动条
-        self.show_cursor = False  # 隐藏光标
-        self.auto_height = True  # 自动调整高度
-        self.wrap = True  # 自动换行
-        # 设置样式，确保内容正确显示并不会被截断
-        self.styles.width = "100%"
-        self.styles.height = "auto"  # 自动高度
-        # 储存原始内容
-        self.current_content = markdown
-        # 清除默认内容
-        self.clear()
-        # 使用rich的Markdown渲染器渲染内容
-        if markdown:
-            from rich.markdown import Markdown as RichMarkdown
+        # 使用textual内置的Markdown组件
+        super().__init__(markdown_content)
+        # 存储原始内容
+        self.current_content = markdown_content
 
-            # 强制设置代码高亮，确保代码块正确渲染
-            self.write(RichMarkdown(markdown, code_theme="monokai"))
-            # 强制刷新渲染
-            self.refresh()
-
-    def update_markdown(self, markdown: str) -> None:
+    def update_markdown(self, markdown_content: str) -> None:
         """更新Markdown内容"""
-        from rich.markdown import Markdown as RichMarkdown
-
-        self.current_content = markdown
-        # 清除现有内容
-        self.clear()
-        # 重新渲染markdown，强制使用代码高亮主题
-        self.write(RichMarkdown(markdown, code_theme="monokai"))
-        # 强制刷新渲染
-        self.refresh()
+        self.current_content = markdown_content
+        self.update(markdown_content)
 
     def get_content(self) -> str:
         """获取当前Markdown原始内容"""
@@ -132,6 +154,7 @@ class EulerCopilot(App):
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding(key="ctrl+s", action="settings", description="设置"),
         Binding(key="esc", action="request_quit", description="退出"),
+        Binding(key="tab", action="toggle_focus", description="切换焦点"),
     ]
 
     def __init__(self) -> None:
@@ -145,7 +168,7 @@ class EulerCopilot(App):
     def compose(self) -> ComposeResult:
         """构建界面"""
         yield Header(show_clock=True)
-        yield Container(id="output-container")
+        yield FocusableContainer(id="output-container")
         with Container(id="input-container"):
             yield CommandInput()
         yield Footer()
@@ -284,3 +307,15 @@ class EulerCopilot(App):
             model=self.config_manager.get_model(),
             api_key=self.config_manager.get_api_key(),
         )
+
+    def action_toggle_focus(self) -> None:
+        """在命令输入框和文本区域之间切换焦点"""
+        # 获取当前聚焦的组件
+        focused = self.focused
+        if isinstance(focused, CommandInput):
+            # 如果当前聚焦在命令输入框，则聚焦到输出容器
+            output_container = self.query_one("#output-container", FocusableContainer)
+            output_container.focus()
+        else:
+            # 否则聚焦到命令输入框
+            self.query_one(CommandInput).focus()

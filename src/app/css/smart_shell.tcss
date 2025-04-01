@@ -4,23 +4,34 @@
 EulerCopilot {
     background: #1a1a1a;
     color: #ffffff;
+    layout: vertical;
 }
 
-/* 输出区域样式 */
+/* 输出区域样式 - 占据除了输入区域外的所有空间 */
 #output-container {
     height: 1fr;
     background: #1a1a1a;
     overflow: auto;
+    border: solid #4963b1;
+    padding: 0;
+    margin: 0;
+}
+
+/* 输出容器聚焦时的样式 */
+#output-container:focus {
+    border: solid #688efd;
+    background: #1a1a1a;
 }
 
 /* 输出文本样式 */
 .output-line {
     color: #ffffff;
     padding: 0 1;
+    margin: 0;
 }
 
-/* RichLog样式 - 用于Markdown渲染 */
-RichLog {
+/* Markdown 富文本区域 */
+Markdown {
     height: auto;
     margin: 0;
     padding: 1 1;
@@ -30,7 +41,7 @@ RichLog {
 
 /* 用户输入的命令行样式 */
 .command-line {
-    color: #4caf50;
+    color: #688efd;
     padding: 0 1;
 }
 
@@ -40,15 +51,15 @@ RichLog {
     dock: bottom;
     background: #333333;
     padding: 0 1;
-    border-top: solid #4caf50;
+    border-top: solid #688efd;
+    width: 100%;
 }
 
 /* 输入框样式 */
 #command-input {
-    dock: left;
     width: 100%;
     background: #333333;
-    color: #4caf50;
+    color: #688efd;
     padding: 0 1;
     border: none;
 }
@@ -66,14 +77,14 @@ RichLog {
     width: 80%;
     height: 100%;
     background: #2a2a2a;
-    border: round #4caf50;
+    border: solid #4963b1;
     padding: 1 2;
 }
 
 /* 设置标题样式 */
 #settings-title {
     text-align: center;
-    color: #4caf50;
+    color: #4963b1;
     padding-bottom: 1;
 }
 
@@ -102,8 +113,8 @@ RichLog {
 .settings-button {
     /* margin-top: 1; */
     background: #333333;
-    color: #4caf50;
-    border: solid #4caf50;
+    color: #4963b1;
+    border: solid #4963b1;
     width: 40%;
 }
 
@@ -126,7 +137,7 @@ RichLog {
     width: 50%;
     height: 12;
     background: #2a2a2a;
-    border: round #ff5252;
+    border: solid #ff5252;
     color: #ffffff;
     margin: 1 1;
     padding: 1;
