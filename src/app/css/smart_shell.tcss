@@ -2,7 +2,6 @@
 
 /* 主应用样式 */
 EulerCopilot {
-    background: #1a1a1a;
     color: #ffffff;
     layout: vertical;
 }
@@ -10,7 +9,6 @@ EulerCopilot {
 /* 输出区域样式 - 占据除了输入区域外的所有空间 */
 #output-container {
     height: 1fr;
-    background: #1a1a1a;
     overflow: auto;
     border: solid #4963b1;
     padding: 0;
@@ -20,7 +18,6 @@ EulerCopilot {
 /* 输出容器聚焦时的样式 */
 #output-container:focus {
     border: solid #688efd;
-    background: #1a1a1a;
 }
 
 /* 输出文本样式 */
@@ -49,7 +46,6 @@ Markdown {
 #input-container {
     height: 3;
     dock: bottom;
-    background: #333333;
     padding: 0 1;
     border-top: solid #688efd;
     width: 100%;
@@ -58,7 +54,6 @@ Markdown {
 /* 输入框样式 */
 #command-input {
     width: 100%;
-    background: #333333;
     color: #688efd;
     padding: 0 1;
     border: none;
@@ -67,7 +62,6 @@ Markdown {
 /* 设置界面样式 */
 #settings-screen {
     align: center middle;
-    background: #1a1a1a;
     color: #ffffff;
     padding: 1;
 }
@@ -76,7 +70,6 @@ Markdown {
 #settings-container {
     width: 80%;
     height: 100%;
-    background: #2a2a2a;
     border: solid #4963b1;
     padding: 1 2;
 }
@@ -111,8 +104,6 @@ Markdown {
 
 /* 设置按钮样式 */
 .settings-button {
-    /* margin-top: 1; */
-    background: #333333;
     color: #4963b1;
     border: solid #4963b1;
     width: 40%;
@@ -136,7 +127,6 @@ Markdown {
     align: center middle;
     width: 50%;
     height: 12;
-    background: #2a2a2a;
     border: solid #ff5252;
     color: #ffffff;
     margin: 1 1;
