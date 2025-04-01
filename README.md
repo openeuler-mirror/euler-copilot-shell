@@ -1,71 +1,96 @@
-# Smart Shell
+# EulerCopilot Shell
 
-This project is a terminal user interface (TUI) application built using Urwid. It allows users to input commands, which are then validated and executed. If a command cannot be executed, the application interacts with a third-party big model to generate suggestions or corrections.
+这是一个基于 Python Textual 库开发的 TUI（文本用户界面）应用程序。它允许用户输入命令，验证并执行这些命令。如果命令无法执行，应用程序会与大型语言模型交互，生成建议或纠正方案。
 
-## Features
+## 功能特点
 
-- User-friendly command input and output display.
-- Command validation and execution.
-- Integration with a big model for command suggestions.
-- Compatible with pure TTY environments.
+- 用户友好的命令输入和输出显示界面
+- 命令验证和执行支持
+- 集成大型语言模型提供智能命令建议
+- 提供本地或在线模型服务集成选项
 
-## Project Structure
+## 项目结构
 
 ```text
-smart-shell/
-├── README.md                     # Project documentation
-├── requirements.txt              # Project dependencies
+euler-copilot-shell/
+├── README.md                     # 项目文档
+├── requirements.txt              # 项目依赖
 └── src
     ├── app
+    |   ├── css
+    │   │   └── styles.tcss       # TUI 样式配置
     │   ├── __init__.py
-    │   ├── settings.py
-    │   └── tui.py                # TUI layout and widget definitions
+    │   ├── settings.py           # 设置界面逻辑
+    │   └── tui.py                # 主界面布局和组件定义
     ├── backend
     │   ├── __init__.py
-    │   └── openai.py             # Logic for interacting with the OpenAI API
+    │   └── openai.py             # 与 OpenAI API 交互的逻辑
     ├── config
     │   ├── __init__.py
-    │   ├── manager.py
-    │   └── model.py
-    ├── main.py                   # Entry point of the TUI application
+    │   ├── manager.py            # 配置管理
+    │   └── model.py              # 配置模型定义
+    ├── main.py                   # TUI 应用程序入口点
     └── tool
         ├── __init__.py
-        └── command_processor.py  # Command validation and execution logic
+        └── command_processor.py  # 命令验证和执行逻辑
 ```
 
-## Setup Instructions
+## 安装说明
 
-1. Clone the repository:
+1. 克隆仓库:
 
    ```sh
-   git clone <repository-url>
-   cd smart-shell
+   git clone https://gitee.com/openeuler/euler-copilot-shell.git -b dev
+   cd euler-copilot-shell
    ```
 
-2. Install the required dependencies:
+2. 安装依赖:
 
    ```sh
    pip install -r requirements.txt
    ```
 
-## Usage
+## 使用方法
 
-To run the application, execute the following command in your terminal:
+直接运行应用程序:
 
 ```sh
 python src/main.py
 ```
 
-Once the application is running, you can enter commands directly into the input field. If a command is invalid or cannot be executed, the application will provide suggestions based on your input.
+应用启动后，您可以直接在输入框中输入命令。如果命令无效或无法执行，应用程序将基于您的输入提供智能建议。
 
-## LLM Service Integration
+## 大型语言模型集成
 
-The application utilizes a third-party LLM to enhance user experience by providing command suggestions. The integration is handled in the `backend/openai.py` file, which communicates with the OpenAI-compatible API to retrieve suggestions based on user input.
+该应用程序利用大型语言模型（LLM）增强用户体验，提供智能命令建议。集成在 `backend/openai.py` 文件中处理，该文件与 OpenAI 兼容的 API 通信以获取基于用户输入的建议。应用支持配置不同的后端和模型。
 
-## Contributing
+## 配置设置
 
-Contributions are welcome! Please feel free to submit a pull request or open an issue for any enhancements or bug fixes.
+您可以通过应用内的设置界面（按 Ctrl+S）配置以下选项:
 
-## License
+- 后端类型: OpenAI 或 EulerCopilot
+- API 基础 URL
+- API 密钥
+- 模型选择（OpenAI 后端）
 
-This project is licensed under the MulanPSL-2.0 License. See the LICENSE file for more details.
+配置会保存在`~/.config/eulercopilot/smart-shell.json`。
+
+## RPM打包
+
+我们提供了一个 spec 文件，可以使用 PyInstaller 打包并生成 RPM 包:
+
+```sh
+# 创建源代码归档
+tar czf euler-copilot-shell-0.9.6.tar.gz --transform 's,^smart-shell,euler-copilot-shell-0.9.6,' smart-shell
+
+# 构建RPM包(需要已安装rpm-build工具)
+rpmbuild -ba euler-copilot-shell.spec
+```
+
+## 贡献
+
+欢迎贡献代码！请随时提交 PR 或开启问题讨论任何功能增强或错误修复建议。
+
+## 许可证
+
+本项目采用木兰宽松许可证第2版（MulanPSL-2.0）。详情请参阅 LICENSE 文件。

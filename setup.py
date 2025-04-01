@@ -3,12 +3,12 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="eulercopilot-shell",
-    version="0.1.0",
-    description="智能 Shell 终端工具",
+    name="eulercopilot",
+    version="0.9.6",
+    description="智能 Shell 命令行工具",
     author="openEuler",
     author_email="contact@openeuler.org",
-    url="https://www.eulercopilot.com",
+    url="https://gitee.com/openeuler/euler-copilot-shell",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     include_package_data=True,
@@ -19,7 +19,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "eulercopilot-shell=main:main",
+            "eulercopilot=main:main",
         ],
     },
     classifiers=[
