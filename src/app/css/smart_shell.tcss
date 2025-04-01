@@ -2,7 +2,6 @@
 
 /* 主应用样式 */
 EulerCopilot {
-    color: #ffffff;
     layout: vertical;
 }
 
@@ -11,8 +10,6 @@ EulerCopilot {
     height: 1fr;
     overflow: auto;
     border: solid #4963b1;
-    padding: 0;
-    margin: 0;
 }
 
 /* 输出容器聚焦时的样式 */
@@ -20,20 +17,11 @@ EulerCopilot {
     border: solid #688efd;
 }
 
-/* 输出文本样式 */
-.output-line {
-    color: #ffffff;
-    padding: 0 1;
-    margin: 0;
-}
-
-/* Markdown 富文本区域 */
-Markdown {
+/* 文本区域 */
+Static {
     height: auto;
-    margin: 0;
     padding: 1 1;
     border: none;
-    background: transparent;
 }
 
 /* 用户输入的命令行样式 */

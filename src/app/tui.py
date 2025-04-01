@@ -3,14 +3,16 @@
 import asyncio
 from typing import ClassVar, Optional, Union
 
+from rich.markdown import Markdown as RichMarkdown
 from textual import on
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
 from textual.containers import Container, Horizontal
 from textual.events import Key as KeyEvent
+from textual.events import Mount
 from textual.screen import ModalScreen
 from textual.visual import VisualType
-from textual.widgets import Button, Footer, Header, Input, Label, Markdown, Static
+from textual.widgets import Button, Footer, Header, Input, Label, Static
 
 from app.settings import SettingsScreen
 from backend.openai import OpenAIClient
@@ -67,8 +69,6 @@ class FocusableContainer(Container):
 class OutputLine(Static):
     """输出行组件"""
 
-    DEFAULT_CSS_CLASS = "output-line"
-
     def __init__(self, text: str = "", *, command: bool = False) -> None:
         """初始化输出行组件"""
         # 禁用富文本标记解析，防止LLM输出中的特殊字符导致渲染错误
@@ -90,24 +90,46 @@ class OutputLine(Static):
         return self.text_content
 
 
-class MarkdownOutputLine(Markdown):
-    """Markdown输出行组件，使用内置的Markdown组件渲染富文本"""
+class MarkdownOutputLine(Static):
+    """Markdown输出行组件，使用rich库渲染富文本"""
 
     def __init__(self, markdown_content: str = "") -> None:
         """初始化支持真正富文本的Markdown输出组件"""
-        # 使用textual内置的Markdown组件
-        super().__init__(markdown_content)
+        super().__init__("")
         # 存储原始内容
         self.current_content = markdown_content
+        self.update_markdown(markdown_content)
 
     def update_markdown(self, markdown_content: str) -> None:
         """更新Markdown内容"""
         self.current_content = markdown_content
-        self.update(markdown_content)
+
+        # 使用rich的Markdown渲染器
+        md = RichMarkdown(
+            markdown_content,
+            code_theme=self._get_code_theme(),
+            hyperlinks=True,
+        )
+
+        # 使用rich渲染后的内容更新组件
+        super().update(md)
 
     def get_content(self) -> str:
         """获取当前Markdown原始内容"""
         return self.current_content
+
+    def _get_code_theme(self) -> str:
+        """根据当前Textual主题获取适合的代码主题"""
+        return "material" if self.app.current_theme.dark else "xcode"
+
+    def _on_mount(self, event: Mount) -> None:
+        """组件挂载时设置主题监听"""
+        super()._on_mount(event)
+        self.watch(self.app, "theme", self._retheme)
+
+    def _retheme(self) -> None:
+        """主题变化时重新应用主题"""
+        self.update_markdown(self.current_content)
 
 
 class CommandInput(Input):
