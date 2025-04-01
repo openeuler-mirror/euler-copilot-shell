@@ -15,7 +15,7 @@ from config import Backend, ConfigManager
 class SettingsScreen(Screen):
     """设置页面"""
 
-    CSS_PATH = "css/smart_shell.tcss"
+    CSS_PATH = "css/styles.tcss"
 
     def __init__(self, config_manager: ConfigManager, llm_client: OpenAIClient) -> None:
         """初始化设置页面"""

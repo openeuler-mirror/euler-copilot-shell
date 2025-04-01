@@ -172,7 +172,8 @@ class ExitDialog(ModalScreen):
 class EulerCopilot(App):
     """基于 Textual 的智能终端应用"""
 
-    CSS_PATH = "css/smart_shell.tcss"
+    CSS_PATH = "css/styles.tcss"
+
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding(key="ctrl+s", action="settings", description="设置"),
         Binding(key="esc", action="request_quit", description="退出"),
