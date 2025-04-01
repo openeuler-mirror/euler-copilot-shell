@@ -1,15 +1,15 @@
-"""TUI 应用"""
+"""应用入口点"""
 
-import contextlib
+import sys
 
-from app.tui import TUIApplication
+from app.tui import EulerCopilot
 
 
 def main() -> None:
     """主函数"""
-    app = TUIApplication()
-    with contextlib.suppress(KeyboardInterrupt):
-        app.run()
+    app = EulerCopilot()
+    app.run()
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
