@@ -56,6 +56,7 @@ Static {
 
 /* 设置容器样式 */
 #settings-container {
+    align: center top;
     width: 80%;
     height: 100%;
     border: solid #4963b1;
@@ -97,10 +98,13 @@ Static {
     width: 40%;
 }
 
-/* Horizontal 容器样式，用于设置项的对齐 */
-#settings-container Horizontal {
-    width: 100%;
+/* 操作按钮容器样式 */
+#action-buttons {
+    dock: bottom;
     height: auto;
+    margin-top: 1;
+    padding: 1;
+    content-align: center bottom;
 }
 
 /* 退出对话框屏幕样式 */
