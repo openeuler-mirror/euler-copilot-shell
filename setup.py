@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+"""setup.py
+
+This is a setup script for the eulercopilot package.
+"""
 
 from setuptools import find_packages, setup
 
