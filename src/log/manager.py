@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -137,7 +137,7 @@ class LogManager:
     def _setup_logging(self) -> None:
         """配置日志系统"""
         # 生成当前时间的日志文件名
-        current_time = datetime.now(tz=UTC).astimezone()
+        current_time = datetime.now(tz=timezone.utc).astimezone()
         log_filename = f"smart-shell-{current_time.strftime('%Y%m%d-%H%M%S')}.log"
         self._current_log_file = self._log_dir / log_filename
 
@@ -155,7 +155,7 @@ class LogManager:
         """解析日志文件名中的日期"""
         try:
             file_date_str = log_file.stem.split("-", 2)[2][:8]  # 提取 YYYYMMDD
-            return datetime.strptime(file_date_str, "%Y%m%d").replace(tzinfo=UTC).astimezone()
+            return datetime.strptime(file_date_str, "%Y%m%d").replace(tzinfo=timezone.utc).astimezone()
         except (ValueError, IndexError):
             return None
 
@@ -163,7 +163,7 @@ class LogManager:
         """清理7天前的旧日志文件"""
         logger = logging.getLogger(__name__)
         try:
-            cutoff_date = datetime.now(tz=UTC).astimezone() - timedelta(days=7)
+            cutoff_date = datetime.now(tz=timezone.utc).astimezone() - timedelta(days=7)
 
             for log_file in self._log_dir.glob("smart-shell-*.log"):
                 try:
