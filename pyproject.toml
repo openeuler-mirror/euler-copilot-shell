@@ -3,7 +3,7 @@ name = "oi-cli"
 version = "0.10.2"
 description = "智能 Shell 命令行工具"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.9,<3.10"
 license = { text = "MulanPSL-2.0" }
 authors = [{ name = "openEuler", email = "contact@openeuler.org" }]
 dependencies = [

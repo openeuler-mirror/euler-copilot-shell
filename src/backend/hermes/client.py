@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import time
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 import httpx
+from typing_extensions import Self
 
 from backend.base import LLMClientBase
 from i18n.manager import get_locale
