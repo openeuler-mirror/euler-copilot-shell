@@ -33,8 +33,6 @@ openEuler Intelligence 智能 Shell 是一个智能命令行程序。
 # 部署安装工具子包
 %package -n openeuler-intelligence-installer
 Summary:        openEuler Intelligence 部署安装脚本
-Requires:       python3-aiohttp
-Requires:       python3-requests
 BuildArch:      noarch
 
 %description -n openeuler-intelligence-installer

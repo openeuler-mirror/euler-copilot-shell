@@ -667,11 +667,17 @@ check_pip_framework() {
   if [[ "$python_version" =~ ^3\.(11|[2-9][0-9])$ ]]; then
     # Python 3.11 或更新版本，检查并安装 DNF 源中缺失的 pip 依赖
     REQUIRED_PACKAGES=(
+      ["aiohttp"]=""
+      ["requests"]=""
       ["pymongo"]=""
       ["pydantic"]=""
     )
   elif [[ "$python_version" =~ ^3\.(9|10)$ ]]; then
     # Python 3.9 或 3.10，RPM 包安装过程已处理 pip 依赖
+    REQUIRED_PACKAGES=(
+      ["aiohttp"]=""
+      ["requests"]=""
+    )
     # 对于 Python 3.9，单独安装 MCP 的 wheel 包
     local wheel_path="../5-resource/pip/mcp-1.6.0-py3-none-any.whl"
     if [ -f "$wheel_path" ]; then
