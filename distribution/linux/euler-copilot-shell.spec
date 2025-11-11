@@ -3,8 +3,8 @@
 %global debug_package %{nil}
 
 Name:           euler-copilot-shell
-Version:        0.10.2
-Release:        6%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
+Version:        0.10.0
+Release:        15%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
 Summary:        openEuler Intelligence 智能命令行工具集
 License:        MulanPSL-2.0
 URL:            https://gitee.com/openeuler/euler-copilot-shell
@@ -134,42 +134,42 @@ rm -f /usr/lib/openeuler-intelligence/scripts/5-resource/env.*
 fi
 
 %changelog
-* Thu Nov 13 2025 openEuler <contact@openeuler.org> - 0.10.2-6
+* Thu Nov 13 2025 openEuler <contact@openeuler.org> - 0.10.0-15
 - installer: Add support for package name and alternative package name formats
 - cli: Fix TUI keyboard interaction issue in some environments
 
-* Tue Nov 11 2025 openEuler <contact@openeuler.org> - 0.10.2-5
+* Tue Nov 11 2025 openEuler <contact@openeuler.org> - 0.10.0-14
 - Fix detecting el version issue in deployment script
 
-* Tue Nov 04 2025 openEuler <contact@openeuler.org> - 0.10.2-4
+* Tue Nov 04 2025 openEuler <contact@openeuler.org> - 0.10.0-13
 - Fix timeout when executing complex MCP tasks
 - Feature: Add login through browser (requires proper desktop environment)
 
-* Wed Oct 29 2025 openEuler <contact@openeuler.org> - 0.10.2-3
+* Wed Oct 29 2025 openEuler <contact@openeuler.org> - 0.10.0-12
 - Fix issue where failing to fetch mcp when creating agent with oi-manager
 
-* Sat Oct 25 2025 openEuler <contact@openeuler.org> - 0.10.2-2
+* Sat Oct 25 2025 openEuler <contact@openeuler.org> - 0.10.0-11
 - Add internationalization support (currently supports English and Simplified Chinese)
 - Fix issue where settings page may reopen multiple times
 
-* Mon Oct 20 2025 openEuler <contact@openeuler.org> - 0.10.2-1
+* Mon Oct 20 2025 openEuler <contact@openeuler.org> - 0.10.0-10
 - 修复后端可用性校验，优化令牌格式验证
 
-* Tue Sep 30 2025 openEuler <contact@openeuler.org> - 0.10.1-5
+* Tue Sep 30 2025 openEuler <contact@openeuler.org> - 0.10.0-9
 - 支持通过环境变量 OI_SKIP_SSL_VERIFY / OI_SSL_VERIFY 控制 OpenAI 客户端 SSL 验证
 
-* Wed Sep 17 2025 openEuler <contact@openeuler.org> - 0.10.1-4
+* Wed Sep 17 2025 openEuler <contact@openeuler.org> - 0.10.0-8
 - 修复 Token 计算器中类型注解的兼容性问题
 - 优化部署脚本中下载资源文件的逻辑
 
-* Tue Sep 16 2025 openEuler <contact@openeuler.org> - 0.10.1-3
+* Tue Sep 16 2025 openEuler <contact@openeuler.org> - 0.10.0-7
 - 优化 LLM 和 Embedding 配置验证逻辑
 - 添加部署后修改 LLM 和 Embedding 配置功能
 
-* Thu Sep 11 2025 openEuler <contact@openeuler.org> - 0.10.1-2
+* Thu Sep 11 2025 openEuler <contact@openeuler.org> - 0.10.0-6
 - 卸载时清理用户缓存和配置文件
 
-* Wed Sep 10 2025 openEuler <contact@openeuler.org> - 0.10.1-1
+* Wed Sep 10 2025 openEuler <contact@openeuler.org> - 0.10.0-5
 - 支持切换 MCP 自动执行模式
 - 简化安装器命令为 oi-manager
 
