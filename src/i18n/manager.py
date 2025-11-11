@@ -1,5 +1,7 @@
 """国际化管理模块"""
 
+from __future__ import annotations
+
 import gettext
 import locale
 from pathlib import Path

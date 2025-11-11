@@ -4,6 +4,8 @@
 实现通过浏览器跳转进行 openEuler Intelligence 登录
 """
 
+from __future__ import annotations
+
 import json
 import sys
 import time

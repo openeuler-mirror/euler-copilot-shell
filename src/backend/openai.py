@@ -1,8 +1,9 @@
 """OpenAI 大模型客户端"""
 
+from __future__ import annotations
+
 import asyncio
 import time
-from collections.abc import AsyncGenerator
 from importlib import import_module
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,8 @@ from backend.base import LLMClientBase
 from log.manager import get_logger, log_api_request, log_exception
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from openai.types.chat import ChatCompletionMessageParam
 
 
