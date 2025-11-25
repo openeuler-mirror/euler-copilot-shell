@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import sys
 from datetime import UTC, datetime, timedelta
@@ -24,6 +23,11 @@ class LogManager:
         self._config_manager = config_manager
         self._setup_logging()
         self._cleanup_old_logs()
+
+        files_to_skip: set[Path] | None = None
+        if self._current_log_file is not None:
+            files_to_skip = {self._current_log_file}
+        self._cleanup_empty_logs(skip_files=files_to_skip)
 
     def enable_console_output(self) -> None:
         """启用控制台日志输出（用于非 TUI 模式）"""
@@ -61,6 +65,11 @@ class LogManager:
     def get_logger(self, name: str) -> logging.Logger:
         """获取指定名称的日志记录器"""
         return logging.getLogger(name)
+
+    @property
+    def current_log_file(self) -> Path | None:
+        """返回当前日志文件路径（用于调试和测试）"""
+        return self._current_log_file
 
     def get_latest_logs(self, max_lines: int = 1000) -> list[str]:
         """
@@ -112,13 +121,7 @@ class LogManager:
 
     def cleanup_empty_logs(self) -> None:
         """清理空的日志文件（应用退出时调用）"""
-        with contextlib.suppress(OSError):
-            for log_file in self._log_dir.glob("smart-shell-*.log"):
-                # 检查文件大小，删除空文件
-                if log_file.stat().st_size == 0:
-                    # 如果是当前日志文件且应用刚启动就退出，仍然删除空文件
-                    with contextlib.suppress(OSError):
-                        log_file.unlink()
+        self._cleanup_empty_logs(skip_files=None)
 
     def _get_log_level(self) -> int:
         """获取当前配置的日志级别"""
@@ -188,6 +191,21 @@ class LogManager:
                     continue
         except OSError:
             logger.exception("清理旧日志文件时出错")
+
+    def _cleanup_empty_logs(self, skip_files: set[Path] | None) -> None:
+        """删除空日志文件，可跳过指定文件"""
+        logger = logging.getLogger(__name__)
+        for log_file in self._log_dir.glob("smart-shell-*.log"):
+            try:
+                if skip_files and any(log_file.samefile(skip_file) for skip_file in skip_files):
+                    continue
+
+                if log_file.stat().st_size == 0:
+                    log_file.unlink()
+            except FileNotFoundError:
+                continue
+            except OSError as e:
+                logger.warning("无法删除空日志文件 %s: %s", log_file.name, e)
 
 
 class _LogManagerSingleton:
