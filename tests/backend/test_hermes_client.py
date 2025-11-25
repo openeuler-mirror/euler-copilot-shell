@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -12,7 +13,10 @@ from backend.hermes.services import HermesConversationManager, HermesModelManage
 from backend.models import ModelInfo
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from config.manager import ConfigManager
+
+ChatStreamCallable = Callable[[Any], AsyncGenerator[str, None]]
+StopCallable = Callable[[], Awaitable[None]]
 
 NON_OK_STATUS = 500
 
@@ -50,6 +54,43 @@ class _FakeErrorResponse:
 
     async def aread(self) -> bytes:
         return self._payload
+
+
+class _StubConfigManager:
+    """仅暴露 get_llm_chat_model 的配置桩对象"""
+
+    def __init__(self, llm_id: str = "stub-llm") -> None:
+        self._llm_id = llm_id
+
+    def get_llm_chat_model(self) -> str:
+        return self._llm_id
+
+
+class _OverrideHermesChatClient(HermesChatClient):
+    """允许注入自定义流和 stop 行为的 Hermes 客户端"""
+
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        chat_stream: ChatStreamCallable,
+        stop_impl: StopCallable,
+        auth_token: str = "",
+        config_manager: ConfigManager | None = None,
+    ) -> None:
+        super().__init__(base_url, auth_token=auth_token, config_manager=config_manager)
+        self._chat_stream_override = chat_stream
+        self._stop_override = stop_impl
+
+    async def _chat_stream(self, request: Any) -> AsyncGenerator[str, None]:
+        async for chunk in self._chat_stream_override(request):
+            yield chunk
+
+    async def _stop(self) -> None:
+        await self._stop_override()
+
+
+FAIL_STOP_MESSAGE = "stop should not be invoked before follow-up questions"
 
 
 @pytest.mark.asyncio
@@ -116,3 +157,35 @@ async def test_get_available_models_delegates_to_model_manager() -> None:
     models = await client.get_available_models()
 
     assert [model.model_name for model in models] == ["m1"]
+
+
+@pytest.mark.asyncio
+async def test_get_llm_response_reuses_existing_conversation_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """后续提问应携带已存在的 conversationId"""
+    monkeypatch.setattr("backend.hermes.client.get_locale", lambda: "zh")
+
+    stub_config = cast("ConfigManager", _StubConfigManager())
+    requested_ids: list[str] = []
+
+    async def fake_chat_stream(request: Any) -> AsyncGenerator[str, None]:
+        requested_ids.append(request.conversation_id or "")
+        yield "ok"
+
+    async def fail_stop() -> None:
+        raise AssertionError(FAIL_STOP_MESSAGE)
+
+    client = _OverrideHermesChatClient(
+        "https://api.example",
+        chat_stream=fake_chat_stream,
+        stop_impl=fail_stop,
+        config_manager=stub_config,
+    )
+    conversation_manager = HermesConversationManager(client.http_manager)
+    conversation_manager._conversation_id = "conv-keep"  # noqa: SLF001
+    client._conversation_manager = conversation_manager  # noqa: SLF001
+
+    chunks = [chunk async for chunk in client.get_llm_response("hello")]
+
+    assert chunks == ["ok"]
+    assert requested_ids == ["conv-keep"]
+    assert conversation_manager.get_conversation_id() == "conv-keep"
