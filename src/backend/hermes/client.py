@@ -234,9 +234,6 @@ class HermesChatClient(LLMClientBase):
         # 验证 llm_id 是否已配置
         self._validate_llm_id()
 
-        # 如果有未完成的会话，先停止它
-        await self._stop()
-
         # 不在这里重置状态跟踪，让进度状态能够跨流保持
         # 只有在真正的新对话开始时才重置（由上层调用方决定）
 
