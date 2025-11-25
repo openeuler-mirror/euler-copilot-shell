@@ -494,15 +494,26 @@ BackendRequiredDialog {
     height: 3;
 }
 
-/* 进度消息样式 */
-.progress-line {
-    background: rgba(76, 175, 80, 0.1);
-    border-left: solid #4caf50;
+/* MCP 进度块样式 */
+.mcp-progress-block {
+    background: rgba(223, 225, 229, 0.08);
+    border-left: solid #e0e0e0;
+    padding: 0 1;
+    margin-top: 1;
+}
+
+.mcp-progress-block MarkdownParagraph {
+    margin: 0;
+}
+
+.mcp-waiting-block {
+    background: rgba(255, 152, 0, 0.12);
+    border-left: solid #ff9800;
     padding: 1 2;
     margin-top: 1;
 }
 
-.progress-line MarkdownParagraph {
+.mcp-waiting-block MarkdownParagraph {
     margin: 0;
 }
 

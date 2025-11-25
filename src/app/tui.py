@@ -21,10 +21,10 @@ from app.tui_mcp_handler import TUIMCPEventHandler
 from backend import BackendFactory, HermesChatClient, OpenAIClient
 from backend.hermes.exceptions import HermesAPIError
 from backend.hermes.mcp_helpers import (
+    MCPEmojis,
     MCPTags,
     extract_mcp_tag,
     format_error_message,
-    is_final_mcp_message,
     is_mcp_message,
 )
 from config import ConfigManager
@@ -188,18 +188,48 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
         return self.current_content
 
 
-class ProgressOutputLine(MarkdownOutput):
-    """可替换的进度输出行组件，用于 MCP 工具进度显示"""
+class MCPProgressBlock(MarkdownOutput):
+    """用于展示连续 MCP 步骤的进度块"""
 
-    def __init__(self, markdown_content: str = "", *, step_id: str = "") -> None:
-        """初始化进度输出组件"""
+    def __init__(self) -> None:
+        """初始化进度块"""
+        super().__init__("")
+        self.add_class("mcp-progress-block")
+        self._steps: list[tuple[str, str]] = []
+        self._step_index: dict[str, int] = {}
+
+    def upsert_step(self, step_id: str, markdown_content: str) -> None:
+        """添加或更新指定步骤的展示内容"""
+        if step_id in self._step_index:
+            idx = self._step_index[step_id]
+            self._steps[idx] = (step_id, markdown_content)
+        else:
+            self._step_index[step_id] = len(self._steps)
+            self._steps.append((step_id, markdown_content))
+        self._refresh()
+
+    def reset(self) -> None:
+        """清空所有步骤内容"""
+        self._steps.clear()
+        self._step_index.clear()
+        self.update_markdown("")
+
+    def _refresh(self) -> None:
+        """重新渲染当前步骤内容"""
+        if not self._steps:
+            self.update_markdown("")
+            return
+        combined = "\n\n".join(step_content for _step_id, step_content in self._steps if step_content)
+        self.update_markdown(combined)
+
+
+class MCPWaitingBlock(MarkdownOutput):
+    """用于提示等待确认或参数输入的特殊块"""
+
+    def __init__(self, markdown_content: str = "") -> None:
+        """初始化等待块"""
         super().__init__(markdown_content)
-        self.step_id = step_id
-        self.add_class("progress-line")
-
-    def get_step_id(self) -> str:
-        """获取步骤ID"""
-        return self.step_id
+        self.add_class("mcp-waiting-block")
 
 
 class CommandInput(Input):
@@ -259,8 +289,11 @@ class IntelligentTerminal(App):
         self._current_mcp_conversation_id: str = ""
         # 创建日志实例
         self.logger = get_logger(__name__)
-        # 进度消息跟踪
-        self._current_progress_lines: dict[str, ProgressOutputLine] = {}  # step_id -> ProgressOutputLine
+        # MCP 进度展示状态
+        self._current_progress_block: MCPProgressBlock | None = None
+        self._current_waiting_block: MCPWaitingBlock | None = None
+        self._mcp_cluster_active: bool = False
+        self._mcp_step_blocks: dict[str, MCPProgressBlock] = {}
 
     def compose(self) -> ComposeResult:
         """构建界面"""
@@ -294,8 +327,8 @@ class IntelligentTerminal(App):
         # 清除屏幕上的所有内容
         output_container = self.query_one("#output-container")
         output_container.remove_children()
-        # 清理进度消息跟踪
-        self._current_progress_lines.clear()
+        # 清理 MCP 状态
+        self._reset_mcp_state()
         # 清理 MCP 会话 ID
         self._current_mcp_conversation_id = ""
 
@@ -521,6 +554,7 @@ class IntelligentTerminal(App):
         if message.conversation_id == self._current_mcp_conversation_id and not self.processing:
             self.processing = True  # 设置处理标志，防止重复处理
             # 立即恢复正常输入界面
+            self._remove_waiting_block()
             self._restore_normal_input()
             # 发送 MCP 响应并处理结果
             params = {"confirm": message.confirmed}
@@ -535,6 +569,7 @@ class IntelligentTerminal(App):
         if message.conversation_id == self._current_mcp_conversation_id and not self.processing:
             self.processing = True  # 设置处理标志，防止重复处理
             # 立即恢复正常输入界面
+            self._remove_waiting_block()
             self._restore_normal_input()
             # 发送 MCP 响应并处理结果
             params = message.params if message.params is not None else {}
@@ -627,6 +662,11 @@ class IntelligentTerminal(App):
         # 在新的命令会话开始时重置MCP状态跟踪
         if self._llm_client and isinstance(self._llm_client, HermesChatClient):
             self._llm_client.stream_processor.reset_status_tracking()
+
+        # 新的命令意味着新的进度块序列
+        self._mcp_cluster_active = False
+        self._current_progress_block = None
+        self._mcp_step_blocks.clear()
 
         stream_state = self._init_stream_state()
 
@@ -741,6 +781,11 @@ class IntelligentTerminal(App):
         if processed_line is not None:
             stream_state["current_line"] = processed_line
 
+        if processed_line is not None and not is_mcp_detected:
+            # 任意非 MCP 输出都会结束当前进度块序列
+            self._mcp_cluster_active = False
+            self._current_progress_block = None
+
         # 更新状态 - 但是不要让 MCP 消息影响流状态
         if not is_mcp_detected:
             if stream_state["is_first_content"]:
@@ -797,13 +842,12 @@ class IntelligentTerminal(App):
 
         # 如果是进度消息，使用专门的处理方法，无论 is_llm_output 的值
         if is_progress_message and tool_name:
-            return self._handle_mcp_progress_message(
+            self._handle_mcp_progress_message(
                 cleaned_content,
                 tool_name,
-                replace_tool_name,
-                mcp_tool_name,
                 output_container,
             )
+            return None
 
         # 使用清理后的内容进行后续处理
         content = cleaned_content
@@ -848,52 +892,79 @@ class IntelligentTerminal(App):
         self,
         content: str,
         tool_name: str,
-        replace_tool_name: str | None,
-        mcp_tool_name: str | None,
         output_container: Container,
     ) -> None:
         """处理 MCP 进度消息"""
-        # 检查是否为最终状态消息
-        is_final_message = is_final_mcp_message(content)
-
-        # 检查是否有现有的进度消息
-        existing_progress = self._current_progress_lines.get(tool_name)
-
-        # 如果有替换标记，则尝试替换现有消息
-        if replace_tool_name and existing_progress is not None:
-            # 替换现有的进度消息
-            existing_progress.update_markdown(content)
-            self.logger.debug("[TUI] 替换工具 %s 的进度消息: %s", tool_name, content.strip()[:50])
-
-            # 如果是最终状态，清理进度跟踪
-            if is_final_message:
-                self._current_progress_lines.pop(tool_name, None)
-                self.logger.debug("[TUI] 工具 %s 到达最终状态，清理进度跟踪", tool_name)
-
+        waiting_state = self._detect_waiting_state(content)
+        if waiting_state:
+            self._show_waiting_block(content, output_container)
             return
 
-        # 如果有MCP标记但已存在相同工具的进度消息，则替换而不是创建新的
-        if mcp_tool_name and existing_progress is not None:
-            # 这种情况可能是因为消息处理顺序问题导致的重复，应该替换现有消息
-            existing_progress.update_markdown(content)
-            self.logger.debug("[TUI] 替换已存在的工具 %s 进度消息: %s", tool_name, content.strip()[:50])
+        progress_block = self._get_or_create_progress_block(tool_name, output_container)
+        progress_block.upsert_step(tool_name, content)
+        self.logger.debug("[TUI] 更新工具 %s 的进度: %s", tool_name, content.strip()[:50])
 
-            # 如果是最终状态，清理进度跟踪
-            if is_final_message:
-                self._current_progress_lines.pop(tool_name, None)
-                self.logger.debug("[TUI] 工具 %s 到达最终状态，清理进度跟踪", tool_name)
+    def _get_or_create_progress_block(self, step_id: str, output_container: Container) -> MCPProgressBlock:
+        """按步骤 ID 查找或创建 MCP 进度块"""
+        existing_block = self._mcp_step_blocks.get(step_id)
+        if existing_block is not None and getattr(existing_block, "is_attached", True):
+            return existing_block
 
+        if existing_block is not None:
+            # 映射已失效，清理引用
+            self._mcp_step_blocks.pop(step_id, None)
+
+        block: MCPProgressBlock
+        if (
+            self._mcp_cluster_active
+            and self._current_progress_block is not None
+            and getattr(self._current_progress_block, "is_attached", True)
+        ):
+            block = self._current_progress_block
+        else:
+            block = MCPProgressBlock()
+            output_container.mount(block)
+            self._current_progress_block = block
+            self._mcp_cluster_active = True
+
+        self._mcp_step_blocks[step_id] = block
+        return block
+
+    def _detect_waiting_state(self, content: str) -> str | None:
+        """检测当前内容是否处于等待确认/参数状态"""
+        if MCPEmojis.WAITING_PARAM in content:
+            return "param"
+        if MCPEmojis.WAITING_START in content:
+            return "confirm"
+        return None
+
+    def _show_waiting_block(self, content: str, output_container: Container) -> None:
+        """展示等待状态提示块"""
+        if self._current_waiting_block is None or not getattr(self._current_waiting_block, "is_attached", True):
+            waiting_block = MCPWaitingBlock(content)
+            self._current_waiting_block = waiting_block
+            output_container.mount(waiting_block)
+        else:
+            self._current_waiting_block.update_markdown(content)
+
+    def _remove_waiting_block(self) -> None:
+        """移除等待状态提示块"""
+        if self._current_waiting_block is None:
             return
+        try:
+            if getattr(self._current_waiting_block, "parent", None) is not None:
+                self._current_waiting_block.remove()
+        except (AttributeError, RuntimeError, ValueError):
+            self.logger.debug("[TUI] 移除等待块时出现异常", exc_info=True)
+        finally:
+            self._current_waiting_block = None
 
-        # 创建新的进度消息
-        new_progress_line = ProgressOutputLine(content, step_id=tool_name)
-
-        # 如果不是最终状态，加入进度跟踪
-        if not is_final_message:
-            self._current_progress_lines[tool_name] = new_progress_line
-
-        output_container.mount(new_progress_line)
-        self.logger.debug("[TUI] 创建工具 %s 的新进度消息: %s", tool_name, content.strip()[:50])
+    def _reset_mcp_state(self) -> None:
+        """重置 MCP 进度展示状态"""
+        self._mcp_cluster_active = False
+        self._current_progress_block = None
+        self._mcp_step_blocks.clear()
+        self._remove_waiting_block()
 
     def _format_error_message(self, error: BaseException) -> str:
         """格式化错误消息"""

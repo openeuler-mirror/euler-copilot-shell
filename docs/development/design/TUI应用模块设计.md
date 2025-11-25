@@ -35,8 +35,9 @@ graph TB
     
     subgraph "输出组件"
         Q[OutputLine<br/>纯文本输出]
-        R[MarkdownOutputLine<br/>富文本输出]
-        S[ProgressOutputLine<br/>进度输出]
+        R[MarkdownOutput<br/>富文本输出]
+        S[MCPProgressBlock<br/>进度块]
+        T[MCPWaitingBlock<br/>交互提示]
     end
     
     A --> E
@@ -46,6 +47,8 @@ graph TB
     A --> M
     C --> Q
     C --> R
+    C --> S
+    C --> T
 ```
 
 #### 核心组件
