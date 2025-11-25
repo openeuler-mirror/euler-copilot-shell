@@ -208,6 +208,10 @@ class MCPProgressBlock(MarkdownOutput):
             self._steps.append((step_id, markdown_content))
         self._refresh()
 
+    def has_step(self, step_id: str) -> bool:
+        """检查是否已存在指定步骤"""
+        return step_id in self._step_index
+
     def reset(self) -> None:
         """清空所有步骤内容"""
         self._steps.clear()
@@ -895,12 +899,17 @@ class IntelligentTerminal(App):
         output_container: Container,
     ) -> None:
         """处理 MCP 进度消息"""
+        progress_block = self._get_or_create_progress_block(tool_name, output_container)
+        has_existing_entry = progress_block.has_step(tool_name)
+
         waiting_state = self._detect_waiting_state(content)
         if waiting_state:
+            # 如果该步骤尚未出现，仍需创建默认展示内容
+            if not has_existing_entry:
+                progress_block.upsert_step(tool_name, content)
             self._show_waiting_block(content, output_container)
             return
 
-        progress_block = self._get_or_create_progress_block(tool_name, output_container)
         progress_block.upsert_step(tool_name, content)
         self.logger.debug("[TUI] 更新工具 %s 的进度: %s", tool_name, content.strip()[:50])
 
