@@ -34,6 +34,8 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+MAX_FIRST_QUESTIONS = 3
+
 
 class ConfigError(Exception):
     """配置错误异常"""
@@ -46,7 +48,7 @@ class McpConfig:
     name: str
     description: str
     overview: str
-    config: dict[str, Any]
+    mcp_servers: dict[str, Any]
     mcp_type: str
     author: str = "openEuler"
 
@@ -64,6 +66,12 @@ class AppConfig:
     author: str = "openEuler"
     history_len: int = 3
     icon: str = ""
+    hashes: dict[str, str] = field(default_factory=dict)
+    links: list[dict[str, str]] = field(default_factory=list)
+    first_questions: list[str] = field(default_factory=list)
+    permission: dict[str, Any] = field(
+        default_factory=lambda: {"type": "public", "users": []},
+    )
 
 
 @dataclass
@@ -72,16 +80,16 @@ class AppMetadata:
 
     type: str = "app"
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    icon: str = ""
     name: str = ""
     description: str = ""
-    version: str = "1.0.0"
     author: str = "openEuler"
     app_type: str = "agent"
     published: bool = True
     history_len: int = 3
     mcp_service: list[str] = field(default_factory=list)
-    llm_id: str = "empty"
+    hashes: dict[str, str] = field(default_factory=dict)
+    links: list[dict[str, str]] = field(default_factory=list)
+    first_questions: list[str] = field(default_factory=list)
     permission: dict[str, Any] = field(
         default_factory=lambda: {"type": "public", "users": []},
     )
@@ -131,11 +139,26 @@ class McpConfigLoader:
         with config_file.open(encoding="utf-8") as f:
             config_data = json.load(f)
 
+        raw_servers = config_data.get("mcpServers")
+        mcp_servers: dict[str, Any] = {}
+
+        if isinstance(raw_servers, dict) and raw_servers:
+            mcp_servers = {
+                str(server_name): server_config
+                if isinstance(server_config, dict)
+                else {}
+                for server_name, server_config in raw_servers.items()
+            }
+        else:
+            legacy_config = config_data.get("config", {})
+            if isinstance(legacy_config, dict) and legacy_config:
+                mcp_servers = {name: legacy_config}
+
         return McpConfig(
             name=config_data.get("name", name),
             description=config_data.get("description", name),
             overview=config_data.get("overview", name),
-            config=config_data.get("config", {}),
+            mcp_servers=mcp_servers,
             mcp_type=config_data.get("mcpType", "sse"),
             author=config_data.get("author", "openEuler"),
         )
@@ -356,13 +379,28 @@ class AgentManager:
             target_dir = self.mcp_template_dir / dir_name
             target_dir.mkdir(parents=True, exist_ok=True)
 
+            raw_servers = config.mcp_servers or {}
+
+            if raw_servers and all(isinstance(cfg, dict) for cfg in raw_servers.values()):
+                server_entries = raw_servers
+            else:
+                server_entries = {dir_name: raw_servers if isinstance(raw_servers, dict) else {}}
+
+            normalized_servers = {
+                server_name: self._normalize_mcp_config(server_config)
+                for server_name, server_config in server_entries.items()
+            }
+
+            if not normalized_servers:
+                normalized_servers[dir_name] = self._normalize_mcp_config({})
+
             config_data = {
+                "mcpServers": normalized_servers,
                 "name": config.name,
                 "overview": config.overview,
                 "description": config.description,
-                "type": config.mcp_type,
+                "mcpType": config.mcp_type,
                 "author": config.author,
-                "config": self._normalize_mcp_config(config.config),
             }
 
             config_file = target_dir / "config.json"
@@ -391,26 +429,149 @@ class AgentManager:
 
     def _normalize_mcp_config(self, raw_config: dict[str, Any]) -> dict[str, Any]:
         defaults: dict[str, Any] = {
+            "env": {},
             "autoApprove": [],
-            "disabled": False,
-            "auto_install": True,
+            "autoInstall": True,
             "timeout": 60,
+            "url": "",
+            "disabled": False,
             "description": "",
             "headers": {},
         }
 
-        if not raw_config:
-            return copy.deepcopy(defaults)
+        merged = copy.deepcopy(defaults)
+        if raw_config:
+            merged.update(raw_config)
 
-        merged = {**defaults, **raw_config}
+        # 兼容旧字段命名
+        if "auto_install" in merged:
+            merged["autoInstall"] = bool(merged.pop("auto_install"))
 
         if not isinstance(merged.get("autoApprove"), list):
             merged["autoApprove"] = []
 
+        if not isinstance(merged.get("env"), dict):
+            merged["env"] = {}
+
         if not isinstance(merged.get("headers"), dict):
             merged["headers"] = {}
 
+        merged["autoInstall"] = bool(merged.get("autoInstall", True))
+
+        try:
+            merged["timeout"] = int(merged.get("timeout", defaults["timeout"]))
+        except (TypeError, ValueError):
+            merged["timeout"] = defaults["timeout"]
+
+        merged.setdefault("url", "")
+
         return merged
+
+    @staticmethod
+    def _normalize_links(raw_links: Any) -> list[dict[str, str]]:
+        if not isinstance(raw_links, list):
+            return []
+
+        normalized: list[dict[str, str]] = []
+        for link in raw_links:
+            if not isinstance(link, dict):
+                continue
+
+            title = str(link.get("title", "")).strip()
+            url = str(link.get("url", "")).strip()
+            if title and url:
+                normalized.append({"title": title, "url": url})
+
+        return normalized
+
+    @staticmethod
+    def _normalize_first_questions(raw_questions: Any) -> list[str]:
+        if raw_questions is None:
+            return []
+
+        questions = raw_questions
+        if not isinstance(questions, list):
+            questions = [questions]
+
+        normalized: list[str] = []
+        for question in questions:
+            if not isinstance(question, str):
+                continue
+            cleaned = question.strip()
+            if cleaned:
+                normalized.append(cleaned)
+            if len(normalized) >= MAX_FIRST_QUESTIONS:
+                break
+
+        return normalized
+
+    @staticmethod
+    def _normalize_permission_data(raw_permission: Any) -> dict[str, Any]:
+        default_permission = {"type": "public", "users": []}
+        if not isinstance(raw_permission, dict):
+            return copy.deepcopy(default_permission)
+
+        permission_type = raw_permission.get("type") or raw_permission.get("visibility")
+        if not isinstance(permission_type, str) or not permission_type:
+            permission_type = default_permission["type"]
+
+        users = raw_permission.get("users")
+        if users is None:
+            users = raw_permission.get("authorizedUsers")
+        if not isinstance(users, list):
+            users = []
+
+        return {"type": permission_type, "users": users}
+
+    @staticmethod
+    def _normalize_hashes(raw_hashes: Any) -> dict[str, str]:
+        if not isinstance(raw_hashes, dict):
+            return {}
+
+        normalized: dict[str, str] = {}
+        for key, value in raw_hashes.items():
+            if isinstance(value, str):
+                normalized[str(key)] = value
+
+        return normalized
+
+    @staticmethod
+    def _normalize_mcp_paths(raw_paths: Any) -> list[str]:
+        if not isinstance(raw_paths, list):
+            return []
+
+        return [path for path in raw_paths if isinstance(path, str) and path]
+
+    @staticmethod
+    def _as_bool(value: Any, *, default: bool = True) -> bool:
+        if isinstance(value, bool):
+            return value
+
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"true", "1", "yes"}:
+                return True
+            if normalized in {"false", "0", "no"}:
+                return False
+
+        if isinstance(value, (int, float)):
+            return bool(value)
+
+        return default
+
+    @staticmethod
+    def _safe_int(value: Any, default: int) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _first_existing_value(data: dict[str, Any], *keys: str) -> Any:
+        for key in keys:
+            if key in data:
+                return data[key]
+        return None
 
     async def _write_app_metadata_to_filesystem(
         self,
@@ -534,29 +695,31 @@ class AgentManager:
                 id=app_id,
                 name=app_config.name,
                 description=app_config.description,
-                version=app_config.version,
                 author=app_config.author,
                 app_type=app_config.app_type,
                 published=app_config.published,
                 history_len=app_config.history_len,
                 mcp_service=mcp_service_ids,
-                icon=app_config.icon,
+                hashes=app_config.hashes,
+                links=app_config.links,
+                first_questions=app_config.first_questions,
+                permission=app_config.permission,
             )
 
             metadata_file = target_dir / "metadata.yaml"
             metadata_dict = {
                 "type": metadata.type,
                 "id": metadata.id,
-                "icon": metadata.icon,
                 "name": metadata.name,
                 "description": metadata.description,
-                "version": metadata.version,
                 "author": metadata.author,
                 "app_type": metadata.app_type,
                 "published": metadata.published,
                 "history_len": metadata.history_len,
                 "mcp_service": metadata.mcp_service,
-                "llm_id": metadata.llm_id,
+                "hashes": metadata.hashes,
+                "links": metadata.links,
+                "first_questions": metadata.first_questions,
                 "permission": metadata.permission,
             }
 
@@ -648,16 +811,30 @@ class AgentManager:
             apps_data = toml_data.get("applications", [])
 
             for app_data in apps_data:
+                first_questions_raw = self._first_existing_value(
+                    app_data,
+                    "first_questions",
+                    "firstQuestions",
+                    "recommendedQuestions",
+                )
+
                 app_config = AppConfig(
                     app_type=app_data.get("appType", "agent"),
                     name=app_data.get("name", ""),
                     description=app_data.get("description", ""),
-                    mcp_path=app_data.get("mcpPath", []),
-                    published=app_data.get("published", True),
+                    mcp_path=self._normalize_mcp_paths(app_data.get("mcpPath", [])),
+                    published=self._as_bool(app_data.get("published", True)),
                     version=app_data.get("version", "1.0.0"),
                     author=app_data.get("author", "openEuler"),
-                    history_len=app_data.get("historyLen", 3),
+                    history_len=self._safe_int(
+                        app_data.get("historyLen", app_data.get("dialogRounds", 3)),
+                        3,
+                    ),
                     icon=app_data.get("icon", ""),
+                    hashes=self._normalize_hashes(app_data.get("hashes")),
+                    links=self._normalize_links(app_data.get("links", [])),
+                    first_questions=self._normalize_first_questions(first_questions_raw),
+                    permission=self._normalize_permission_data(app_data.get("permission")),
                 )
                 app_configs.append(app_config)
 

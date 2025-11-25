@@ -21,6 +21,7 @@ class TestAgentManagerHelpers:
                 "headers": ["invalid"],  # 非 dict -> 应重置
                 "timeout": timeout_override,
                 "disabled": True,
+                "auto_install": False,
             },
         )
 
@@ -28,20 +29,23 @@ class TestAgentManagerHelpers:
         assert normalized["headers"] == {}
         assert normalized["timeout"] == timeout_override
         assert normalized["disabled"] is True
-        # 默认键依然存在
-        assert normalized["auto_install"] is True
+        assert normalized["autoInstall"] is False  # 保留旧字段的显式值
+        assert normalized["env"] == {}
+        assert "auto_install" not in normalized
 
     def test_normalize_mcp_config_when_missing(self) -> None:
         """空配置将被填充为默认值"""
         manager = AgentManager()
         normalized = manager._normalize_mcp_config({})  # noqa: SLF001
         assert normalized == {
+            "env": {},
             "autoApprove": [],
             "disabled": False,
-            "auto_install": True,
+            "autoInstall": True,
             "timeout": 60,
             "description": "",
             "headers": {},
+            "url": "",
         }
 
     def test_resolve_mcp_services(self) -> None:
