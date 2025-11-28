@@ -10,15 +10,18 @@ import pytest
 from backend.hermes.client import HermesChatClient
 from backend.hermes.exceptions import HermesAPIError
 from backend.hermes.services import HermesConversationManager, HermesModelManager
+from backend.mcp_handler import MCPEventHandler
 from backend.models import ModelInfo
 
 if TYPE_CHECKING:
+    from backend.hermes.stream import HermesStreamEvent
     from config.manager import ConfigManager
 
 ChatStreamCallable = Callable[[Any], AsyncGenerator[str, None]]
 StopCallable = Callable[[], Awaitable[None]]
 
 NON_OK_STATUS = 500
+MISSING_CONVERSATION_STATUS = 400
 
 
 class _TestConversationManager(HermesConversationManager):
@@ -88,6 +91,21 @@ class _OverrideHermesChatClient(HermesChatClient):
 
     async def _stop(self) -> None:
         await self._stop_override()
+
+
+class _CaptureMCPHandler(MCPEventHandler):
+    """记录传入事件以便断言"""
+
+    def __init__(self) -> None:
+        self.last_event: HermesStreamEvent | None = None
+
+    async def handle_waiting_for_start(self, event: HermesStreamEvent) -> None:
+        """记录等待确认事件"""
+        self.last_event = event
+
+    async def handle_waiting_for_param(self, event: HermesStreamEvent) -> None:
+        """记录等待参数事件"""
+        self.last_event = event
 
 
 FAIL_STOP_MESSAGE = "stop should not be invoked before follow-up questions"
@@ -189,3 +207,66 @@ async def test_get_llm_response_reuses_existing_conversation_id(monkeypatch: pyt
     assert chunks == ["ok"]
     assert requested_ids == ["conv-keep"]
     assert conversation_manager.get_conversation_id() == "conv-keep"
+
+
+@pytest.mark.asyncio
+async def test_send_mcp_response_uses_fallback_conversation_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """MCP 响应应在缺失 ID 时回退会话管理器中的记录"""
+    monkeypatch.setattr("backend.hermes.client.get_locale", lambda: "zh")
+
+    stub_config = cast("ConfigManager", _StubConfigManager())
+    requested_ids: list[str] = []
+
+    async def fake_chat_stream(request: Any) -> AsyncGenerator[str, None]:
+        requested_ids.append(request.conversation_id or "")
+        yield "ok"
+
+    async def noop_stop() -> None:  # pragma: no cover - 行为简单
+        return None
+
+    client = _OverrideHermesChatClient(
+        "https://api.example",
+        chat_stream=fake_chat_stream,
+        stop_impl=noop_stop,
+        config_manager=stub_config,
+    )
+
+    conversation_manager = HermesConversationManager(client.http_manager)
+    conversation_manager._conversation_id = "conv-fallback"  # noqa: SLF001
+    client._conversation_manager = conversation_manager  # noqa: SLF001
+
+    chunks = [chunk async for chunk in client.send_mcp_response(params={"confirm": True})]
+
+    assert chunks == ["ok"]
+    assert requested_ids == ["conv-fallback"]
+
+
+@pytest.mark.asyncio
+async def test_send_mcp_response_raises_when_no_conversation_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """若无法确定会话 ID，应抛出 HermesAPIError"""
+    monkeypatch.setattr("backend.hermes.client.get_locale", lambda: "zh")
+
+    stub_config = cast("ConfigManager", _StubConfigManager())
+
+    async def fake_chat_stream(_request: Any) -> AsyncGenerator[str, None]:  # pragma: no cover - 不会被调用
+        yield "unused"
+
+    async def noop_stop() -> None:  # pragma: no cover - 行为简单
+        return None
+
+    client = _OverrideHermesChatClient(
+        "https://api.example",
+        chat_stream=fake_chat_stream,
+        stop_impl=noop_stop,
+        config_manager=stub_config,
+    )
+
+    async def consume_mcp_response() -> None:
+        async for _ in client.send_mcp_response(params={"confirm": True}):
+            pass
+
+    with pytest.raises(HermesAPIError) as exc:
+        await consume_mcp_response()
+
+    assert exc.value.status_code == MISSING_CONVERSATION_STATUS
+    assert "会话 ID" in str(exc.value)
