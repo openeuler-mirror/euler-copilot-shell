@@ -22,6 +22,7 @@ from backend import BackendFactory, HermesChatClient, OpenAIClient
 from backend.hermes.exceptions import HermesAPIError
 from backend.hermes.mcp_helpers import (
     MCPEmojis,
+    MCPTagInfo,
     MCPTags,
     extract_mcp_tag,
     format_error_message,
@@ -774,8 +775,8 @@ class IntelligentTerminal(App):
         )
 
         # 检查是否是 MCP 消息处理（返回值为 None 表示是 MCP 消息）
-        tool_name, _cleaned_content = extract_mcp_tag(content)
-        is_mcp_detected = processed_line is None and tool_name is not None
+        tag_info, _cleaned_content = extract_mcp_tag(content)
+        is_mcp_detected = processed_line is None and tag_info is not None
 
         # 只有当返回值不为None时才更新current_line
         if processed_line is not None:
@@ -825,26 +826,26 @@ class IntelligentTerminal(App):
         is_first_content = params.is_first_content
 
         # 检查是否包含MCP标记（替换标记或MCP标记）
-        tool_name, cleaned_content = extract_mcp_tag(content)
-        replace_tool_name = None
-        mcp_tool_name = None
+        tag_info, cleaned_content = extract_mcp_tag(content)
+        replace_tag_info: MCPTagInfo | None = None
+        mcp_tag_info: MCPTagInfo | None = None
 
         # 根据原始内容判断标记类型
-        if tool_name:
+        if tag_info:
             if MCPTags.REPLACE_PREFIX in content:
-                replace_tool_name = tool_name
+                replace_tag_info = tag_info
             elif MCPTags.MCP_PREFIX in content:
-                mcp_tool_name = tool_name
+                mcp_tag_info = tag_info
 
         # 检查是否为 MCP 进度消息
-        tool_name = replace_tool_name or mcp_tool_name
-        is_progress_message = tool_name is not None and is_mcp_message(content)
+        step_tag = replace_tag_info or mcp_tag_info
+        is_progress_message = step_tag is not None and is_mcp_message(content)
 
         # 如果是进度消息，使用专门的处理方法，无论 is_llm_output 的值
-        if is_progress_message and tool_name:
+        if is_progress_message and step_tag:
             self._handle_mcp_progress_message(
                 cleaned_content,
-                tool_name,
+                step_tag,
                 output_container,
             )
             return None
@@ -891,18 +892,18 @@ class IntelligentTerminal(App):
     def _handle_mcp_progress_message(
         self,
         content: str,
-        tool_name: str,
+        step_tag: MCPTagInfo,
         output_container: Container,
     ) -> None:
         """处理 MCP 进度消息"""
-        progress_block = self._get_or_create_progress_block(tool_name, output_container)
+        progress_block = self._get_or_create_progress_block(step_tag.identifier, output_container)
         waiting_state = self._detect_waiting_state(content)
         if waiting_state:
             self._show_waiting_block(content, output_container)
             return
 
-        progress_block.upsert_step(tool_name, content)
-        self.logger.debug("[TUI] 更新工具 %s 的进度: %s", tool_name, content.strip()[:50])
+        progress_block.upsert_step(step_tag.identifier, content)
+        self.logger.debug("[TUI] 更新工具 %s 的进度: %s", step_tag.display_name, content.strip()[:50])
 
     def _get_or_create_progress_block(self, step_id: str, output_container: Container) -> MCPProgressBlock:
         """按步骤 ID 查找或创建 MCP 进度块"""
@@ -1371,8 +1372,8 @@ class IntelligentTerminal(App):
                     break
 
                 # 判断是否为 LLM 输出内容
-                tool_name, _cleaned_content = extract_mcp_tag(content)
-                is_llm_output = tool_name is None
+                tag_info, _cleaned_content = extract_mcp_tag(content)
+                is_llm_output = tag_info is None
 
                 # 处理内容
                 await self._process_stream_content(

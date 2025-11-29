@@ -106,12 +106,12 @@ class HermesStreamProcessor:
     def __init__(self) -> None:
         """初始化流处理器"""
         self.logger = get_logger(__name__)
-        # 进度消息替换机制：跟踪当前工具的进度状态
-        self._current_tool_progress: dict[str, dict[str, Any]] = {}  # step_id -> progress_info
+        # 进度消息替换机制：跟踪当前步骤的进度状态
+        self._current_step_progress: dict[str, dict[str, Any]] = {}  # step_key -> progress_info
 
     def reset_status_tracking(self) -> None:
         """重置状态跟踪，用于新对话开始时"""
-        self._current_tool_progress.clear()
+        self._current_step_progress.clear()
         self.logger.debug("状态跟踪已重置")
 
     def handle_special_events(self, event: HermesStreamEvent) -> tuple[bool, str | None]:
@@ -271,39 +271,37 @@ class HermesStreamProcessor:
         should_replace: bool,
     ) -> str:
         """处理进度消息的 MCP 标记和替换逻辑"""
+        progress_key = step_id or step_name or "__anonymous_step__"
         is_final_state = event_type in MCPEventTypes.FINAL_STATE_EVENTS
-        has_previous_progress = step_name in self._current_tool_progress
+        has_previous_progress = progress_key in self._current_step_progress
 
-        # 非最终状态：记录进度到跟踪字典（使用工具名称作为 key）
+        # 非最终状态：记录进度到跟踪字典（使用唯一 key）
         if not is_final_state:
-            self._current_tool_progress[step_name] = {
+            self._current_step_progress[progress_key] = {
                 "message": base_message,
                 "should_replace": should_replace,
                 "is_progress": True,
                 "step_id": step_id,
+                "step_name": step_name,
             }
 
-        # 添加 MCP 标记：如果存在之前的进度则标记为替换，否则为新消息
-        if has_previous_progress:
-            base_message = f"{create_mcp_tag(step_name, is_replace=True)}{base_message}"
-            if is_final_state:
-                self._current_tool_progress.pop(step_name, None)
-        else:
-            base_message = f"{create_mcp_tag(step_name, is_replace=False)}{base_message}"
+        tag = create_mcp_tag(step_name, step_id=step_id or None, is_replace=has_previous_progress)
+        base_message = f"{tag}{base_message}"
+
+        if has_previous_progress and is_final_state:
+            self._current_step_progress.pop(progress_key, None)
 
         return base_message
 
     def _should_replace_progress(self, event: HermesStreamEvent, step_id: str | None) -> bool:
         """判断是否应该替换之前的进度消息"""
         step_name = event.get_step_name()
-        if not step_name:
-            return False
-
         event_type = event.event_type
+        progress_key = step_id or step_name or "__anonymous_step__"
 
         # 进度消息类型 + 存在之前的记录 → 需要替换
-        if event_type in MCPEventTypes.PROGRESS_MESSAGE_EVENTS and step_name in self._current_tool_progress:
-            prev_info = self._current_tool_progress[step_name]
+        if event_type in MCPEventTypes.PROGRESS_MESSAGE_EVENTS and progress_key in self._current_step_progress:
+            prev_info = self._current_step_progress[progress_key]
             return prev_info.get("is_progress", False)
 
         return False
