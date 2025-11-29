@@ -290,7 +290,6 @@ class IntelligentTerminal(App):
         self.current_agent: tuple[str, str] = self._get_initial_agent()
         # MCP 状态
         self._mcp_mode: str = "normal"  # "normal", "confirm", "parameter"
-        self._current_mcp_conversation_id: str = ""
         # 创建日志实例
         self.logger = get_logger(__name__)
         # MCP 进度展示状态
@@ -333,8 +332,6 @@ class IntelligentTerminal(App):
         output_container.remove_children()
         # 清理 MCP 状态
         self._reset_mcp_state()
-        # 清理 MCP 会话 ID
-        self._current_mcp_conversation_id = ""
 
     def action_choose_agent(self) -> None:
         """选择智能体的动作"""
@@ -419,7 +416,6 @@ class IntelligentTerminal(App):
         """初始化完成时设置焦点和绑定"""
         # 确保初始状态是正常模式
         self._mcp_mode = "normal"
-        self._current_mcp_conversation_id = ""
 
         # 清理任何可能的重复组件
         try:
@@ -541,45 +537,45 @@ class IntelligentTerminal(App):
     def handle_switch_to_mcp_confirm(self, message: SwitchToMCPConfirm) -> None:
         """处理切换到 MCP 确认界面的消息"""
         self._mcp_mode = "confirm"
-        self._current_mcp_conversation_id = message.event.get_conversation_id()
         self._replace_input_with_mcp_widget(MCPConfirmWidget(message.event, widget_id="mcp-confirm"))
 
     @on(SwitchToMCPParameter)
     def handle_switch_to_mcp_parameter(self, message: SwitchToMCPParameter) -> None:
         """处理切换到 MCP 参数输入界面的消息"""
         self._mcp_mode = "parameter"
-        self._current_mcp_conversation_id = message.event.get_conversation_id()
         self._replace_input_with_mcp_widget(MCPParameterWidget(message.event, widget_id="mcp-parameter"))
 
     @on(MCPConfirmResult)
     def handle_mcp_confirm_result(self, message: MCPConfirmResult) -> None:
         """处理 MCP 确认结果"""
-        # 检查是否是当前会话且未在处理中
-        if message.conversation_id == self._current_mcp_conversation_id and not self.processing:
-            self.processing = True  # 设置处理标志，防止重复处理
-            # 立即恢复正常输入界面
-            self._remove_waiting_block()
-            self._restore_normal_input()
-            # 发送 MCP 响应并处理结果
-            params = {"confirm": message.confirmed}
-            task = asyncio.create_task(self._send_mcp_response(message.conversation_id, params=params))
-            self.background_tasks.add(task)
-            task.add_done_callback(self._task_done_callback)
+        if not self._is_conversation_ready(message.conversation_id) or self.processing:
+            return
+
+        self.processing = True  # 设置处理标志，防止重复处理
+        # 立即恢复正常输入界面
+        self._remove_waiting_block()
+        self._restore_normal_input()
+        # 发送 MCP 响应并处理结果
+        params = {"confirm": message.confirmed}
+        task = asyncio.create_task(self._send_mcp_response(params=params))
+        self.background_tasks.add(task)
+        task.add_done_callback(self._task_done_callback)
 
     @on(MCPParameterResult)
     def handle_mcp_parameter_result(self, message: MCPParameterResult) -> None:
         """处理 MCP 参数结果"""
-        # 检查是否是当前会话且未在处理中
-        if message.conversation_id == self._current_mcp_conversation_id and not self.processing:
-            self.processing = True  # 设置处理标志，防止重复处理
-            # 立即恢复正常输入界面
-            self._remove_waiting_block()
-            self._restore_normal_input()
-            # 发送 MCP 响应并处理结果
-            params = message.params if message.params is not None else {}
-            task = asyncio.create_task(self._send_mcp_response(message.conversation_id, params=params))
-            self.background_tasks.add(task)
-            task.add_done_callback(self._task_done_callback)
+        if not self._is_conversation_ready(message.conversation_id) or self.processing:
+            return
+
+        self.processing = True  # 设置处理标志，防止重复处理
+        # 立即恢复正常输入界面
+        self._remove_waiting_block()
+        self._restore_normal_input()
+        # 发送 MCP 响应并处理结果
+        params = message.params if message.params is not None else {}
+        task = asyncio.create_task(self._send_mcp_response(params=params))
+        self.background_tasks.add(task)
+        task.add_done_callback(self._task_done_callback)
 
     def _is_in_main_interface(self) -> bool:
         """检查是否在主界面（没有其他屏幕弹出）"""
@@ -900,13 +896,8 @@ class IntelligentTerminal(App):
     ) -> None:
         """处理 MCP 进度消息"""
         progress_block = self._get_or_create_progress_block(tool_name, output_container)
-        has_existing_entry = progress_block.has_step(tool_name)
-
         waiting_state = self._detect_waiting_state(content)
         if waiting_state:
-            # 如果该步骤尚未出现，仍需创建默认展示内容
-            if not has_existing_entry:
-                progress_block.upsert_step(tool_name, content)
             self._show_waiting_block(content, output_container)
             return
 
@@ -974,6 +965,38 @@ class IntelligentTerminal(App):
         self._current_progress_block = None
         self._mcp_step_blocks.clear()
         self._remove_waiting_block()
+
+    def _get_current_conversation_id(self) -> str:
+        """从 LLM 客户端获取当前会话 ID"""
+        llm_client = self._llm_client
+        if llm_client is None:
+            return ""
+
+        try:
+            manager = getattr(llm_client, "conversation_manager", None)
+            if manager is None:
+                return ""
+            return manager.get_conversation_id()
+        except (AttributeError, RuntimeError, ValueError):
+            self.logger.debug("获取会话 ID 失败", exc_info=True)
+            return ""
+
+    def _is_conversation_ready(self, message_id: str) -> bool:
+        """确认当前会话 ID 已就绪且与消息一致"""
+        current_id = self._get_current_conversation_id()
+        if not current_id:
+            self.logger.warning("忽略 MCP 事件：当前会话尚未建立")
+            return False
+
+        if message_id and message_id != current_id:
+            self.logger.info(
+                "忽略 MCP 事件：会话 ID 不匹配 (%s != %s)",
+                message_id,
+                current_id,
+            )
+            return False
+
+        return True
 
     def _format_error_message(self, error: BaseException) -> str:
         """格式化错误消息"""
@@ -1256,7 +1279,6 @@ class IntelligentTerminal(App):
 
             # 重置 MCP 状态
             self._mcp_mode = "normal"
-            self._current_mcp_conversation_id = ""
 
             # 切换回正常模式样式
             input_container.remove_class("mcp-mode")
@@ -1276,9 +1298,8 @@ class IntelligentTerminal(App):
             self.logger.exception("恢复正常输入组件失败")
             # 如果恢复失败，至少要重置状态
             self._mcp_mode = "normal"
-            self._current_mcp_conversation_id = ""
 
-    async def _send_mcp_response(self, conversation_id: str, *, params: dict[str, Any]) -> None:
+    async def _send_mcp_response(self, *, params: dict[str, Any]) -> None:
         """发送 MCP 响应并处理结果"""
         output_container: Container | None = None
 
@@ -1290,7 +1311,6 @@ class IntelligentTerminal(App):
             llm_client = self.get_llm_client()
             if hasattr(llm_client, "send_mcp_response"):
                 success = await self._handle_mcp_response_stream(
-                    conversation_id,
                     params=params,
                     output_container=output_container,
                     llm_client=llm_client,
@@ -1320,7 +1340,6 @@ class IntelligentTerminal(App):
 
     async def _handle_mcp_response_stream(
         self,
-        conversation_id: str,
         *,
         params: dict[str, Any],
         output_container: Container,
@@ -1336,7 +1355,7 @@ class IntelligentTerminal(App):
         stream_state = self._init_stream_state()
 
         try:
-            async for content in llm_client.send_mcp_response(conversation_id, params=params):
+            async for content in llm_client.send_mcp_response(params=params):
                 if not content.strip():
                     continue
 

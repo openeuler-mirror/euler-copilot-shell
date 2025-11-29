@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
@@ -51,7 +52,7 @@ class HermesUserManager:
         try:
             client = await self.http_manager.get_client()
             user_url = urljoin(self.http_manager.base_url, "/api/user")
-            headers = self.http_manager.build_headers()
+            headers = self.http_manager.build_headers(self._build_remote_user_header())
 
             response = await client.get(user_url, headers=headers)
 
@@ -202,3 +203,25 @@ class HermesUserManager:
                 return False
 
         return True
+
+    def _build_remote_user_header(self) -> dict[str, str]:
+        """构建带有当前 Linux 用户 UID 的请求头"""
+        remote_uid = self._get_remote_user_id()
+        if remote_uid is None:
+            return {}
+        return {
+            "X-Remote-User": remote_uid,
+        }
+
+    def _get_remote_user_id(self) -> str | None:
+        """获取当前 Linux 用户的 UID"""
+        try:
+            uid = os.getuid()
+        except AttributeError:
+            self.logger.warning("当前系统不支持 os.getuid()，无法设置 X-Remote-User 请求头")
+            return None
+        except OSError as error:  # pragma: no cover - 仅在异常系统状态下触发
+            self.logger.warning("获取当前用户 UID 失败: %s", error)
+            return None
+
+        return str(uid)

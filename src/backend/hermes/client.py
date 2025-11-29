@@ -300,12 +300,11 @@ class HermesChatClient(LLMClientBase):
         """
         return await self.agent_manager.get_available_agents()
 
-    async def send_mcp_response(self, conversation_id: str, *, params: dict) -> AsyncGenerator[str, None]:
+    async def send_mcp_response(self, *, params: dict) -> AsyncGenerator[str, None]:
         """
         发送 MCP 响应并获取流式回复
 
         Args:
-            conversation_id: 会话ID
             params: 响应参数
                 - 对于 MCP 确认消息: {"confirm": true/false}
                 - 对于参数补全: 包含补全参数的字典
@@ -317,6 +316,11 @@ class HermesChatClient(LLMClientBase):
             HermesAPIError: 当 API 调用失败时
 
         """
+        # 始终使用会话管理器中记录的最新 ID
+        conversation_id = self.conversation_manager.get_conversation_id()
+        if not conversation_id:
+            raise HermesAPIError(400, _("无法确定会话 ID，请重试当前请求"))
+
         # 不在 MCP 响应时重置状态跟踪，保持去重机制有效
         self.logger.info("发送 MCP 响应 - 会话ID: %s, 参数类型: %s", conversation_id, type(params).__name__)
         start_time = time.time()
