@@ -896,13 +896,8 @@ class IntelligentTerminal(App):
     ) -> None:
         """处理 MCP 进度消息"""
         progress_block = self._get_or_create_progress_block(tool_name, output_container)
-        has_existing_entry = progress_block.has_step(tool_name)
-
         waiting_state = self._detect_waiting_state(content)
         if waiting_state:
-            # 如果该步骤尚未出现，仍需创建默认展示内容
-            if not has_existing_entry:
-                progress_block.upsert_step(tool_name, content)
             self._show_waiting_block(content, output_container)
             return
 
