@@ -21,6 +21,10 @@ class MCPTags:
     TAG_SUFFIX = "]"
 
 
+# LLM 统计信息标记
+LLM_STATS_PREFIX = "[LLM_STATS]"
+
+
 class MCPTagInfo(NamedTuple):
     """封装 MCP 标记的元信息"""
 

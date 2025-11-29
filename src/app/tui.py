@@ -21,6 +21,7 @@ from app.tui_mcp_handler import TUIMCPEventHandler
 from backend import BackendFactory, HermesChatClient, OpenAIClient
 from backend.hermes.exceptions import HermesAPIError
 from backend.hermes.mcp_helpers import (
+    LLM_STATS_PREFIX,
     MCPEmojis,
     MCPTagInfo,
     MCPTags,
@@ -768,6 +769,8 @@ class IntelligentTerminal(App):
             is_first_content=stream_state["is_first_content"],
         )
 
+        is_llm_stats_chunk = content.startswith(LLM_STATS_PREFIX)
+
         processed_line = await self._process_content_chunk(
             params,
             stream_state["current_line"],
@@ -788,6 +791,13 @@ class IntelligentTerminal(App):
             self._current_progress_block = None
 
         # 更新状态 - 但是不要让 MCP 消息影响流状态
+        if is_llm_stats_chunk:
+            stream_state["is_first_content"] = False
+            current_line_widget = stream_state.get("current_line")
+            if isinstance(current_line_widget, MarkdownOutput):
+                stream_state["current_content"] = current_line_widget.get_content()
+            return
+
         if not is_mcp_detected:
             if stream_state["is_first_content"]:
                 stream_state["is_first_content"] = False
@@ -824,6 +834,11 @@ class IntelligentTerminal(App):
         is_llm_output = params.is_llm_output
         current_content = params.current_content
         is_first_content = params.is_first_content
+
+        # 处理 LLM 输出的统计段落
+        if is_llm_output and content.startswith(LLM_STATS_PREFIX):
+            stats_payload = content[len(LLM_STATS_PREFIX) :].strip()
+            return self._append_llm_stats_block(stats_payload, current_line, output_container)
 
         # 检查是否包含MCP标记（替换标记或MCP标记）
         tag_info, cleaned_content = extract_mcp_tag(content)
@@ -886,6 +901,28 @@ class IntelligentTerminal(App):
         else:
             # 如果切换到非LLM输出，只使用当前内容
             new_line = OutputLine(content)
+        output_container.mount(new_line)
+        return new_line
+
+    def _append_llm_stats_block(
+        self,
+        stats_payload: str,
+        current_line: OutputLine | MarkdownOutput | None,
+        output_container: Container,
+    ) -> OutputLine | MarkdownOutput | None:
+        """在 Markdown 输出末尾添加 LLM 统计段落"""
+        if not stats_payload:
+            return current_line
+
+        stats_paragraph = f"\n\n> {stats_payload}"
+
+        if isinstance(current_line, MarkdownOutput):
+            updated = current_line.get_content() + stats_paragraph
+            current_line.update_markdown(updated)
+            return current_line
+
+        # 没有现有 Markdown 输出时，创建新的 Markdown 块
+        new_line = MarkdownOutput(f"> {stats_payload}")
         output_container.mount(new_line)
         return new_line
 

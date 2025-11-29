@@ -10,6 +10,7 @@ import json
 from typing import TYPE_CHECKING, Any
 
 from backend.hermes.mcp_helpers import (
+    LLM_STATS_PREFIX,
     MCPEventTypes,
     MCPMessageTemplates,
     MCPRiskLevels,
@@ -95,6 +96,13 @@ class HermesStreamEvent:
         """获取内容部分"""
         return self.data.get("content", {})
 
+    def get_metadata(self) -> dict[str, Any]:
+        """获取统计信息元数据"""
+        metadata = self.data.get("metadata")
+        if isinstance(metadata, dict):
+            return metadata
+        return {}
+
     def is_mcp_step_event(self) -> bool:
         """判断是否为 MCP 步骤相关事件"""
         return self.event_type in MCPEventTypes.ALL_STEP_EVENTS
@@ -150,6 +158,7 @@ class HermesStreamProcessor:
             return None
 
         event_type = event.event_type
+        metadata = event.get_metadata()
         step_status = event.get_step_status()
         executor_status = event.get_executor_status()
 
@@ -188,6 +197,7 @@ class HermesStreamProcessor:
             step_id,
             step_status,
             should_replace=should_replace,
+            metadata=metadata,
         )
 
     def _format_error_status(self, event: HermesStreamEvent) -> str:
@@ -225,7 +235,7 @@ class HermesStreamProcessor:
         message_content = content.get("message", "需要补充参数")
         return MCPMessageTemplates.waiting_param_message(step_name, message_content)
 
-    def _format_standard_status(
+    def _format_standard_status(  # noqa: PLR0913
         self,
         event_type: str,
         step_name: str,
@@ -233,6 +243,7 @@ class HermesStreamProcessor:
         step_status: str,
         *,
         should_replace: bool,
+        metadata: dict[str, Any] | None = None,
     ) -> str | None:
         """格式化标准步骤状态消息"""
         if step_status == "error":
@@ -250,6 +261,10 @@ class HermesStreamProcessor:
         if not base_message:
             return None
 
+        metadata_suffix = self._format_metadata_display(metadata)
+        if event_type in MCPEventTypes.FINAL_STATE_EVENTS and metadata_suffix:
+            base_message = self._append_stats_to_message(base_message, metadata_suffix)
+
         if event_type in MCPEventTypes.PROGRESS_MESSAGE_EVENTS and step_id:
             base_message = self._handle_progress_message(
                 event_type,
@@ -260,6 +275,54 @@ class HermesStreamProcessor:
             )
 
         return base_message
+
+    def _format_metadata_display(self, metadata: dict[str, Any] | None) -> str | None:  # noqa: C901
+        """将 metadata 中的 tokens/time 转换成输出字符串"""
+        if not metadata:
+            return None
+
+        def _format_token_value(value: Any) -> str | None:
+            if isinstance(value, (int, float)):
+                if isinstance(value, float):
+                    return str(int(value))
+                return str(value)
+            return None
+
+        def _format_time_value(value: Any) -> str | None:
+            if not isinstance(value, (int, float)):
+                return None
+            normalized = float(value)
+            formatted = f"{normalized:.3f}".rstrip("0").rstrip(".")
+            return f"{formatted}s"
+
+        stats_parts: list[str] = []
+
+        input_tokens = _format_token_value(metadata.get("inputTokens"))
+        if input_tokens is not None:
+            stats_parts.append(f"↑{input_tokens}")
+
+        output_tokens = _format_token_value(metadata.get("outputTokens"))
+        if output_tokens is not None:
+            stats_parts.append(f"↓{output_tokens}")
+
+        time_cost = _format_time_value(metadata.get("timeCost"))
+        if time_cost is not None:
+            stats_parts.append(time_cost)
+
+        if not stats_parts:
+            return None
+
+        return " ".join(stats_parts)
+
+    def _append_stats_to_message(self, base_message: str, stats: str) -> str:
+        """在原有消息末尾追加统计信息，保持原有换行格式"""
+        stripped_message = base_message.rstrip("\n")
+        if not stripped_message:
+            stripped_message = base_message
+        suffix = f"  [ {stats} ]" if stats else ""
+        if base_message.endswith("\n"):
+            return f"{stripped_message}{suffix}\n"
+        return f"{stripped_message}{suffix}"
 
     def _handle_progress_message(
         self,
@@ -305,3 +368,18 @@ class HermesStreamProcessor:
             return prev_info.get("is_progress", False)
 
         return False
+
+    def format_llm_stats_marker(self, event: HermesStreamEvent) -> str | None:
+        """将 LLM 最终步骤的统计信息转换为专用标记"""
+        if event.event_type != "executor.stop":
+            return None
+
+        step_name = (event.get_step_name() or "").upper()
+        if step_name != "FINAL":
+            return None
+
+        metadata_suffix = self._format_metadata_display(event.get_metadata())
+        if not metadata_suffix:
+            return None
+
+        return f"{LLM_STATS_PREFIX}{metadata_suffix}"
