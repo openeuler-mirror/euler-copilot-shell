@@ -133,7 +133,6 @@ delete_dir() {
   local dirs=(
     "aops"
     "authhub"
-    "copilot"
     "minio"
     "pgvector"
     "scws*"
@@ -163,11 +162,12 @@ delete_dir() {
   for dir in "${dirs[@]}"; do
     echo "  $BASE_PWD/$dir" | tee -a "$LOG_FILE"
   done
+  echo "  /var/lib/euler_copilot" | tee -a "$LOG_FILE"
 
   # 捕获中断信号
   trap 'echo -e "${COLOR_ERROR}[Error] 操作被中断！${COLOR_RESET}" | tee -a "$LOG_FILE"; exit 1' INT TERM
 
-  # 执行删除
+  # 执行删除 /opt 下的目录
   for dir in "${dirs[@]}"; do
     local target="$BASE_PWD/$dir"
 
@@ -189,6 +189,19 @@ delete_dir() {
       echo -e "${COLOR_INFO}[Info] 目录不存在，跳过: $target${COLOR_RESET}" | tee -a "$LOG_FILE"
     fi
   done
+
+  # 删除 euler_copilot 数据目录
+  if [ -d "/var/lib/euler_copilot" ]; then
+    echo -e "${COLOR_INFO}[Info] 正在删除: /var/lib/euler_copilot${COLOR_RESET}" | tee -a "$LOG_FILE"
+    if rm -rf "/var/lib/euler_copilot"; then
+      deleted_dirs+=("/var/lib/euler_copilot")
+      echo -e "${COLOR_INFO}[Info] 成功删除: /var/lib/euler_copilot${COLOR_RESET}" | tee -a "$LOG_FILE"
+    else
+      failed_dirs+=("/var/lib/euler_copilot")
+      delete_success=false
+      echo -e "${COLOR_ERROR}[Error] 删除失败: /var/lib/euler_copilot${COLOR_RESET}" | tee -a "$LOG_FILE"
+    fi
+  fi
 
   # 取消信号捕获
   trap - INT TERM

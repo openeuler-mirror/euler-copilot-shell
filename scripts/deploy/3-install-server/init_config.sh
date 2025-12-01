@@ -82,8 +82,10 @@ EOF
 
 # 更新配置文件中的密码
 update_password() {
-  # 使用sed命令更新配置文件
-  sed -i "s/secret_key = .*/secret_key = '$MINIO_ROOT_PASSWORD'/" $config_toml_file
+  # 更新 config.toml 中的 minio 和 postgres 密码
+  sed -i "s/secret_key = '.*'/secret_key = '$MINIO_ROOT_PASSWORD'/" $config_toml_file
+  sed -i "/\[postgres\]/,/^\[/ s/password = '.*'/password = '$PGSQL_PASSWORD'/" $config_toml_file
+  # 更新 env 文件中的密码
   sed -i "s/DATABASE_PASSWORD = .*/DATABASE_PASSWORD = $PGSQL_PASSWORD/" $env_file
   sed -i "s/MINIO_SECRET_KEY = .*/MINIO_SECRET_KEY = $MINIO_ROOT_PASSWORD/" $env_file
   if [ -f "$mysql_temp" ]; then
@@ -382,36 +384,44 @@ configure_postgresql() {
     return 1
   }
 
-  # 4. 设置 postgres 用户密码
-  echo -e "${COLOR_INFO}[Info] 设置 PostgreSQL 密码...${COLOR_RESET}"
-  sudo -u postgres psql -c "ALTER USER postgres PASSWORD '$PGSQL_PASSWORD';" || {
-    echo -e "${COLOR_ERROR}[Error] 密码设置失败${COLOR_RESET}"
+  # 4. 创建 euler_copilot 用户和数据库
+  echo -e "${COLOR_INFO}[Info] 创建 euler_copilot 用户和数据库...${COLOR_RESET}"
+  sudo -u postgres psql -c "CREATE USER euler_copilot WITH PASSWORD '$PGSQL_PASSWORD';" || {
+    echo -e "${COLOR_ERROR}[Error] 创建用户失败${COLOR_RESET}"
+    return 1
+  }
+  sudo -u postgres psql -c "CREATE DATABASE euler_copilot OWNER euler_copilot;" || {
+    echo -e "${COLOR_ERROR}[Error] 创建数据库失败${COLOR_RESET}"
+    return 1
+  }
+  sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE euler_copilot TO euler_copilot;" || {
+    echo -e "${COLOR_ERROR}[Error] 授权失败${COLOR_RESET}"
     return 1
   }
 
-  # 5. 启用扩展
+  # 5. 启用扩展（在 euler_copilot 数据库中）
   echo -e "${COLOR_INFO}[Info] 启用 PostgreSQL 扩展...${COLOR_RESET}"
-  sudo -u postgres psql -c "CREATE EXTENSION  zhparser;" || {
+  sudo -u postgres psql -d euler_copilot -c "CREATE EXTENSION IF NOT EXISTS zhparser;" || {
     echo -e "${COLOR_ERROR}[Error] 无法启用 zhparser 扩展${COLOR_RESET}"
     return 1
   }
 
-  sudo -u postgres psql -c "CREATE EXTENSION  vector;" || {
+  sudo -u postgres psql -d euler_copilot -c "CREATE EXTENSION IF NOT EXISTS vector;" || {
     echo -e "${COLOR_ERROR}[Error] 无法启用 vector 扩展${COLOR_RESET}"
     return 1
   }
 
-  sudo -u postgres psql -c "CREATE TEXT SEARCH CONFIGURATION  zhparser (PARSER = zhparser);" || {
+  sudo -u postgres psql -d euler_copilot -c "CREATE TEXT SEARCH CONFIGURATION IF NOT EXISTS zhparser (PARSER = zhparser);" || {
     echo -e "${COLOR_ERROR}[Error] 无法创建全文搜索配置${COLOR_RESET}"
     return 1
   }
 
-  sudo -u postgres psql -c "ALTER TEXT SEARCH CONFIGURATION zhparser ADD MAPPING FOR n,v,a,i,e,l WITH simple;" || {
+  sudo -u postgres psql -d euler_copilot -c "ALTER TEXT SEARCH CONFIGURATION zhparser ADD MAPPING FOR n,v,a,i,e,l WITH simple;" || {
     echo -e "${COLOR_ERROR}[Error] 无法添加映射${COLOR_RESET}"
     return 1
   }
 
-  # 5. 查找并修改pg_hba.conf
+  # 6. 查找并修改pg_hba.conf
   echo -e "${COLOR_INFO}[Info] 配置认证方式...${COLOR_RESET}"
   local pg_hba_conf
   pg_hba_conf=$(find / -name pg_hba.conf 2>/dev/null | head -n 1)
@@ -428,7 +438,7 @@ configure_postgresql() {
   sed -i -E 's/(local\s+all\s+all\s+)peer/\1md5/' "$pg_hba_conf"
   sed -i -E 's/(host\s+all\s+all\s+127\.0\.0\.1\/32\s+)ident/\1md5/' "$pg_hba_conf"
   sed -i -E 's/(host\s+all\s+all\s+::1\/128\s+)ident/\1md5/' "$pg_hba_conf"
-  # 6. 重启服务
+  # 7. 重启服务
   echo -e "${COLOR_INFO}[Info] 重启 PostgreSQL 服务...${COLOR_RESET}"
   systemctl daemon-reload
   systemctl restart postgresql || {
@@ -592,8 +602,8 @@ install_framework() {
 
   # 2. 检查并创建必要目录
   echo -e "${COLOR_INFO}[Info] 创建数据目录...${COLOR_RESET}"
-  mkdir -p /opt/copilot || {
-    echo -e "${COLOR_ERROR}[Error] 无法创建数据目录 /opt/copilot${COLOR_RESET}"
+  mkdir -p /var/lib/euler_copilot || {
+    echo -e "${COLOR_ERROR}[Error] 无法创建数据目录 /var/lib/euler_copilot${COLOR_RESET}"
     return 1
   }
 
@@ -665,29 +675,6 @@ install_framework() {
     sed -i "/\[login\.settings\]/,/^\[/ s|host = '.*'|host = 'http://${ip_address}:8000'|" "$framework_file"
     sed -i "s|login_api = '.*'|login_api = 'http://${ip_address}:8080/api/auth/login'|" $framework_file
     sed -i "s/domain = '.*'/domain = '$ip_address'/" $framework_file
-    # 添加 no_auth 参数
-    # 检查文件中是否已存在 [no_auth] 块
-    if grep -q '^\[no_auth\]$' "$framework_file"; then
-      echo -e "${COLOR_INFO}[Info] 文件中已存在 [no_auth] 配置块，更新内容...${COLOR_RESET}"
-
-      # 使用 sed 替换现有 [no_auth] 块下的内容（保留块，更新键值）
-      # 先删除现有块内的内容，再添加新内容
-      sed -i '/^\[no_auth\]$/,/^\[.*\]$/ {
-            /^\[no_auth\]$/!{ /^\[.*\]$/!d; }
-        }' "$framework_file"
-
-      # 在 [no_auth] 块后添加配置
-      sed -i '/^\[no_auth\]$/a\enable = true' "$framework_file"
-    else
-      echo -e "${COLOR_INFO}[Info] 向文件添加 [no_auth] 配置块...${COLOR_RESET}"
-      # 追加新的配置块到文件末尾
-      cat <<EOF >>"$framework_file"
-
-[no_auth]
-enable = true
-
-EOF
-    fi
   fi
 
   #更新 security key
