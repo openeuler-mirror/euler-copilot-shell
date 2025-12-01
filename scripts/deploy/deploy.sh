@@ -3,7 +3,6 @@
 COLOR_INFO='\033[34m'    # 蓝色信息
 COLOR_SUCCESS='\033[32m' # 绿色成功
 COLOR_ERROR='\033[31m'   # 红色错误
-COLOR_WARNING='\033[33m' # 黄色警告
 COLOR_RESET='\033[0m'    # 重置颜色
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
