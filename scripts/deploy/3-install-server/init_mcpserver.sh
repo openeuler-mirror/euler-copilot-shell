@@ -7,7 +7,7 @@ COLOR_RESET='\033[0m'    # 重置颜色
 
 init_mcp_config() {
   local mcp_config_path="../5-resource/mcp_config"
-  local target_path="/opt/copilot/semantics/mcp/template"
+  local target_path="/var/lib/euler_copilot/semantics/mcp/template"
 
   echo -e "${COLOR_INFO}[Info] 开始初始化MCP配置文件...${COLOR_RESET}"
 

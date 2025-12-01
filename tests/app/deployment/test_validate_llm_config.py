@@ -114,19 +114,6 @@ class TestDeploymentConfigValidation:
         assert valid
         assert not errors
 
-    def test_full_mode_requires_embedding_endpoint(self) -> None:
-        """Full 模式需要 embedding endpoint"""
-        config = DeploymentConfig(deployment_mode="full")
-        config.llm.endpoint = "http://127.0.0.1:8000/v1"
-
-        valid, errors = config.validate()
-        assert not valid
-        assert any("Embedding" in error for error in errors)
-
-        config.embedding.endpoint = "http://localhost:5100/embed"
-        valid, errors = config.validate()
-        assert valid
-
     def test_numeric_fields_validation(self) -> None:
         """数值字段应遵守上/下限"""
         config = DeploymentConfig(

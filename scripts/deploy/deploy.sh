@@ -9,8 +9,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 
-INSTALL_MODE_FILE="/etc/euler_Intelligence_install_mode"
-
 # 顶层菜单
 show_top_menu() {
   clear
@@ -39,93 +37,18 @@ show_sub_menu() {
   echo "=============================="
   echo -n "请输入选项编号（1-4）: "
 }
-# 安装选项菜单（手动选择模式部署部署子菜单）
-show_sub_model_menu() {
-  clear
-  echo "=============================="
-  echo "       手动分步部署菜单         "
-  echo "=============================="
-  echo "1) 轻量部署 # 仅部署 oi-runtime 服务"
-  echo "2) 全量部署 # 带有 Web 界面和知识库"
-  echo "3) 返回主菜单"
-  echo "=============================="
-  echo -n "请输入选项编号（1-3）: "
-}
+
 show_restart_menu() {
   clear
   echo "=============================="
   echo "        服务重启菜单           "
   echo "=============================="
   echo "可重启的服务列表："
-  echo "1) authhub"
-  echo "2) oi-runtime"
-  echo "3) oi-rag"
-  echo "4) mysql"
-  echo "5) redis"
-  echo "6) postgresql"
-  echo "7) 返回主菜单"
+  echo "1) oi-runtime"
+  echo "2) postgresql"
+  echo "3) 返回主菜单"
   echo "=============================="
-  echo -n "请输入要重启的服务编号（1-7）: "
-}
-
-# 询问用户并保存安装模式
-ask_install_options() {
-  local force_mode="$1" # 接收可选参数（force或空值）
-  echo "$force_mode"
-  # 只有当参数不是force，且存在有效配置时才跳过询问
-  if [ "$force_mode" != "force" ] && check_existing_install_mode "$INSTALL_MODE_FILE"; then
-    return 0 # 非强制模式且配置有效，直接返回
-  fi
-  echo -e "\n${COLOR_INFO}[Info] 请选择附加组件安装选项:${COLOR_RESET}"
-
-  # 询问是否安装web
-  while true; do
-    read -p "是否安装Web管理界面? (y/n，默认n): " web_choice
-    web_choice=${web_choice:-n} # 默认值为y
-    if [[ "$web_choice" =~ ^[YyNn]$ ]]; then
-      break
-    else
-      echo -e "${COLOR_ERROR}[Error] 输入无效，请输入y或n${COLOR_RESET}"
-    fi
-  done
-
-  # 询问是否安装rag
-  while true; do
-    read -p "是否安装RAG检索增强组件? (y/n，默认n): " rag_choice
-    rag_choice=${rag_choice:-n} # 默认值为n
-    if [[ "$rag_choice" =~ ^[YyNn]$ ]]; then
-      break
-    else
-      echo -e "${COLOR_ERROR}[Error] 输入无效，请输入y或n${COLOR_RESET}"
-    fi
-  done
-
-  # 转换为小写（统一格式）
-  web_install=$(echo "$web_choice" | tr '[:upper:]' '[:lower:]')
-  rag_install=$(echo "$rag_choice" | tr '[:upper:]' '[:lower:]')
-
-  # 保存到文件（格式：key=value，便于后续读取）
-  echo "web_install=$web_install" >"$INSTALL_MODE_FILE"
-  echo "rag_install=$rag_install" >>"$INSTALL_MODE_FILE"
-
-  echo -e "\n${COLOR_INFO}[Info] 安装模式已保存到: $INSTALL_MODE_FILE${COLOR_RESET}"
-  return 0
-}
-
-# 轻量部署
-light_deploy() {
-  # 保存到文件（格式：key=value，便于后续读取）
-  echo "web_install=n" >"$INSTALL_MODE_FILE"
-  echo "rag_install=n" >>"$INSTALL_MODE_FILE"
-  return 0
-}
-
-# 全量部署
-wight_deploy() {
-  # 保存到文件（格式：key=value，便于后续读取）
-  echo "web_install=y" >"$INSTALL_MODE_FILE"
-  echo "rag_install=y" >>"$INSTALL_MODE_FILE"
-  return 0
+  echo -n "请输入要重启的服务编号（1-3）: "
 }
 
 # 带错误检查的脚本执行函数
@@ -162,70 +85,19 @@ run_sub_script() {
     return 2 # 特殊返回码表示返回上级菜单
     ;;
   *)
-    echo -e "\033[31m无效的选项，请输入1-5之间的数字\033[0m"
+    echo -e "\033[31m无效的选项，请输入1-4之间的数字\033[0m"
     return 1
     ;;
   esac
   return 0
-}
-
-# 执行子菜单选择部署模式对应脚本
-run_sub_model_script() {
-  case $1 in
-  1)
-    light_deploy
-    "./0-one-click-deploy/one-click-deploy.sh"
-    ;;
-  2)
-    wight_deploy
-    "./0-one-click-deploy/one-click-deploy.sh"
-    ;;
-  3)
-    echo "正在返回主菜单..."
-    echo "按任意键继续..."
-    read -r -n 1 -s
-    return 2 # 特殊返回码表示返回上级菜单
-    ;;
-  *)
-    echo -e "\033[31m无效的选项，请输入1-3之间的数字\033[0m"
-    return 1
-    ;;
-  esac
-  return 0
-}
-
-# 检查是否存在有效的安装模式配置文件
-check_existing_install_mode() {
-  local target_file="$1"
-
-  # 检查文件是否存在
-  if [ ! -f "$target_file" ]; then
-    return 1 # 文件不存在，需要询问
-  fi
-
-  # 检查文件格式是否正确（包含必要的键）
-  local web_val=$(grep "^web_install=" "$target_file" | cut -d'=' -f2)
-  local rag_val=$(grep "^rag_install=" "$target_file" | cut -d'=' -f2)
-
-  # 验证值是否合法（必须是y或n）
-  if [[ -n "$web_val" && -n "$rag_val" &&
-    "$web_val" =~ ^[yn]$ && "$rag_val" =~ ^[yn]$ ]]; then
-    echo -e "${COLOR_INFO}[Info] 检测到有效的安装模式配置文件: $target_file${COLOR_RESET}"
-    echo -e "${COLOR_INFO}[Info] 已配置: Web=${web_val^^}, RAG=${rag_val^^}${COLOR_RESET}"
-    return 0 # 配置有效，无需询问
-  else
-    echo -e "${COLOR_WARNING}[Warning] 安装模式配置文件格式无效，将重新询问${COLOR_RESET}"
-    return 1 # 配置无效，需要重新询问
-  fi
 }
 
 # 手动部署子菜单循环
 manual_deployment_loop() {
   while true; do
-    #    show_sub_menu
-    show_sub_model_menu
+    show_sub_menu
     read -r sub_choice
-    run_sub_model_script "$sub_choice"
+    run_sub_script "$sub_choice"
     retval=$?
 
     if [ $retval -eq 2 ]; then # 返回主菜单
@@ -335,7 +207,6 @@ while true; do
   read -r main_choice
   case $main_choice in
   0)
-    light_deploy
     "./0-one-click-deploy/one-click-deploy.sh"
     echo "按任意键继续..."
     read -r -n 1 -s
@@ -348,15 +219,11 @@ while true; do
       show_restart_menu
       read -r restart_choice
       case $restart_choice in
-      1) service="authhub" ;;
-      2) service="oi-runtime" ;;
-      3) service="oi-rag" ;;
-      4) service="mysqld" ;;
-      5) service="redis" ;;
-      6) service="postgresql" ;;
-      7) break ;;
+      1) service="oi-runtime" ;;
+      2) service="postgresql" ;;
+      3) break ;;
       *)
-        echo -e "${COLOR_ERROR}无效的选项，请输入1-8之间的数字${COLOR_RESET}"
+        echo -e "${COLOR_ERROR}无效的选项，请输入1-3之间的数字${COLOR_RESET}"
         continue
         ;;
       esac

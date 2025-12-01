@@ -5,7 +5,6 @@ COLOR_SUCCESS='\033[32m' # 绿色成功
 COLOR_ERROR='\033[31m'   # 红色错误
 COLOR_WARNING='\033[33m' # 黄色警告
 COLOR_RESET='\033[0m'    # 重置颜色
-INSTALL_MODE_FILE="/etc/euler_Intelligence_install_mode"
 # 全局模式标记
 OFFLINE_MODE=false
 
@@ -64,83 +63,8 @@ get_el_version() {
   return 1
 }
 
-# 安装wget工具
-install_wget() {
-  echo -e "${COLOR_INFO}[INFO] 正在尝试安装wget...${COLOR_RESET}"
-
-  # 检查包管理器并安装
-  if command -v apt-get &>/dev/null; then
-    sudo apt-get update && sudo apt-get install -y wget
-  elif command -v yum &>/dev/null; then
-    sudo yum install -y wget
-  elif command -v dnf &>/dev/null; then
-    sudo dnf install -y wget
-  elif command -v zypper &>/dev/null; then
-    sudo zypper install -y wget
-  else
-    echo -e "${COLOR_FAILURE}[ERROR] 无法确定包管理器，请手动安装wget${COLOR_RESET}"
-    return 1
-  fi
-
-  # 验证安装是否成功
-  if command -v wget &>/dev/null; then
-    echo -e "${COLOR_SUCCESS}[SUCCESS] wget安装成功${COLOR_RESET}"
-    return 0
-  else
-    echo -e "${COLOR_FAILURE}[ERROR] wget安装失败${COLOR_RESET}"
-    return 1
-  fi
-}
-
-# 基础URL列表（无论RAG是否启用都需要检测）
-get_mongodb_urls() {
-  local el_version arch
-  el_version=$(get_el_version)
-  arch=$(uname -m)
-
-  # 根据架构映射到对应的包架构名称
-  case "$arch" in
-  x86_64 | i386 | i686)
-    local pkg_arch="x86_64"
-    ;;
-  aarch64 | arm64)
-    local pkg_arch="aarch64"
-    ;;
-  *)
-    echo -e "${COLOR_ERROR}[Error] 不支持的架构: $arch${COLOR_RESET}"
-    echo -e "${COLOR_ERROR}[Error] 仅支持 x86_64、aarch64 架构${COLOR_RESET}"
-    return 1
-    ;;
-  esac
-
-  # 检查本地MongoDB缓存文件是否存在
-  local mongodb_dir="/opt/mongodb"
-  local mongodb_server="$mongodb_dir/mongodb-org-server-7.0.21-1.el${el_version}.${pkg_arch}.rpm"
-  local mongodb_mongosh="$mongodb_dir/mongodb-mongosh-2.5.2.${pkg_arch}.rpm"
-
-  # 如果所有MongoDB文件都已缓存，则跳过网络检查
-  if [ -f "$mongodb_server" ] && [ -f "$mongodb_mongosh" ]; then
-    echo -e "${COLOR_INFO}[Info] MongoDB RPM文件已缓存，跳过网络连接检查${COLOR_RESET}"
-    base_urls=() # 清空URL列表
-    return 0
-  fi
-
-  # 如果缓存不完整，添加需要下载的URL到检查列表
-  base_urls=()
-  if [ ! -f "$mongodb_server" ]; then
-    base_urls+=("https://repo.mongodb.org/yum/redhat/${el_version}/mongodb-org/7.0/${pkg_arch}/RPMS/mongodb-org-server-7.0.21-1.el${el_version}.${pkg_arch}.rpm")
-  fi
-  if [ ! -f "$mongodb_mongosh" ]; then
-    base_urls+=("https://downloads.mongodb.com/compass/mongodb-mongosh-2.5.2.${pkg_arch}.rpm")
-  fi
-
-  if [ ${#base_urls[@]} -gt 0 ]; then
-    echo -e "${COLOR_INFO}[Info] 需要检查 ${#base_urls[@]} 个MongoDB相关URL的网络连接${COLOR_RESET}"
-  fi
-}
-
-# RAG专用URL列表（仅当RAG启用时检测）
-rag_urls=(
+# Postgres 插件 URL 列表
+postgres_plugin_urls=(
   "https://bgithub.xyz/pgvector/pgvector.git"
   "https://bgithub.xyz/amutu/zhparser.git"
 )
@@ -156,26 +80,8 @@ check_url_accessibility() {
     fi
   fi
 
-  # 读取RAG安装状态（依赖之前的read_install_mode函数设置RAG_INSTALL变量）
-  if ! read_install_mode; then
-    echo -e "${COLOR_WARNING}[WARN] 无法读取安装模式，默认按RAG未启用检测${COLOR_RESET}"
-    local RAG_INSTALL="n"
-  fi
-
-  # 根据架构和RAG状态组合最终需要检测的URL列表
-  local detect_urls=()
-
-  # 初始化 MongoDB URLs
-  get_mongodb_urls
-  detect_urls+=("${base_urls[@]}")
-
-  # 如果启用RAG，添加RAG专用URL
-  if [ "$RAG_INSTALL" = "y" ]; then
-    detect_urls+=("${rag_urls[@]}")
-    echo -e "${COLOR_INFO} RAG组件已启用，将检测所有必要URL（共${#detect_urls[@]}个）${COLOR_RESET}"
-  else
-    echo -e "${COLOR_INFO} RAG组件未启用，仅检测基础URL（共${#detect_urls[@]}个）${COLOR_RESET}"
-  fi
+  local detect_urls=("${postgres_plugin_urls[@]}")
+  echo -e "${COLOR_INFO} 将检测 Postgres 插件必要 URL（共${#detect_urls[@]}个）${COLOR_RESET}"
 
   local all_success=true
   local timeout_seconds=15 # 设置超时时间
@@ -227,24 +133,12 @@ check_url_accessibility() {
   fi
 }
 
-# 全局变量：默认端口列表（未启用Web时）
+# 全局变量：默认端口列表
 PORTS=(8002)
 
 # 读取安装模式并设置端口列表的函数
-init_ports_based_on_web() {
-  if ! read_install_mode; then
-    echo -e "${COLOR_WARNING}[Warning] 无法读取安装模式，使用默认端口配置${COLOR_RESET}"
-    return 1
-  fi
-
-  # 根据Web组件状态更新全局PORTS变量
-  if [ "$WEB_INSTALL" = "y" ]; then
-    PORTS=(8080 9888 8000 11120)
-    echo -e "${COLOR_INFO} Web组件已启用，端口列表: ${PORTS[*]}${COLOR_RESET}"
-  else
-    PORTS=(8002)
-    echo -e "${COLOR_INFO} Web组件未启用，端口列表: ${PORTS[*]}${COLOR_RESET}"
-  fi
+init_ports() {
+  echo -e "${COLOR_INFO} 端口列表: ${PORTS[*]}${COLOR_RESET}"
 }
 
 function check_user {
@@ -408,21 +302,6 @@ check_packages() {
     sleep 0.1 # 避免请求过快
   done
 }
-check_web_pkg() {
-  local pkgs=(
-    "nginx"
-    "redis:redis6" # 支持 redis 或 redis6 包名
-    "mysql"
-    "mysql-server"
-    "authHub"
-    "authhub-web"
-    "euler-copilot-web"
-    "euler-copilot-witchaind-web"
-  )
-  if ! check_packages "${pkgs[@]}"; then
-    return 1
-  fi
-}
 check_framework_pkg() {
   local pkgs=(
     "euler-copilot-framework"
@@ -432,17 +311,6 @@ check_framework_pkg() {
     "gcc-c++"
     "tar"
     "python3-pip"
-  )
-  if ! check_packages "${pkgs[@]}"; then
-    return 1
-  fi
-}
-check_rag_pkg() {
-  local pkgs=(
-    "euler-copilot-rag"
-    "clang"
-    "llvm"
-    "java-17-openjdk"
     "postgresql"
     "postgresql-server"
     "postgresql-server-devel"
@@ -531,7 +399,7 @@ function check_firewall {
 check_ports() {
   local occupied=()
   echo -e "${COLOR_INFO}正在检查端口占用情况...${COLOR_RESET}"
-  init_ports_based_on_web
+  init_ports
 
   for port in "${PORTS[@]}"; do
     if ss -tuln | grep -q ":${port} "; then
@@ -577,43 +445,10 @@ setup_firewall() {
   echo -e "${COLOR_SUCCESS}[Success]重新加载防火墙规则成功${COLOR_RESET}"
   return 0
 }
-# 读取安装模式的方法
-read_install_mode() {
-  # 检查文件是否存在
-  if [ ! -f "$INSTALL_MODE_FILE" ]; then
-    echo "web_install=n" >"$INSTALL_MODE_FILE"
-    echo "rag_install=n" >>"$INSTALL_MODE_FILE"
-  fi
 
-  # 从文件读取配置（格式：key=value）
-  local web_install
-  local rag_install
-  web_install=$(grep "web_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
-  rag_install=$(grep "rag_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
-
-  # 验证读取结果
-  if [ -z "$web_install" ] || [ -z "$rag_install" ]; then
-    echo -e "${COLOR_ERROR}[Error] 安装模式文件格式错误${COLOR_RESET}"
-    return 1
-  fi
-  # 将结果存入全局变量（供其他函数使用）
-  WEB_INSTALL=$web_install
-  RAG_INSTALL=$rag_install
-  return 0
-}
-# 示例：根据安装模式执行对应操作（可根据实际需求扩展）
+# 检查软件包是否可用
 install_components() {
-  # 读取安装模式
-  read_install_mode || return 1
   echo -e "${COLOR_INFO}[Info] 检查软件包是否可用${COLOR_RESET}"
-  if [ "$WEB_INSTALL" = "y" ]; then
-    check_web_pkg
-  fi
-
-  if [ "$RAG_INSTALL" = "y" ]; then
-    # 此处添加RAG安装命令，示例：
-    check_rag_pkg
-  fi
 
   check_framework_pkg
   echo -e "--------------------------------"

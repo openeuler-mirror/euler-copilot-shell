@@ -64,18 +64,11 @@ class DeploymentConfig:
     包含完整的部署配置信息。
     """
 
-    # 基础设置
-    deployment_mode: str = "light"  # light: 轻量部署, full: 全量部署
-
     # LLM 配置
     llm: LLMConfig = field(default_factory=LLMConfig)
 
     # Embedding 配置
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
-
-    # 高级配置（可选）
-    enable_web: bool = False
-    enable_rag: bool = False
 
     # 检测到的后端类型（从 API 验证中获得）
     detected_backend_type: str = "function_call"  # 默认值
@@ -172,7 +165,6 @@ class DeploymentConfig:
         """验证 Embedding 配置字段"""
         errors = []
 
-        # 检查是否有任何 Embedding 字段已填写
         has_embedding_config = any(
             [
                 self.embedding.endpoint.strip(),
@@ -181,13 +173,8 @@ class DeploymentConfig:
             ],
         )
 
-        # 轻量部署模式下，Embedding 配置是可选的
-        if self.deployment_mode == "light":
-            # 如果用户填了任何 Embedding 字段，则端点必须填写，API Key 和模型名称允许为空
-            if has_embedding_config and not self.embedding.endpoint.strip():
-                errors.append(_("Embedding API 端点不能为空"))
-        elif not self.embedding.endpoint.strip():
-            # 全量部署模式下，Embedding 配置是必需的，但只要求端点必填
+        # Embedding 配置为可选项，仅在用户填写部分字段时要求端点必填
+        if has_embedding_config and not self.embedding.endpoint.strip():
             errors.append(_("Embedding API 端点不能为空"))
 
         return errors

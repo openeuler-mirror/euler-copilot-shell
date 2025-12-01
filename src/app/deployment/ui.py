@@ -29,7 +29,7 @@ from app.tui_header import OIHeader
 from i18n.manager import _
 
 from .models import DeploymentConfig, DeploymentState, EmbeddingConfig, LLMConfig
-from .service import LOCAL_DEPLOYMENT_HOST, DeploymentService
+from .service import DeploymentService
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -138,9 +138,6 @@ class DeploymentConfigScreen(ModalScreen[bool]):
             yield OIHeader()
 
             with TabbedContent():
-                with TabPane(_("基础配置"), id="basic"):
-                    yield from self._compose_basic_config()
-
                 with TabPane(_("LLM 配置"), id="llm"):
                     yield from self._compose_llm_config()
 
@@ -153,37 +150,15 @@ class DeploymentConfigScreen(ModalScreen[bool]):
 
     async def on_mount(self) -> None:
         """界面挂载时初始化状态"""
-        # 根据配置初始化 UI 状态
-        self._sync_ui_from_config()
         # 初始化验证状态
         self._initialize_validation_status()
 
-    def _sync_ui_from_config(self) -> None:
-        """根据配置同步 UI 状态"""
-        # 根据配置更新部署模式按钮显示
-        try:
-            btn = self.query_one("#deployment_mode_btn", Button)
-            desc = self.query_one("#deployment_mode_desc", Static)
-
-            if self.config.deployment_mode == "full":
-                btn.label = _("全量部署")
-                desc.update(_("全量部署：部署框架服务 + Web 界面 + RAG 组件，自动初始化 Agent。"))
-            else:
-                btn.label = _("轻量部署")
-                desc.update(_("轻量部署：仅部署框架服务，自动初始化 Agent。"))
-
-        except (ValueError, AttributeError):
-            # 如果 UI 组件还没初始化完成，忽略错误
-            pass
-
     def _initialize_validation_status(self) -> None:
         """初始化验证状态"""
-        # 初始化 Embedding 验证状态
         if self._is_embedding_required():
             self.embedding_validation_status = ValidationStatus.PENDING
         else:
             self.embedding_validation_status = ValidationStatus.NOT_REQUIRED
-            # 如果不需要验证 Embedding，显示相应状态
             try:
                 embedding_status = self.query_one("#embedding_validation_status", Static)
                 embedding_status.update(_("[dim]不需要验证[/dim]"))
@@ -192,28 +167,6 @@ class DeploymentConfigScreen(ModalScreen[bool]):
 
         # 更新部署按钮状态
         self._update_deploy_button_state()
-
-    def _compose_basic_config(self) -> ComposeResult:
-        """组合基础配置组件"""
-        with Vertical():
-            yield Static(_("基础配置"), classes="form-label")
-
-            with Horizontal(classes="form-row"):
-                yield Label(_("服务器 IP 地址:"), classes="form-label")
-                yield Static(LOCAL_DEPLOYMENT_HOST, classes="form-input")
-
-            with Horizontal(classes="form-row"):
-                yield Label(_("部署模式:"), classes="form-label")
-                # 使用按钮在轻量/全量间切换，按钮文本显示当前选择（不包含括号描述）
-                yield Button(_("轻量部署"), id="deployment_mode_btn", classes="form-input", variant="primary")
-
-            # 描述区域，显示当前部署模式的详细说明
-            with Horizontal(classes="form-row"):
-                yield Static(
-                    _("轻量部署：仅部署框架服务，自动初始化 Agent。"),
-                    id="deployment_mode_desc",
-                    classes="form-input",
-                )
 
     def _compose_llm_config(self) -> ComposeResult:
         """组合 LLM 配置组件"""
@@ -278,10 +231,8 @@ class DeploymentConfigScreen(ModalScreen[bool]):
         with Vertical(classes="embedding-config-container"):
             yield Static(_("嵌入模型配置"), classes="form-label")
 
-            # 添加轻量部署说明
             yield Static(
-                _("[dim]轻量部署模式下，Embedding 配置为可选项。[/dim]"),
-                id="embedding_mode_hint",
+                _("[dim]Embedding 配置为可选项；若需启用 RAG 功能，请填写以下信息。[/dim]"),
                 classes="form-input",
             )
 
@@ -334,42 +285,6 @@ class DeploymentConfigScreen(ModalScreen[bool]):
         """处理取消按钮点击"""
         # 退出整个程序
         self.app.exit()
-
-    @on(Button.Pressed, "#deployment_mode_btn")
-    def on_deployment_mode_btn_pressed(self) -> None:
-        """切换部署模式按钮：在轻量和全量之间切换"""
-        # 基于当前配置状态切换，而不是按钮文本
-        if self.config.deployment_mode == "light":
-            # 切换到全量部署
-            self.config.deployment_mode = "full"
-        else:
-            # 切换到轻量部署
-            self.config.deployment_mode = "light"
-
-        # 同步 UI 状态
-        self._sync_ui_from_config()
-
-        # 更新 Embedding 配置提示
-        self._update_embedding_hint(is_light_mode=(self.config.deployment_mode == "light"))
-
-        # 重新初始化验证状态（部署模式变化可能影响 Embedding 验证需求）
-        self._initialize_validation_status()
-
-    def _update_embedding_hint(self, *, is_light_mode: bool) -> None:
-        """更新 Embedding 配置提示信息"""
-        try:
-            hint_widget = self.query_one("#embedding_mode_hint", Static)
-            if is_light_mode:
-                hint_widget.update(
-                    _("[dim]轻量部署模式下，Embedding 配置为可选项。如果不填写，将跳过 RAG 功能。[/dim]"),
-                )
-            else:
-                hint_widget.update(
-                    _("[dim]全量部署模式下，Embedding 配置为必填项，用于支持 RAG 功能。[/dim]"),
-                )
-        except (AttributeError, ValueError):
-            # 如果控件不存在，忽略错误
-            pass
 
     @on(Input.Changed, "#llm_endpoint, #llm_api_key, #llm_model")
     async def on_llm_field_changed(self, event: Input.Changed) -> None:
@@ -443,14 +358,6 @@ class DeploymentConfigScreen(ModalScreen[bool]):
     def _is_embedding_required(self) -> bool:
         """检查是否需要验证 Embedding 配置"""
         try:
-            # 从配置模型获取部署模式，更准确可靠
-            is_full_mode = self.config.deployment_mode == "full"
-
-            # 全量部署模式下，Embedding 是必需的
-            if is_full_mode:
-                return True
-
-            # 轻量部署模式下，如果用户填写了 Embedding 配置，则需要验证
             endpoint = self.query_one("#embedding_endpoint", Input).value.strip()
             api_key = self.query_one("#embedding_api_key", Input).value.strip()
             model = self.query_one("#embedding_model", Input).value.strip()
@@ -608,18 +515,6 @@ class DeploymentConfigScreen(ModalScreen[bool]):
                 api_key=self.query_one("#embedding_api_key", Input).value.strip(),
                 model=self.query_one("#embedding_model", Input).value.strip(),
             )
-
-            # 部署选项
-            if not hasattr(self.config, "deployment_mode") or not self.config.deployment_mode:
-                self.config.deployment_mode = "light"
-
-            # 根据部署模式最终设置组件启用状态
-            if self.config.deployment_mode == "full":
-                self.config.enable_web = True
-                self.config.enable_rag = True
-            else:
-                self.config.enable_web = False
-                self.config.enable_rag = False
 
         except (ValueError, AttributeError) as e:
             # 处理输入转换错误

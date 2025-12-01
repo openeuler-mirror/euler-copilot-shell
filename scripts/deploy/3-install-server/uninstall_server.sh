@@ -9,15 +9,8 @@ declare -a uninstalled_pkgs=()
 uninstall_success=true
 missing_pkgs=()
 pkgs=(
-  "euler-copilot-web"
-  "euler-copilot-witchaind-web"
-  "authHub"
-  "authhub-web"
-  "euler-copilot-rag"
   "euler-copilot-framework"
   "minio"
-  "mongodb-org-server"
-  "mongodb-mongosh"
 )
 
 # 清理函数（在中断或退出时调用）
@@ -26,77 +19,20 @@ cleanup() {
   return 1
 }
 
-uninstall_tika() {
-  local tika_jar_dest="/opt/tika/tika-server-standard-3.2.0.jar"
-  local tika_service_dest="/etc/systemd/system/tika.service"
-  echo -e "${COLOR_INFO}[Info] 正在卸载 Tika...${COLOR_RESET}"
-  # 1. 检查源文件是否存在
-  if [ ! -f "$tika_jar_dest" ]; then
-    #        echo -e "${COLOR_WARNING}[Warning] Tika JAR文件不存在: $tika_jar_dest${COLOR_RESET}"
-    return 1
-  fi
-
-  if [ ! -f "$tika_service_dest" ]; then
-    echo -e "${COLOR_WARNING}[Warning] Tika服务文件不存在: $tika_service_dest${COLOR_RESET}"
-    return 1
-  fi
-  systemctl stop tika
-  rm -rf $tika_jar_dest
-  rm -rf $tika_service_dest
-  # 2. 重载systemd
-  if ! systemctl daemon-reload; then
-    echo -e "${COLOR_ERROR}[Error] systemd重载失败${COLOR_RESET}"
-    return 1
-  fi
-}
-is_x86_architecture() {
-  local arch
-  arch=$(uname -m)
-  if [[ $arch == i386 || $arch == i686 || $arch == x86_64 ]]; then
-    return 0 # 是 x86 架构，返回 0（成功）
-  else
-    return 1 # 非 x86 架构，返回 1（失败）
-  fi
-}
 uninstall_server() {
-  uninstall_tika
-
   # 捕获中断信号(Ctrl+C)和错误
   trap cleanup INT TERM ERR
-  flag=0
   # 检查并卸载每个包
   for pkg in "${pkgs[@]}"; do
     if rpm -q "$pkg" >/dev/null 2>&1; then
       echo -e "${COLOR_INFO}[Info] 正在卸载 $pkg...${COLOR_RESET}"
 
-      if [ "$pkg" = "authHub" ]; then
-        systemctl stop authhub
-      elif [[ "$pkg" = "mongodb-org-server" || "$pkg" = "mongodb-mongosh" ]]; then
-        if [ "$flag" = "0" ]; then
-          systemctl stop mongod
-        fi
-        flag=1
-      elif [[ "$pkg" = "euler-copilot-web" || "$pkg" = "euler-copilot-witchaind-web" || "$pkg" = "euler-copilot-rag" ]]; then
-        : # 什么都不做
-      elif [ "$pkg" = "minio" ]; then
-        if is_x86_architecture; then
-          dnf remove -y "$pkg" >/dev/null 2>&1
-        else
-          systemctl stop minio >/dev/null 2>&1
-          rm -rf /etc/systemd/system/minio.service
-          rm -rf /etc/default/minio
-          rm -rf /var/lib/minio
-          rm -rf /etc/systemd/system/minio.service
-          rm -rf /usr/local/bin/minio
-          systemctl daemon-reload || {
-            echo -e "${COLOR_WARNING}[Warning] 卸载 $pkg 重载systemd失败${COLOR_RESET}"
-          }
-
-        fi
-      elif [ "$pkg" = "euler-copilot-framework" ]; then
+      if [ "$pkg" = "euler-copilot-framework" ]; then
         systemctl stop oi-runtime
+      elif [ "$pkg" = "minio" ]; then
+        systemctl stop minio >/dev/null 2>&1
       else
-        systemctl stop $pkg
+        systemctl stop "$pkg"
       fi
       if dnf remove -y "$pkg" >/dev/null 2>&1; then
         uninstalled_pkgs+=("$pkg")
@@ -116,15 +52,8 @@ uninstall_server() {
 
   done
   # 删除残留文件和目录
-  rm -rf /var/lib/mongo
-  rm -rf /var/log/mongodb
-  rm -rf /etc/mongod.conf
-  rm -rf /usr/lib/euler-copilot-rag
   rm -rf /var/log/openEulerIntelligence
   rm -rf /etc/euler-copilot-framework
-  rm -rf /etc/euler-copilot-rag
-  rm -rf /etc/euler_Intelligence_install_mode
-  rm -rf /etc/nginx/conf.d/authhub.nginx.conf.bak
   rm -rf /etc/systemd/system/oi-runtime.service
   rm -rf /etc/systemd/system/multi-user.target.wants/oi-runtime.service
 

@@ -5,7 +5,6 @@ COLOR_SUCCESS='\033[32m' # 绿色成功
 COLOR_ERROR='\033[31m'   # 红色错误
 COLOR_WARNING='\033[33m' # 黄色警告
 COLOR_RESET='\033[0m'    # 重置颜色
-INSTALL_MODE_FILE="/etc/euler_Intelligence_install_mode"
 # 全局变量
 declare -a installed_pkgs=()
 install_success=true
@@ -472,188 +471,6 @@ install_zhparser() {
   return 0
 }
 
-# 安装配置mongodb
-install_mongodb() {
-  local el_version arch
-  el_version=$(get_el_version)
-  arch=$(uname -m)
-
-  # 根据架构映射到对应的包架构名称
-  local pkg_arch mongodb_server_url mongodb_mongosh_url
-  case "$arch" in
-  x86_64 | i386 | i686)
-    pkg_arch="x86_64"
-    ;;
-  aarch64 | arm64)
-    pkg_arch="aarch64"
-    ;;
-  *)
-    echo -e "${COLOR_ERROR}[Error] 不支持的架构: $arch${COLOR_RESET}"
-    echo -e "${COLOR_ERROR}[Error] 仅支持 x86_64、aarch64 架构${COLOR_RESET}"
-    return 1
-    ;;
-  esac
-
-  mongodb_server_url="https://repo.mongodb.org/yum/redhat/${el_version}/mongodb-org/7.0/${pkg_arch}/RPMS/mongodb-org-server-7.0.21-1.el${el_version}.${pkg_arch}.rpm"
-  mongodb_mongosh_url="https://downloads.mongodb.com/compass/mongodb-mongosh-2.5.2.${pkg_arch}.rpm"
-
-  local mongodb_dir="/opt/mongodb"
-  local mongodb_server="$mongodb_dir/mongodb-org-server-7.0.21-1.el${el_version}.${pkg_arch}.rpm"
-  local mongodb_mongosh="$mongodb_dir/mongodb-mongosh-2.5.2.${pkg_arch}.rpm"
-  echo -e "${COLOR_INFO}[Info] 开始安装MongoDB...${COLOR_RESET}"
-  if rpm -q mongod &>/dev/null; then
-    echo -e "${COLOR_WARNING}[Warning] MongoDB 已安装，当前版本: $(rpm -q mongod)${COLOR_RESET}"
-    echo -e "${COLOR_INFO}[Info] 跳过MongoDB安装${COLOR_RESET}"
-    return 0
-  fi
-  echo -e "${COLOR_INFO}[Info] 安装MongoDB软件包...${COLOR_RESET}"
-
-  if ! mkdir -p "$mongodb_dir"; then
-    echo -e "${COLOR_ERROR}[Error] 创建目录失败: $mongodb_dir${COLOR_RESET}"
-    return 1
-  fi
-  if [ -f "$mongodb_server" ]; then
-    echo -e "${COLOR_INFO}[Info] MongoDB server软件包已存在于缓存目录，跳过下载${COLOR_RESET}"
-  else
-    echo -e "${COLOR_INFO}[Info] 正在下载MongoDB server软件包...${COLOR_RESET}"
-    local logfile
-    logfile=$(get_wget_log_filename "$mongodb_server")
-    if ! wget "$mongodb_server_url" --no-check-certificate -O "$mongodb_server" -o "$logfile"; then
-      echo -e "${COLOR_ERROR}[Error] MongoDB server下载失败${COLOR_RESET}"
-      return 1
-    fi
-  fi
-  if [ -f "$mongodb_mongosh" ]; then
-    echo -e "${COLOR_INFO}[Info] MongoDB mongosh软件包已存在于缓存目录，跳过下载${COLOR_RESET}"
-  else
-    echo -e "${COLOR_INFO}[Info] 正在下载MongoDB mongosh软件包...${COLOR_RESET}"
-    local logfile
-    logfile=$(get_wget_log_filename "$mongodb_mongosh")
-    if ! wget "$mongodb_mongosh_url" --no-check-certificate -O "$mongodb_mongosh" -o "$logfile"; then
-      echo -e "${COLOR_ERROR}[Error] MongoDB mongosh下载失败${COLOR_RESET}"
-      return 1
-    fi
-  fi
-  dnf install -y "$mongodb_server" || {
-    echo -e "${COLOR_ERROR}[Error] MongoDB server安装失败${COLOR_RESET}"
-    return 1
-  }
-  dnf install -y $mongodb_mongosh || {
-    echo -e "${COLOR_ERROR}[Error] MongoDB mongosh安装失败${COLOR_RESET}"
-    return 1
-  }
-  # 3. 配置MongoDB环境
-  echo -e "${COLOR_INFO}[Info] 配置 MongoDB 副本集环境...${COLOR_RESET}"
-  # 定义 MongoDB 配置文件路径
-  mongo_config_file="/etc/mongod.conf"
-  # 检查 MongoDB 配置文件是否存在
-  if [ ! -f "$mongo_config_file" ]; then
-    echo -e "${COLOR_ERROR}[Error] MongoDB 配置文件 $mongo_config_file 不存在${COLOR_RESET}"
-    return 1
-  fi
-  # 检查是否已经配置了副本集
-  if grep -q "replication:" "$mongo_config_file" && grep -q "replSetName:" "$mongo_config_file"; then
-    echo -e "${COLOR_WARNING}[Warning] MongoDB 副本集已经配置，跳过...${COLOR_RESET}"
-    return 0
-  fi
-  # 使用 sed 添加配置
-  if ! sed -i '/^#replication:/a replication:\n  replSetName: "rs0"' "$mongo_config_file"; then
-    echo -e "${COLOR_ERROR}[Error] 无法添加副本集配置${COLOR_RESET}"
-    return 1
-  fi
-  # 5. 启动服务
-  echo -e "${COLOR_INFO}[Info] 启动MongoDB服务...${COLOR_RESET}"
-  systemctl enable --now mongod || {
-    echo -e "${COLOR_ERROR}[Error] MongoDB服务启动失败${COLOR_RESET}"
-    return 1
-  }
-
-  # 6. 检查服务状态
-  echo -e "${COLOR_INFO}[Info] 检查MongoDB服务状态...${COLOR_RESET}"
-  if ! systemctl is-active --quiet mongod; then
-    echo -e "${COLOR_ERROR}[Error] MongoDB服务未正常运行${COLOR_RESET}"
-    return 1
-  fi
-  # 等待 MongoDB 服务完全启动
-  echo -e "${COLOR_INFO}[Info] 等待 MongoDB 服务启动..."
-  sleep 5
-
-  # 初始化副本集和创建用户
-  echo -e "${COLOR_INFO}[Info] 正在初始化副本集和创建用户..."
-  # 初始化副本集（单节点）
-  mongosh --eval 'rs.initiate({_id: "rs0", members: [{_id: 0, host: "localhost:27017"}]})' || {
-    echo -e "${COLOR_ERROR}[Error] 初始化副本集失败 ${COLOR_RESET}"
-    return 1
-  }
-  # 创建管理员用户
-  mongosh admin --eval '
-    db.createUser({
-      user: "euler_copilot",
-      pwd: "YqzzpxJtF5tMAMCrHWw6",
-      roles: [
-        { role: "readWrite", db: "admin" }
-      ]
-    })' || {
-    echo -e "${COLOR_ERROR}[Error] 创建管理员用户失败 ${COLOR_RESET}"
-    return 1
-  }
-  echo -e "${COLOR_SUCCESS}[Success] MongoDB安装配置完成${COLOR_RESET}"
-  return 0
-}
-
-check_pip_rag() {
-  local need_install=0
-  local install_list=()
-
-  # 定义需要检查的包和版本
-  declare -A REQUIRED_PACKAGES=(
-    ["sqlalchemy"]="2.0.23"
-    ["paddlepaddle"]="3.0.0"
-    ["paddleocr"]="2.9.1"
-    ["tiktoken"]=""
-  )
-
-  echo -e "${COLOR_INFO}[Info] 检查Python依赖包...${COLOR_RESET}"
-
-  # 检查每个包是否需要安装
-  for pkg in "${!REQUIRED_PACKAGES[@]}"; do
-    local required_ver
-    local installed_ver
-    required_ver="${REQUIRED_PACKAGES[$pkg]}"
-    installed_ver=$(pip show "$pkg" 2>/dev/null | grep '^Version:' | awk '{print $2}')
-
-    if [[ -z "$installed_ver" ]]; then
-      echo -e "${COLOR_WARNING}[Warning] 未安装包: $pkg${COLOR_RESET}"
-      need_install=1
-      if [[ -n "$required_ver" ]]; then
-        install_list+=("${pkg}==${required_ver}")
-      else
-        install_list+=("$pkg")
-      fi
-    elif [[ -n "$required_ver" && "$installed_ver" != "$required_ver" ]]; then
-      echo -e "${COLOR_WARNING}[Warning] 包版本不匹配: $pkg (已安装: $installed_ver, 需要: $required_ver)${COLOR_RESET}"
-      need_install=1
-      install_list+=("${pkg}==${required_ver}")
-    else
-      echo -e "${COLOR_SUCCESS}[OK] 已安装: $pkg${COLOR_RESET}"
-    fi
-  done
-
-  # 如果需要安装，则执行安装命令
-  if [[ "$need_install" -eq 1 ]]; then
-    echo -e "${COLOR_INFO}[Info] 开始安装Python依赖...${COLOR_RESET}"
-    pip install --retries 10 --timeout 120 "${install_list[@]}" -i https://repo.huaweicloud.com/repository/pypi/simple || {
-      echo -e "${COLOR_ERROR}[Error] Python依赖安装失败！${COLOR_RESET}"
-      return 1
-    }
-    echo -e "${COLOR_SUCCESS}[Success] Python依赖安装完成！${COLOR_RESET}"
-  else
-    echo -e "${COLOR_SUCCESS}[Success] Python依赖已满足要求，跳过安装${COLOR_RESET}"
-  fi
-
-  return 0
-}
-
 check_pip_framework() {
   local need_install=0
   local install_list=()
@@ -667,7 +484,6 @@ check_pip_framework() {
   if [[ "$python_version" =~ ^3\.(11|[2-9][0-9])$ ]]; then
     # Python 3.11 或更新版本，检查并安装 DNF 源中缺失的 pip 依赖
     REQUIRED_PACKAGES=(
-      ["pymongo"]=""
       ["pydantic"]=""
     )
   elif [[ "$python_version" =~ ^3\.(9|10)$ ]]; then
@@ -737,23 +553,6 @@ install_framework() {
     "gcc-c++"
     "tar"
     "python3-pip"
-  )
-  if ! install_and_verify "${pkgs[@]}"; then
-    echo -e "${COLOR_ERROR}[Error] dnf安装验证未通过！${COLOR_RESET}"
-    return 1
-  fi
-  cd "$SCRIPT_DIR" || return 1
-  install_mongodb || return 1
-  cd "$SCRIPT_DIR" || return 1
-  check_pip_framework || return 1
-}
-
-install_rag() {
-  local pkgs=(
-    "euler-copilot-rag"
-    "clang"
-    "llvm"
-    "java-17-openjdk"
     "postgresql"
     "postgresql-server"
     "postgresql-server-devel"
@@ -763,83 +562,18 @@ install_rag() {
     echo -e "${COLOR_ERROR}[Error] dnf安装验证未通过！${COLOR_RESET}"
     return 1
   fi
+  # 安装 PostgreSQL 扩展
   cd "$SCRIPT_DIR" || return 1
   install_scws || return 1
   cd "$SCRIPT_DIR" || return 1
   install_pgvector || return 1
   cd "$SCRIPT_DIR" || return 1
   install_zhparser || return 1
+  # 安装 MinIO 对象存储
   cd "$SCRIPT_DIR" || return 1
   install_minio || return 1
   cd "$SCRIPT_DIR" || return 1
-  check_pip_rag || return 1
-}
-
-install_web() {
-  local pkgs=(
-    "nginx"
-    "redis:redis6" # 支持 redis 或 redis6 包名
-    "mysql"
-    "mysql-server"
-    "authHub"
-    "authhub-web"
-    "euler-copilot-web"
-    "euler-copilot-witchaind-web"
-  )
-  if ! install_and_verify "${pkgs[@]}"; then
-    echo -e "${COLOR_ERROR}[Error] dnf安装验证未通过！${COLOR_RESET}"
-    return 1
-  fi
-}
-
-# 读取安装模式的方法
-read_install_mode() {
-  if [ ! -f "$INSTALL_MODE_FILE" ]; then
-    echo "web_install=n" >"$INSTALL_MODE_FILE"
-    echo "rag_install=n" >>"$INSTALL_MODE_FILE"
-  fi
-
-  # 从文件读取配置（格式：key=value）
-  local web_install
-  local rag_install
-  web_install=$(grep "web_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
-  rag_install=$(grep "rag_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
-
-  # 验证读取结果
-  if [ -z "$web_install" ] || [ -z "$rag_install" ]; then
-    echo -e "${COLOR_ERROR}[Error] 安装模式文件格式错误${COLOR_RESET}"
-    return 1
-  fi
-
-  # 输出读取结果（也可根据需要返回变量）
-  echo -e "${COLOR_INFO}[Info] 读取安装模式:"
-  echo -e "  安装Web界面: ${web_install}"
-  echo -e "  安装RAG组件: ${rag_install}${COLOR_RESET}"
-
-  # 将结果存入全局变量（供其他函数使用）
-  WEB_INSTALL=$web_install
-  RAG_INSTALL=$rag_install
-  return 0
-}
-
-# 示例：根据安装模式执行对应操作（可根据实际需求扩展）
-install_components() {
-  # 读取安装模式
-  read_install_mode || return 1
-
-  # 安装Web界面（如果用户选择）
-  if [ "$WEB_INSTALL" = "y" ]; then
-    echo -e "\n${COLOR_INFO}[Info] 开始安装Web管理界面...${COLOR_RESET}"
-    # 此处添加Web安装命令，示例：
-    install_web || return 1
-  fi
-
-  # 安装RAG组件（如果用户选择）
-  if [ "$RAG_INSTALL" = "y" ]; then
-    echo -e "\n${COLOR_INFO}[Info] 开始安装RAG检索增强组件...${COLOR_RESET}"
-    # 此处添加RAG安装命令，示例：
-    install_rag || return 1
-  fi
+  check_pip_framework || return 1
 }
 
 # 主执行函数
@@ -850,14 +584,11 @@ main() {
   SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   # 切换到脚本所在目录
   cd "$SCRIPT_DIR" || return 1
-  #查看当前脚本执行的模式
 
   systemctl stop dnf-makecache.timer
   # 执行安装验证
   init_local_repo
-  #分支执行TODO
   install_framework || return 1
-  install_components || return 1
   echo -e "${COLOR_SUCCESS}[Success] 安装 openEuler Intelligence 完成！${COLOR_RESET}"
   return 0
 }
