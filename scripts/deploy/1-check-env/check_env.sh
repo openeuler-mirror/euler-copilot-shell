@@ -176,24 +176,12 @@ check_url_accessibility() {
   fi
 }
 
-# 全局变量：默认端口列表（未启用Web时）
+# 全局变量：默认端口列表
 PORTS=(8002)
 
 # 读取安装模式并设置端口列表的函数
-init_ports_based_on_web() {
-  if ! read_install_mode; then
-    echo -e "${COLOR_WARNING}[Warning] 无法读取安装模式，使用默认端口配置${COLOR_RESET}"
-    return 1
-  fi
-
-  # 根据Web组件状态更新全局PORTS变量
-  if [ "$WEB_INSTALL" = "y" ]; then
-    PORTS=(8080 9888 8000 11120)
-    echo -e "${COLOR_INFO} Web组件已启用，端口列表: ${PORTS[*]}${COLOR_RESET}"
-  else
-    PORTS=(8002)
-    echo -e "${COLOR_INFO} Web组件未启用，端口列表: ${PORTS[*]}${COLOR_RESET}"
-  fi
+init_ports() {
+  echo -e "${COLOR_INFO} 端口列表: ${PORTS[*]}${COLOR_RESET}"
 }
 
 function check_user {
@@ -357,21 +345,6 @@ check_packages() {
     sleep 0.1 # 避免请求过快
   done
 }
-check_web_pkg() {
-  local pkgs=(
-    "nginx"
-    "redis:redis6" # 支持 redis 或 redis6 包名
-    "mysql"
-    "mysql-server"
-    "authHub"
-    "authhub-web"
-    "euler-copilot-web"
-    "euler-copilot-witchaind-web"
-  )
-  if ! check_packages "${pkgs[@]}"; then
-    return 1
-  fi
-}
 check_framework_pkg() {
   local pkgs=(
     "euler-copilot-framework"
@@ -480,7 +453,7 @@ function check_firewall {
 check_ports() {
   local occupied=()
   echo -e "${COLOR_INFO}正在检查端口占用情况...${COLOR_RESET}"
-  init_ports_based_on_web
+  init_ports
 
   for port in "${PORTS[@]}"; do
     if ss -tuln | grep -q ":${port} "; then
@@ -530,23 +503,19 @@ setup_firewall() {
 read_install_mode() {
   # 检查文件是否存在
   if [ ! -f "$INSTALL_MODE_FILE" ]; then
-    echo "web_install=n" >"$INSTALL_MODE_FILE"
-    echo "rag_install=n" >>"$INSTALL_MODE_FILE"
+    echo "rag_install=n" >"$INSTALL_MODE_FILE"
   fi
 
   # 从文件读取配置（格式：key=value）
-  local web_install
   local rag_install
-  web_install=$(grep "web_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
   rag_install=$(grep "rag_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
 
   # 验证读取结果
-  if [ -z "$web_install" ] || [ -z "$rag_install" ]; then
+  if [ -z "$rag_install" ]; then
     echo -e "${COLOR_ERROR}[Error] 安装模式文件格式错误${COLOR_RESET}"
     return 1
   fi
   # 将结果存入全局变量（供其他函数使用）
-  WEB_INSTALL=$web_install
   RAG_INSTALL=$rag_install
   return 0
 }
@@ -555,9 +524,6 @@ install_components() {
   # 读取安装模式
   read_install_mode || return 1
   echo -e "${COLOR_INFO}[Info] 检查软件包是否可用${COLOR_RESET}"
-  if [ "$WEB_INSTALL" = "y" ]; then
-    check_web_pkg
-  fi
 
   if [ "$RAG_INSTALL" = "y" ]; then
     # 此处添加RAG安装命令，示例：

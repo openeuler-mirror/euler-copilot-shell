@@ -10,9 +10,6 @@ uninstall_success=true
 missing_pkgs=()
 # 包名格式: "package_name" 或 "package_name:alternate1:alternate2"
 pkgs=(
-  "nginx"
-  "redis:redis6" # 支持 redis 或 redis6 包名
-  "mysql"
   "java-17-openjdk"
   "postgresql"
   "libpq-devel"
@@ -97,9 +94,7 @@ uninstall_dependency() {
       if rpm -q "$pkg" >/dev/null 2>&1; then
         pkg_found=true
         echo -e "${COLOR_INFO}[Info] 正在卸载 $pkg...${COLOR_RESET}"
-        if [ "$pkg" = "nginx" ]; then
-          dnf remove -y nginx >/dev/null 2>&1
-        elif dnf remove -y "$pkg" >/dev/null 2>&1; then
+        if dnf remove -y "$pkg" >/dev/null 2>&1; then
           uninstalled_pkgs+=("$pkg")
           break # 成功卸载后跳出循环
         else
@@ -131,8 +126,6 @@ delete_dir() {
   # 基础目录和子目录定义
   local BASE_PWD="/opt"
   local dirs=(
-    "aops"
-    "authhub"
     "minio"
     "pgvector"
     "scws*"
@@ -216,8 +209,6 @@ delete_dir() {
 }
 delete_data() {
   echo -e "${COLOR_INFO}[Info] 清理数据库遗留数据！${COLOR_RESET}"
-  rm -rf /var/lib/mysql
-  rm -rf /var/log/mysql
   rm -rf /var/lib/pgsql
   echo -e "${SUCCESS}[Success] 清理数据库遗留数据 完成！${COLOR_RESET}"
 }

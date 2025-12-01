@@ -9,10 +9,6 @@ declare -a uninstalled_pkgs=()
 uninstall_success=true
 missing_pkgs=()
 pkgs=(
-  "euler-copilot-web"
-  "euler-copilot-witchaind-web"
-  "authHub"
-  "authhub-web"
   "euler-copilot-rag"
   "euler-copilot-framework"
   "minio"
@@ -66,9 +62,7 @@ uninstall_server() {
     if rpm -q "$pkg" >/dev/null 2>&1; then
       echo -e "${COLOR_INFO}[Info] 正在卸载 $pkg...${COLOR_RESET}"
 
-      if [ "$pkg" = "authHub" ]; then
-        systemctl stop authhub
-      elif [[ "$pkg" = "euler-copilot-web" || "$pkg" = "euler-copilot-witchaind-web" || "$pkg" = "euler-copilot-rag" ]]; then
+      if [[ "$pkg" = "euler-copilot-rag" ]]; then
         : # 什么都不做
       elif [ "$pkg" = "minio" ]; then
         if is_x86_architecture; then
@@ -113,7 +107,6 @@ uninstall_server() {
   rm -rf /etc/euler-copilot-framework
   rm -rf /etc/euler-copilot-rag
   rm -rf /etc/euler_Intelligence_install_mode
-  rm -rf /etc/nginx/conf.d/authhub.nginx.conf.bak
   rm -rf /etc/systemd/system/oi-runtime.service
   rm -rf /etc/systemd/system/multi-user.target.wants/oi-runtime.service
 

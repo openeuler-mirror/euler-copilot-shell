@@ -645,69 +645,39 @@ install_rag() {
   check_pip_rag || return 1
 }
 
-install_web() {
-  local pkgs=(
-    "nginx"
-    "redis:redis6" # 支持 redis 或 redis6 包名
-    "mysql"
-    "mysql-server"
-    "authHub"
-    "authhub-web"
-    "euler-copilot-web"
-    "euler-copilot-witchaind-web"
-  )
-  if ! install_and_verify "${pkgs[@]}"; then
-    echo -e "${COLOR_ERROR}[Error] dnf安装验证未通过！${COLOR_RESET}"
-    return 1
-  fi
-}
-
 # 读取安装模式的方法
 read_install_mode() {
   if [ ! -f "$INSTALL_MODE_FILE" ]; then
-    echo "web_install=n" >"$INSTALL_MODE_FILE"
-    echo "rag_install=n" >>"$INSTALL_MODE_FILE"
+    echo "rag_install=n" >"$INSTALL_MODE_FILE"
   fi
 
   # 从文件读取配置（格式：key=value）
-  local web_install
   local rag_install
-  web_install=$(grep "web_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
   rag_install=$(grep "rag_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
 
   # 验证读取结果
-  if [ -z "$web_install" ] || [ -z "$rag_install" ]; then
+  if [ -z "$rag_install" ]; then
     echo -e "${COLOR_ERROR}[Error] 安装模式文件格式错误${COLOR_RESET}"
     return 1
   fi
 
   # 输出读取结果（也可根据需要返回变量）
   echo -e "${COLOR_INFO}[Info] 读取安装模式:"
-  echo -e "  安装Web界面: ${web_install}"
   echo -e "  安装RAG组件: ${rag_install}${COLOR_RESET}"
 
   # 将结果存入全局变量（供其他函数使用）
-  WEB_INSTALL=$web_install
   RAG_INSTALL=$rag_install
   return 0
 }
 
-# 示例：根据安装模式执行对应操作（可根据实际需求扩展）
+# 根据安装模式执行对应操作
 install_components() {
   # 读取安装模式
   read_install_mode || return 1
 
-  # 安装Web界面（如果用户选择）
-  if [ "$WEB_INSTALL" = "y" ]; then
-    echo -e "\n${COLOR_INFO}[Info] 开始安装Web管理界面...${COLOR_RESET}"
-    # 此处添加Web安装命令，示例：
-    install_web || return 1
-  fi
-
   # 安装RAG组件（如果用户选择）
   if [ "$RAG_INSTALL" = "y" ]; then
     echo -e "\n${COLOR_INFO}[Info] 开始安装RAG检索增强组件...${COLOR_RESET}"
-    # 此处添加RAG安装命令，示例：
     install_rag || return 1
   fi
 }

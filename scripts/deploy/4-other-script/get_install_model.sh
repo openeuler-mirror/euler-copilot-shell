@@ -15,17 +15,6 @@ ask_install_options() {
   INSTALL_MODE_FILE="/etc/euler_Intelligence_install_mode"
   echo -e "\n${COLOR_INFO}[Info] 请选择附加组件安装选项:${COLOR_RESET}"
 
-  # 询问是否安装web
-  while true; do
-    read -p "是否安装Web管理界面? (y/n，默认y): " web_choice
-    web_choice=${web_choice:-y} # 默认值为y
-    if [[ "$web_choice" =~ ^[YyNn]$ ]]; then
-      break
-    else
-      echo -e "${COLOR_ERROR}[Error] 输入无效，请输入y或n${COLOR_RESET}"
-    fi
-  done
-
   # 询问是否安装rag
   while true; do
     read -p "是否安装RAG检索增强组件? (y/n，默认n): " rag_choice
@@ -38,12 +27,10 @@ ask_install_options() {
   done
 
   # 转换为小写（统一格式）
-  web_install=$(echo "$web_choice" | tr '[:upper:]' '[:lower:]')
   rag_install=$(echo "$rag_choice" | tr '[:upper:]' '[:lower:]')
 
   # 保存到文件（格式：key=value，便于后续读取）
-  echo "web_install=$web_install" >"$INSTALL_MODE_FILE"
-  echo "rag_install=$rag_install" >>"$INSTALL_MODE_FILE"
+  echo "rag_install=$rag_install" >"$INSTALL_MODE_FILE"
 
   echo -e "\n${COLOR_INFO}[Info] 安装模式已保存到: $INSTALL_MODE_FILE${COLOR_RESET}"
   return 0
@@ -57,22 +44,19 @@ read_install_mode() {
   fi
 
   # 从文件读取配置（格式：key=value）
-  local web_install=$(grep "web_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
   local rag_install=$(grep "rag_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
 
   # 验证读取结果
-  if [ -z "$web_install" ] || [ -z "$rag_install" ]; then
+  if [ -z "$rag_install" ]; then
     echo -e "${COLOR_ERROR}[Error] 安装模式文件格式错误${COLOR_RESET}"
     return 1
   fi
 
   # 输出读取结果（也可根据需要返回变量）
   echo -e "${COLOR_INFO}[Info] 读取安装模式:"
-  echo -e "  安装Web界面: ${web_install}"
   echo -e "  安装RAG组件: ${rag_install}${COLOR_RESET}"
 
   # 将结果存入全局变量（供其他函数使用）
-  WEB_INSTALL=$web_install
   RAG_INSTALL=$rag_install
   return 0
 }
@@ -80,15 +64,6 @@ read_install_mode() {
 install_components() {
   # 读取安装模式
   read_install_mode || return 1
-
-  # 安装Web界面（如果用户选择）
-  if [ "$WEB_INSTALL" = "y" ]; then
-    echo -e "\n${COLOR_INFO}[Info] 开始安装Web管理界面...${COLOR_RESET}"
-    # 此处添加Web安装命令，示例：
-    # yum install -y web-component
-  else
-    echo -e "\n${COLOR_INFO}[Info] 跳过Web管理界面安装${COLOR_RESET}"
-  fi
 
   # 安装RAG组件（如果用户选择）
   if [ "$RAG_INSTALL" = "y" ]; then

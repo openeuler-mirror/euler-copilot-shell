@@ -18,12 +18,9 @@ generate_random_password() {
 }
 
 # 配置参数（自动生成随机密码）
-MYSQL_ROOT_PASSWORD=$(generate_random_password)
-AUTHHUB_USER_PASSWORD=$(generate_random_password)
 MINIO_ROOT_PASSWORD=$(generate_random_password)
 PGSQL_PASSWORD=$(generate_random_password)
 
-SQL_FILE="/opt/aops/database/authhub.sql"
 tika_jar_src="../5-resource/tika-server-standard-3.2.0.jar"
 tika_service_src="../5-resource/tika.service"
 tika_jar_dest="/opt/tika/tika-server-standard-3.2.0.jar"
@@ -31,7 +28,6 @@ tika_service_dest="/etc/systemd/system/tika.service"
 tika_dir="/opt/tika"
 config_toml_file="../5-resource/config.toml"
 env_file="../5-resource/env"
-mysql_temp="../5-resource/mysql_temp"
 
 # 配置MinIO（RPM安装后的配置）
 install_minio() {
@@ -88,18 +84,13 @@ update_password() {
   # 更新 env 文件中的密码
   sed -i "s/DATABASE_PASSWORD = .*/DATABASE_PASSWORD = $PGSQL_PASSWORD/" $env_file
   sed -i "s/MINIO_SECRET_KEY = .*/MINIO_SECRET_KEY = $MINIO_ROOT_PASSWORD/" $env_file
-  if [ -f "$mysql_temp" ]; then
-    rm -rf $mysql_temp
-  fi
-  touch $mysql_temp
-  echo "$AUTHHUB_USER_PASSWORD" >>$mysql_temp
   return 0
 }
 
 # 启用并启动服务
 enable_services() {
-  echo -e "${COLOR_INFO}[Info] 启动redis、mysql服务...${COLOR_RESET}"
-  local services=("redis" "mysqld")
+  echo -e "${COLOR_INFO}[Info] 启动postgresql服务...${COLOR_RESET}"
+  local services=("postgresql")
 
   for service in "${services[@]}"; do
     echo -e "${COLOR_INFO}[Info] 正在处理 $service 服务...${COLOR_RESET}"
@@ -131,151 +122,6 @@ enable_services() {
       echo -e "${COLOR_INFO}[Info] 请手动检查：systemctl status $service${COLOR_RESET}"
     fi
   done
-}
-
-import_sql_file() {
-  local DB_NAME="oauth2" # 替换为你的数据库名
-  local DB_USER="root"   # 数据库用户名
-
-  # 检查SQL文件是否存在
-  if [ ! -f "$SQL_FILE" ]; then
-    echo -e "${COLOR_WARNING}[Warning] 警告：未找到 $SQL_FILE 文件，跳过数据库导入${COLOR_RESET}"
-    return 1
-  fi
-
-  echo -e "${COLOR_INFO} 正在准备导入数据库($SQL_FILE)...${COLOR_RESET}"
-
-  # 检查数据库是否已存在
-  if mysql -u "$DB_USER" -e "USE $DB_NAME" 2>/dev/null; then
-    echo -e "${COLOR_INFO} 检测到已存在数据库 $DB_NAME，将执行重建...${COLOR_RESET}"
-
-    # 删除现有数据库
-    if ! mysql -u "$DB_USER" -e "DROP DATABASE $DB_NAME" 2>/dev/null; then
-      echo -e "${COLOR_ERROR}[Error] 错误: 无法删除现有数据库 $DB_NAME${COLOR_RESET}"
-      return 1
-    fi
-    echo -e "${COLOR_SUCCESS} 成功删除旧数据库${COLOR_RESET}"
-  fi
-
-  # 导入SQL文件
-  echo -e "${COLOR_INFO}正在导入SQL文件...${COLOR_RESET}"
-  if mysql -u "$DB_USER" <"$SQL_FILE"; then
-    echo -e "${COLOR_SUCCESS} 数据库导入成功${COLOR_RESET}"
-
-    # 验证导入结果
-    if mysql -u "$DB_USER" -e "USE $DB_NAME; SHOW TABLES" 2>/dev/null | grep -q .; then
-      echo -e "${COLOR_SUCCESS} 数据库验证通过${COLOR_RESET}"
-      return 0
-    else
-      echo -e "${COLOR_WARNING}[Warning] 警告：数据库导入后未检测到数据表${COLOR_RESET}"
-      return 1
-    fi
-  else
-    echo -e "${COLOR_ERROR}[Error] 数据库导入失败${COLOR_RESET}"
-    echo -e "${COLOR_INFO}[Info] 可能原因："
-    echo -e "[Info] 1. SQL文件格式错误"
-    echo -e "[Info] 2. 数据库权限不足"
-    echo -e "[Info] 3. SQL文件包含错误语句${COLOR_RESET}"
-    return 1
-  fi
-}
-
-# 配置MySQL
-configure_mysql() {
-  echo -e "${COLOR_INFO}[Info] 初始化MySQL数据库... ${COLOR_RESET}"
-
-  # 安全初始化MySQL（如果未初始化）
-  if ! mysql -u root -e "SELECT 1" >/dev/null 2>&1; then
-    echo -e "${COLOR_INFO}正在初始化MySQL安全配置...${COLOR_RESET}"
-    mysql_secure_installation <<EOF
-y
-${MYSQL_ROOT_PASSWORD}
-${MYSQL_ROOT_PASSWORD}
-y
-y
-y
-y
-EOF
-  fi
-
-  # 创建 authhub 用户
-  echo -e "${COLOR_INFO}正在创建 authhub 用户... ${COLOR_RESET}"
-  if mysql -u root -e "CREATE USER IF NOT EXISTS 'authhub'@'localhost' IDENTIFIED BY '${AUTHHUB_USER_PASSWORD}'" >/dev/null 2>&1; then
-    echo -e "${COLOR_SUCCESS} 创建 authhub 用户成功${COLOR_RESET}"
-  else
-    echo -e "${COLOR_ERROR}[Error] 失败${COLOR_RESET}"
-    echo -e "${COLOR_ERROR}[Error] 错误: 无法创建MySQL用户${COLOR_RESET}"
-    return 1
-  fi
-
-  import_sql_file || return 1
-
-  # 设置权限
-  echo -e "${COLOR_INFO} 正在设置数据库权限... ${COLOR_RESET}"
-  if mysql -u root -e "GRANT ALL PRIVILEGES ON oauth2.* TO 'authhub'@'localhost' WITH GRANT OPTION" >/dev/null 2>&1; then
-    echo -e "${COLOR_SUCCESS} 设置数据库权限成功${COLOR_RESET}"
-    return 0
-  else
-    echo -e "${COLOR_ERROR}[Error] 失败${COLOR_RESET}"
-    echo -e "${COLOR_ERROR}[Error] 错误: 权限设置失败，请检查oauth2数据库是否存在${COLOR_RESET}"
-    return 1
-  fi
-}
-
-# 配置 nginx
-configure_nginx() {
-  local nginx_conf="/etc/nginx/conf.d/authhub.nginx.conf"
-  local backup_conf="/etc/nginx/conf.d/authhub.nginx.conf.bak"
-  local temp_conf="/tmp/authhub.nginx.conf.tmp"
-
-  echo -e "${COLOR_INFO}[Info] 初始化Nginx...${COLOR_RESET}"
-
-  # 1. 检查原配置文件是否存在
-  if [ ! -f "$nginx_conf" ]; then
-    echo -e "${COLOR_ERROR}[Error] Nginx配置文件不存在: $nginx_conf${COLOR_RESET}"
-    return 1
-  fi
-
-  # 2. 创建备份
-  if ! cp -f "$nginx_conf" "$backup_conf"; then
-    echo -e "${COLOR_ERROR}[Error] 创建配置文件备份失败${COLOR_RESET}"
-    return 1
-  fi
-  echo -e "${COLOR_INFO} 已创建配置文件备份: $backup_conf${COLOR_RESET}"
-
-  # 3. 执行替换操作
-  if ! sed 's|proxy_pass http://oauth2server;|proxy_pass http://127.0.0.1:11120;|g' "$nginx_conf" >"$temp_conf"; then
-    echo -e "${COLOR_ERROR}[Error] 配置文件替换失败${COLOR_RESET}"
-    return 1
-  fi
-
-  # 4. 应用新配置
-  if ! mv -f "$temp_conf" "$nginx_conf"; then
-    echo -e "${COLOR_ERROR}[Error] 应用新配置文件失败${COLOR_RESET}"
-    return 1
-  fi
-  # 5. 验证新配置文件语法
-  if ! nginx -t &>/dev/null; then
-    echo -e "${COLOR_ERROR}[Error] 新配置文件语法检查失败${COLOR_RESET}"
-    echo -e "${COLOR_INFO}[Info] 正在恢复原始配置...${COLOR_RESET}"
-    cp -f "$backup_conf" "$nginx_conf"
-    return 1
-  fi
-
-  if ! systemctl enable --now nginx; then
-    echo -e "${COLOR_ERROR}[Error] Nginx启动失败${COLOR_RESET}"
-  fi
-  # 6. 重载Nginx配置
-  if ! systemctl reload nginx; then
-    echo -e "${COLOR_ERROR}[Error] Nginx配置重载失败${COLOR_RESET}"
-    echo -e "${COLOR_INFO}[Info] 正在恢复原始配置...${COLOR_RESET}"
-    cp -f "$backup_conf" "$nginx_conf"
-    systemctl reload nginx
-    return 1
-  fi
-
-  echo -e "${COLOR_SUCCESS}[Success] Nginx初始化成功！${COLOR_RESET}"
-  return 0
 }
 
 # 安装并配置Tika服务
@@ -568,34 +414,6 @@ setup_tiktoken_cache() {
   echo -e "${COLOR_SUCCESS}[Success] tiktoken缓存已配置: $target_file${COLOR_RESET}"
 }
 
-get_client_info_auto() {
-  # 声明全局变量
-  declare -g client_id=""
-  declare -g client_secret=""
-
-  # 直接调用Python脚本并传递域名参数
-  python3 "../4-other-script/get_client_id_and_secret.py" "$1" >client_info.tmp 2>&1
-
-  # 检查Python脚本执行结果
-  if [ $? -ne 0 ]; then
-    echo -e "${COLOR_ERROR}[Error] Python脚本执行失败${COLOR_RESET}"
-    cat client_info.tmp
-    rm -f client_info.tmp
-    return 1
-  fi
-
-  # 提取凭证信息
-  client_id=$(grep "client_id: " client_info.tmp | awk '{print $2}')
-  client_secret=$(grep "client_secret: " client_info.tmp | awk '{print $2}')
-  rm -f client_info.tmp
-
-  # 验证结果
-  if [ -z "$client_id" ] || [ -z "$client_secret" ]; then
-    echo -e "${COLOR_ERROR}[Error] 无法获取有效的客户端凭证${COLOR_RESET}" >&2
-    return 1
-  fi
-}
-
 install_framework() {
   # 1. 安装前检查
   echo -e "${COLOR_INFO}[Info] 开始初始化配置 euler-copilot-framework...${COLOR_RESET}"
@@ -654,28 +472,10 @@ install_framework() {
     return 1
   }
   echo -e "${COLOR_INFO}[Info] 更新配置文件参数...${COLOR_RESET}"
-  port=8080
-  # 安装 Web 界面（如果用户选择）配置 app_id
-  if [ "$WEB_INSTALL" = "y" ]; then
-    echo -e "${COLOR_INFO}[Info] 获取客户端凭证...${COLOR_RESET}"
-    if ! get_client_info_auto "$ip_address"; then
-      echo -e "${COLOR_ERROR}[Error] 获取客户端凭证失败${COLOR_RESET}"
-      return 1
-    fi
-    sed -i "s@app_id = \".*\"@app_id = \"$client_id\"@" $framework_file
-    sed -i "s@app_secret = \".*\"@app_secret = \"$client_secret\"@" $framework_file
-    # 验证替换结果
-    if ! grep -q "app_id = \"$client_id\"" "$framework_file" || ! grep -q "app_secret = \"$client_secret\"" "$framework_file"; then
-      echo -e "${COLOR_ERROR}[Error] 配置文件验证失败${COLOR_RESET}"
-      mv -v "${framework_file}.bak" "$framework_file"
-      return 1
-    fi
-  else
-    port=8002
-    sed -i "/\[login\.settings\]/,/^\[/ s|host = '.*'|host = 'http://${ip_address}:8000'|" "$framework_file"
-    sed -i "s|login_api = '.*'|login_api = 'http://${ip_address}:8080/api/auth/login'|" $framework_file
-    sed -i "s/domain = '.*'/domain = '$ip_address'/" $framework_file
-  fi
+  port=8002
+  sed -i "/\[login\.settings\]/,/^\[/ s|host = '.*'|host = 'http://${ip_address}:8000'|" "$framework_file"
+  sed -i "s|login_api = '.*'|login_api = 'http://${ip_address}:8080/api/auth/login'|" $framework_file
+  sed -i "s/domain = '.*'/domain = '$ip_address'/" $framework_file
 
   #更新 security key
   key1=$(generate_random_password 20)
@@ -757,24 +557,20 @@ read_install_mode() {
   fi
 
   # 从文件读取配置（格式：key=value）
-  local web_install
   local rag_install
-  web_install=$(grep "web_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
   rag_install=$(grep "rag_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
 
   # 验证读取结果
-  if [ -z "$web_install" ] || [ -z "$rag_install" ]; then
+  if [ -z "$rag_install" ]; then
     echo -e "${COLOR_ERROR}[Error] 安装模式文件格式错误${COLOR_RESET}"
     return 1
   fi
 
   # 输出读取结果（也可根据需要返回变量）
   echo -e "${COLOR_INFO}[Info] 读取安装模式:"
-  echo -e "  安装Web界面: ${web_install}"
   echo -e "  安装RAG组件: ${rag_install}${COLOR_RESET}"
 
   # 将结果存入全局变量（供其他函数使用）
-  WEB_INSTALL=$web_install
   RAG_INSTALL=$rag_install
   return 0
 }
@@ -788,26 +584,10 @@ init_rag() {
   install_rag || return 1
 }
 
-init_web() {
-  cd "$SCRIPT_DIR" || return 1
-  enable_services || return 1
-  configure_mysql || return 1
-  configure_nginx || return 1
-  cd "$SCRIPT_DIR" || return 1
-  ./install_authhub_config.sh || return 1
-}
-
 # 示例：根据安装模式执行对应操作（可根据实际需求扩展）
 install_components() {
   # 读取安装模式
   read_install_mode || return 1
-
-  # 安装Web界面（如果用户选择）
-  if [ "$WEB_INSTALL" = "y" ]; then
-    echo -e "\n${COLOR_INFO}[Info] 开始初始化Web管理界面...${COLOR_RESET}"
-    # 此处添加Web初始化命令，示例：
-    init_web || return 1
-  fi
 
   # 初始化RAG组件（如果用户选择）
   if [ "$RAG_INSTALL" = "y" ]; then
