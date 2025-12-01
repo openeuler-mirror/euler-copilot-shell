@@ -5,7 +5,6 @@ COLOR_SUCCESS='\033[32m' # 绿色成功
 COLOR_ERROR='\033[31m'   # 红色错误
 COLOR_WARNING='\033[33m' # 黄色警告
 COLOR_RESET='\033[0m'    # 重置颜色
-INSTALL_MODE_FILE="/etc/euler_Intelligence_install_mode"
 # 全局模式标记
 OFFLINE_MODE=false
 
@@ -64,36 +63,8 @@ get_el_version() {
   return 1
 }
 
-# 安装wget工具
-install_wget() {
-  echo -e "${COLOR_INFO}[INFO] 正在尝试安装wget...${COLOR_RESET}"
-
-  # 检查包管理器并安装
-  if command -v apt-get &>/dev/null; then
-    sudo apt-get update && sudo apt-get install -y wget
-  elif command -v yum &>/dev/null; then
-    sudo yum install -y wget
-  elif command -v dnf &>/dev/null; then
-    sudo dnf install -y wget
-  elif command -v zypper &>/dev/null; then
-    sudo zypper install -y wget
-  else
-    echo -e "${COLOR_FAILURE}[ERROR] 无法确定包管理器，请手动安装wget${COLOR_RESET}"
-    return 1
-  fi
-
-  # 验证安装是否成功
-  if command -v wget &>/dev/null; then
-    echo -e "${COLOR_SUCCESS}[SUCCESS] wget安装成功${COLOR_RESET}"
-    return 0
-  else
-    echo -e "${COLOR_FAILURE}[ERROR] wget安装失败${COLOR_RESET}"
-    return 1
-  fi
-}
-
-# RAG专用URL列表（仅当RAG启用时检测）
-rag_urls=(
+# Postgres 插件 URL 列表
+postgres_plugin_urls=(
   "https://bgithub.xyz/pgvector/pgvector.git"
   "https://bgithub.xyz/amutu/zhparser.git"
 )
@@ -109,22 +80,8 @@ check_url_accessibility() {
     fi
   fi
 
-  # 读取RAG安装状态（依赖之前的read_install_mode函数设置RAG_INSTALL变量）
-  if ! read_install_mode; then
-    echo -e "${COLOR_WARNING}[WARN] 无法读取安装模式，默认按RAG未启用检测${COLOR_RESET}"
-    local RAG_INSTALL="n"
-  fi
-
-  # 根据RAG状态组合最终需要检测的URL列表
-  local detect_urls=()
-
-  # 如果启用RAG，添加RAG专用URL
-  if [ "$RAG_INSTALL" = "y" ]; then
-    detect_urls+=("${rag_urls[@]}")
-    echo -e "${COLOR_INFO} RAG组件已启用，将检测所有必要URL（共${#detect_urls[@]}个）${COLOR_RESET}"
-  else
-    echo -e "${COLOR_INFO} RAG组件未启用，仅检测基础URL（共${#detect_urls[@]}个）${COLOR_RESET}"
-  fi
+  local detect_urls=("${postgres_plugin_urls[@]}")
+  echo -e "${COLOR_INFO} 将检测 Postgres 插件必要 URL（共${#detect_urls[@]}个）${COLOR_RESET}"
 
   local all_success=true
   local timeout_seconds=15 # 设置超时时间
@@ -363,17 +320,6 @@ check_framework_pkg() {
     return 1
   fi
 }
-check_rag_pkg() {
-  local pkgs=(
-    "euler-copilot-rag"
-    "clang"
-    "llvm"
-    "java-17-openjdk"
-  )
-  if ! check_packages "${pkgs[@]}"; then
-    return 1
-  fi
-}
 
 function check_network {
   echo -e "${COLOR_INFO}[Info] 检查网络连接...${COLOR_RESET}"
@@ -499,36 +445,10 @@ setup_firewall() {
   echo -e "${COLOR_SUCCESS}[Success]重新加载防火墙规则成功${COLOR_RESET}"
   return 0
 }
-# 读取安装模式的方法
-read_install_mode() {
-  # 检查文件是否存在
-  if [ ! -f "$INSTALL_MODE_FILE" ]; then
-    echo "rag_install=n" >"$INSTALL_MODE_FILE"
-  fi
 
-  # 从文件读取配置（格式：key=value）
-  local rag_install
-  rag_install=$(grep "rag_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
-
-  # 验证读取结果
-  if [ -z "$rag_install" ]; then
-    echo -e "${COLOR_ERROR}[Error] 安装模式文件格式错误${COLOR_RESET}"
-    return 1
-  fi
-  # 将结果存入全局变量（供其他函数使用）
-  RAG_INSTALL=$rag_install
-  return 0
-}
-# 示例：根据安装模式执行对应操作（可根据实际需求扩展）
+# 检查软件包是否可用
 install_components() {
-  # 读取安装模式
-  read_install_mode || return 1
   echo -e "${COLOR_INFO}[Info] 检查软件包是否可用${COLOR_RESET}"
-
-  if [ "$RAG_INSTALL" = "y" ]; then
-    # 此处添加RAG安装命令，示例：
-    check_rag_pkg
-  fi
 
   check_framework_pkg
   echo -e "--------------------------------"

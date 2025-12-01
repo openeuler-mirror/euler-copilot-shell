@@ -6,8 +6,6 @@ COLOR_ERROR='\033[31m'   # 红色错误
 COLOR_WARNING='\033[33m' # 黄色警告
 COLOR_RESET='\033[0m'    # 重置颜色
 
-INSTALL_MODE_FILE="/etc/euler_Intelligence_install_mode"
-
 ## 配置参数
 # 生成随机密码函数
 generate_random_password() {
@@ -21,13 +19,7 @@ generate_random_password() {
 MINIO_ROOT_PASSWORD=$(generate_random_password)
 PGSQL_PASSWORD=$(generate_random_password)
 
-tika_jar_src="../5-resource/tika-server-standard-3.2.0.jar"
-tika_service_src="../5-resource/tika.service"
-tika_jar_dest="/opt/tika/tika-server-standard-3.2.0.jar"
-tika_service_dest="/etc/systemd/system/tika.service"
-tika_dir="/opt/tika"
 config_toml_file="../5-resource/config.toml"
-env_file="../5-resource/env"
 
 # 配置MinIO（RPM安装后的配置）
 install_minio() {
@@ -81,9 +73,6 @@ update_password() {
   # 更新 config.toml 中的 minio 和 postgres 密码
   sed -i "s/secret_key = '.*'/secret_key = '$MINIO_ROOT_PASSWORD'/" $config_toml_file
   sed -i "/\[postgres\]/,/^\[/ s/password = '.*'/password = '$PGSQL_PASSWORD'/" $config_toml_file
-  # 更新 env 文件中的密码
-  sed -i "s/DATABASE_PASSWORD = .*/DATABASE_PASSWORD = $PGSQL_PASSWORD/" $env_file
-  sed -i "s/MINIO_SECRET_KEY = .*/MINIO_SECRET_KEY = $MINIO_ROOT_PASSWORD/" $env_file
   return 0
 }
 
@@ -122,83 +111,6 @@ enable_services() {
       echo -e "${COLOR_INFO}[Info] 请手动检查：systemctl status $service${COLOR_RESET}"
     fi
   done
-}
-
-# 安装并配置Tika服务
-install_tika() {
-  echo -e "${COLOR_INFO}[Info] 开始安装Tika服务...${COLOR_RESET}"
-
-  # 1. 检查源文件是否存在
-  if [ ! -f "$tika_jar_src" ]; then
-    echo -e "${COLOR_ERROR}[Error] Tika JAR文件不存在: $tika_jar_src${COLOR_RESET}"
-    return 1
-  fi
-
-  if [ ! -f "$tika_service_src" ]; then
-    echo -e "${COLOR_ERROR}[Error] Tika服务文件不存在: $tika_service_src${COLOR_RESET}"
-    return 1
-  fi
-
-  # 2. 复制JAR文件并设置权限
-  if [ ! -d "$tika_dir" ]; then
-    echo -e "${COLOR_INFO}[Info] 创建目录: $tika_dir${COLOR_RESET}"
-    if ! mkdir -p "$tika_dir"; then
-      echo -e "${COLOR_ERROR}[Error] 无法创建目录: $tika_dir${COLOR_RESET}"
-      return 1
-    fi
-  fi
-  if ! cp -v "$tika_jar_src" "$tika_jar_dest"; then
-    echo -e "${COLOR_ERROR}[Error] 复制Tika JAR文件失败${COLOR_RESET}"
-    return 1
-  fi
-
-  if ! chmod 755 "$tika_jar_dest"; then
-    echo -e "${COLOR_WARNING}[Warning] 设置Tika JAR文件权限失败${COLOR_RESET}"
-  fi
-
-  # 3. 复制服务文件并设置权限
-  if ! cp -v "$tika_service_src" "$tika_service_dest"; then
-    echo -e "${COLOR_ERROR}[Error] 复制Tika服务文件失败${COLOR_RESET}"
-    return 1
-  fi
-
-  if ! chmod 644 "$tika_service_dest"; then
-    echo -e "${COLOR_WARNING}[Warning] 设置Tika服务文件权限失败${COLOR_RESET}"
-  fi
-
-  # 4. 重载systemd
-  if ! systemctl daemon-reload; then
-    echo -e "${COLOR_ERROR}[Error] systemd重载失败${COLOR_RESET}"
-    return 1
-  fi
-
-  # 5. 启用并启动服务
-  if ! systemctl enable --now tika; then
-    echo -e "${COLOR_ERROR}[Error] Tika服务启动失败${COLOR_RESET}"
-
-    # 检查服务状态获取更多信息
-    local service_status
-    service_status=$(systemctl status tika --no-pager 2>&1)
-    echo -e "${COLOR_INFO}[Debug] 服务状态信息:\n$service_status${COLOR_RESET}"
-
-    journalctl -u tika --no-pager -n 20 | grep -i error
-    return 1
-  fi
-
-  # 6. 验证服务运行状态
-  sleep 2 # 等待服务启动
-  if ! systemctl is-active --quiet tika; then
-    echo -e "${COLOR_ERROR}[Error] Tika服务未正常运行${COLOR_RESET}"
-    return 1
-  fi
-
-  echo -e "${COLOR_SUCCESS}[Success] Tika服务安装配置完成！${COLOR_RESET}"
-
-  # 显示安装信息
-  #    echo -e "${COLOR_INFO}[Info] Tika JAR位置: $tika_jar_dest${COLOR_RESET}"
-  #    echo -e "${COLOR_INFO}[Info] 服务文件位置: $tika_service_dest${COLOR_RESET}"
-  #    echo -e "${COLOR_INFO}[Info] 使用命令: systemctl status tika 查看服务状态${COLOR_RESET}"
-  return 0
 }
 
 # PostgreSQL 配置函数
@@ -292,63 +204,6 @@ configure_postgresql() {
     return 1
   }
   echo -e "${COLOR_SUCCESS}[Success] PostgreSQL 配置完成${COLOR_RESET}"
-  return 0
-}
-
-install_rag() {
-  echo -e "${COLOR_INFO}[Info] 开始初始化配置 euler-copilot-rag...${COLOR_RESET}"
-
-  # 配置文件处理
-  local env_file="../5-resource/env"
-  local env_target="/etc/euler-copilot-rag/data_chain/env"
-  local service_file="../5-resource/oi-rag.service"
-  local service_target="/etc/systemd/system/oi-rag.service"
-
-  # 复制配置文件（验证文件存在性）
-  if [[ -f "$env_file" ]]; then
-    cp -v "$env_file" "$env_target" || {
-      echo -e "${COLOR_ERROR}[Error] 复制 env 文件失败！${COLOR_RESET}"
-      return 1
-    }
-  else
-    echo -e "${COLOR_WARNING}[Warning] 未找到 env 文件：$env_file${COLOR_RESET}"
-  fi
-
-  if [[ -f "$service_file" ]]; then
-    cp -v "$service_file" "$service_target" || {
-      echo -e "${COLOR_ERROR}[Error] 复制 service 文件失败！${COLOR_RESET}"
-      return 1
-    }
-  else
-    echo -e "${COLOR_WARNING}[Warning] 未找到 service 文件：$service_file${COLOR_RESET}"
-  fi
-
-  # 安装图形库依赖（OpenGL）
-  if ! dnf install -y mesa-libGL >/dev/null; then
-    echo -e "${COLOR_WARNING}[Warning] mesa-libGL 安装失败，可能影响图形功能${COLOR_RESET}"
-  fi
-
-  # 启动服务
-  echo -e "${COLOR_INFO}[Info] 设置并启动 oi-rag 服务...${COLOR_RESET}"
-  systemctl daemon-reload
-  systemctl enable --now oi-rag || {
-    echo -e "${COLOR_ERROR}[Error] oi-rag 服务启动失败！${COLOR_RESET}"
-    systemctl status oi-rag --no-pager
-    return 1
-  }
-
-  # 验证服务状态
-  echo -e "${COLOR_INFO}[Info] 验证 oi-rag 服务状态...${COLOR_RESET}"
-  if systemctl is-active --quiet oi-rag; then
-    echo -e "${COLOR_SUCCESS}[Success] oi-rag 服务运行正常${COLOR_RESET}"
-    systemctl status oi-rag --no-pager | grep -E "Active:|Loaded:"
-  else
-    echo -e "${COLOR_ERROR}[Error] oi-rag 服务未运行！${COLOR_RESET}"
-    journalctl -u oi-rag --no-pager -n 20
-    return 1
-  fi
-
-  echo -e "${COLOR_SUCCESS}[Success] euler-copilot-rag 安装完成${COLOR_RESET}"
   return 0
 }
 
@@ -543,60 +398,6 @@ install_framework() {
   return 0
 }
 
-uninstall_pkg() {
-  dnf remove -y euler-copilot-rag
-  dnf remove -y euler-copilot-framework
-}
-
-# 读取安装模式的方法
-read_install_mode() {
-  # 检查文件是否存在
-  if [ ! -f "$INSTALL_MODE_FILE" ]; then
-    echo -e "${COLOR_ERROR}[Error] 安装模式文件不存在: $INSTALL_MODE_FILE${COLOR_RESET}"
-    return 1
-  fi
-
-  # 从文件读取配置（格式：key=value）
-  local rag_install
-  rag_install=$(grep "rag_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
-
-  # 验证读取结果
-  if [ -z "$rag_install" ]; then
-    echo -e "${COLOR_ERROR}[Error] 安装模式文件格式错误${COLOR_RESET}"
-    return 1
-  fi
-
-  # 输出读取结果（也可根据需要返回变量）
-  echo -e "${COLOR_INFO}[Info] 读取安装模式:"
-  echo -e "  安装RAG组件: ${rag_install}${COLOR_RESET}"
-
-  # 将结果存入全局变量（供其他函数使用）
-  RAG_INSTALL=$rag_install
-  return 0
-}
-
-init_rag() {
-  cd "$SCRIPT_DIR" || return 1
-  install_tika || return 1
-  cd "$SCRIPT_DIR" || return 1
-  install_minio || return 1
-  cd "$SCRIPT_DIR" || return 1
-  install_rag || return 1
-}
-
-# 示例：根据安装模式执行对应操作（可根据实际需求扩展）
-install_components() {
-  # 读取安装模式
-  read_install_mode || return 1
-
-  # 初始化RAG组件（如果用户选择）
-  if [ "$RAG_INSTALL" = "y" ]; then
-    echo -e "\n${COLOR_INFO}[Info] 开始初始化RAG检索增强组件...${COLOR_RESET}"
-    # 此处添加RAG初始化命令，示例：
-    init_rag || return 1
-  fi
-}
-
 main() {
   # 获取脚本所在的绝对路径
   SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -604,7 +405,7 @@ main() {
   cd "$SCRIPT_DIR" || return 1
   update_password
   configure_postgresql || return 1
-  install_components || return 1
+  install_minio || return 1
   install_framework || return 1
 }
 

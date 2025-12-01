@@ -10,7 +10,6 @@ uninstall_success=true
 missing_pkgs=()
 # 包名格式: "package_name" 或 "package_name:alternate1:alternate2"
 pkgs=(
-  "java-17-openjdk"
   "postgresql"
   "libpq-devel"
   "minio"
@@ -129,7 +128,6 @@ delete_dir() {
     "minio"
     "pgvector"
     "scws*"
-    "tika"
     "zhparser"
   )
 

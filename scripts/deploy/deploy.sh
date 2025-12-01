@@ -45,11 +45,10 @@ show_restart_menu() {
   echo "=============================="
   echo "可重启的服务列表："
   echo "1) oi-runtime"
-  echo "2) oi-rag"
-  echo "3) postgresql"
-  echo "4) 返回主菜单"
+  echo "2) postgresql"
+  echo "3) 返回主菜单"
   echo "=============================="
-  echo -n "请输入要重启的服务编号（1-4）: "
+  echo -n "请输入要重启的服务编号（1-3）: "
 }
 
 # 带错误检查的脚本执行函数
@@ -221,11 +220,10 @@ while true; do
       read -r restart_choice
       case $restart_choice in
       1) service="oi-runtime" ;;
-      2) service="oi-rag" ;;
-      3) service="postgresql" ;;
-      4) break ;;
+      2) service="postgresql" ;;
+      3) break ;;
       *)
-        echo -e "${COLOR_ERROR}无效的选项，请输入1-4之间的数字${COLOR_RESET}"
+        echo -e "${COLOR_ERROR}无效的选项，请输入1-3之间的数字${COLOR_RESET}"
         continue
         ;;
       esac

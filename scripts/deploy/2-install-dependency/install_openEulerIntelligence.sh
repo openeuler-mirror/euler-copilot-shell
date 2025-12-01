@@ -5,7 +5,6 @@ COLOR_SUCCESS='\033[32m' # 绿色成功
 COLOR_ERROR='\033[31m'   # 红色错误
 COLOR_WARNING='\033[33m' # 黄色警告
 COLOR_RESET='\033[0m'    # 重置颜色
-INSTALL_MODE_FILE="/etc/euler_Intelligence_install_mode"
 # 全局变量
 declare -a installed_pkgs=()
 install_success=true
@@ -472,59 +471,6 @@ install_zhparser() {
   return 0
 }
 
-check_pip_rag() {
-  local need_install=0
-  local install_list=()
-
-  # 定义需要检查的包和版本
-  declare -A REQUIRED_PACKAGES=(
-    ["sqlalchemy"]="2.0.23"
-    ["paddlepaddle"]="3.0.0"
-    ["paddleocr"]="2.9.1"
-    ["tiktoken"]=""
-  )
-
-  echo -e "${COLOR_INFO}[Info] 检查Python依赖包...${COLOR_RESET}"
-
-  # 检查每个包是否需要安装
-  for pkg in "${!REQUIRED_PACKAGES[@]}"; do
-    local required_ver
-    local installed_ver
-    required_ver="${REQUIRED_PACKAGES[$pkg]}"
-    installed_ver=$(pip show "$pkg" 2>/dev/null | grep '^Version:' | awk '{print $2}')
-
-    if [[ -z "$installed_ver" ]]; then
-      echo -e "${COLOR_WARNING}[Warning] 未安装包: $pkg${COLOR_RESET}"
-      need_install=1
-      if [[ -n "$required_ver" ]]; then
-        install_list+=("${pkg}==${required_ver}")
-      else
-        install_list+=("$pkg")
-      fi
-    elif [[ -n "$required_ver" && "$installed_ver" != "$required_ver" ]]; then
-      echo -e "${COLOR_WARNING}[Warning] 包版本不匹配: $pkg (已安装: $installed_ver, 需要: $required_ver)${COLOR_RESET}"
-      need_install=1
-      install_list+=("${pkg}==${required_ver}")
-    else
-      echo -e "${COLOR_SUCCESS}[OK] 已安装: $pkg${COLOR_RESET}"
-    fi
-  done
-
-  # 如果需要安装，则执行安装命令
-  if [[ "$need_install" -eq 1 ]]; then
-    echo -e "${COLOR_INFO}[Info] 开始安装Python依赖...${COLOR_RESET}"
-    pip install --retries 10 --timeout 120 "${install_list[@]}" -i https://repo.huaweicloud.com/repository/pypi/simple || {
-      echo -e "${COLOR_ERROR}[Error] Python依赖安装失败！${COLOR_RESET}"
-      return 1
-    }
-    echo -e "${COLOR_SUCCESS}[Success] Python依赖安装完成！${COLOR_RESET}"
-  else
-    echo -e "${COLOR_SUCCESS}[Success] Python依赖已满足要求，跳过安装${COLOR_RESET}"
-  fi
-
-  return 0
-}
-
 check_pip_framework() {
   local need_install=0
   local install_list=()
@@ -630,58 +576,6 @@ install_framework() {
   check_pip_framework || return 1
 }
 
-install_rag() {
-  local pkgs=(
-    "euler-copilot-rag"
-    "clang"
-    "llvm"
-    "java-17-openjdk"
-  )
-  if ! install_and_verify "${pkgs[@]}"; then
-    echo -e "${COLOR_ERROR}[Error] dnf安装验证未通过！${COLOR_RESET}"
-    return 1
-  fi
-  cd "$SCRIPT_DIR" || return 1
-  check_pip_rag || return 1
-}
-
-# 读取安装模式的方法
-read_install_mode() {
-  if [ ! -f "$INSTALL_MODE_FILE" ]; then
-    echo "rag_install=n" >"$INSTALL_MODE_FILE"
-  fi
-
-  # 从文件读取配置（格式：key=value）
-  local rag_install
-  rag_install=$(grep "rag_install=" "$INSTALL_MODE_FILE" | cut -d'=' -f2)
-
-  # 验证读取结果
-  if [ -z "$rag_install" ]; then
-    echo -e "${COLOR_ERROR}[Error] 安装模式文件格式错误${COLOR_RESET}"
-    return 1
-  fi
-
-  # 输出读取结果（也可根据需要返回变量）
-  echo -e "${COLOR_INFO}[Info] 读取安装模式:"
-  echo -e "  安装RAG组件: ${rag_install}${COLOR_RESET}"
-
-  # 将结果存入全局变量（供其他函数使用）
-  RAG_INSTALL=$rag_install
-  return 0
-}
-
-# 根据安装模式执行对应操作
-install_components() {
-  # 读取安装模式
-  read_install_mode || return 1
-
-  # 安装RAG组件（如果用户选择）
-  if [ "$RAG_INSTALL" = "y" ]; then
-    echo -e "\n${COLOR_INFO}[Info] 开始安装RAG检索增强组件...${COLOR_RESET}"
-    install_rag || return 1
-  fi
-}
-
 # 主执行函数
 main() {
   echo -e "${COLOR_INFO}[Info] === 开始服务安装===${COLOR_RESET}"
@@ -690,14 +584,11 @@ main() {
   SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   # 切换到脚本所在目录
   cd "$SCRIPT_DIR" || return 1
-  #查看当前脚本执行的模式
 
   systemctl stop dnf-makecache.timer
   # 执行安装验证
   init_local_repo
-  #分支执行TODO
   install_framework || return 1
-  install_components || return 1
   echo -e "${COLOR_SUCCESS}[Success] 安装 openEuler Intelligence 完成！${COLOR_RESET}"
   return 0
 }
