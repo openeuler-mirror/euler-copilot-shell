@@ -92,53 +92,6 @@ install_wget() {
   fi
 }
 
-# 基础URL列表（无论RAG是否启用都需要检测）
-get_mongodb_urls() {
-  local el_version arch
-  el_version=$(get_el_version)
-  arch=$(uname -m)
-
-  # 根据架构映射到对应的包架构名称
-  case "$arch" in
-  x86_64 | i386 | i686)
-    local pkg_arch="x86_64"
-    ;;
-  aarch64 | arm64)
-    local pkg_arch="aarch64"
-    ;;
-  *)
-    echo -e "${COLOR_ERROR}[Error] 不支持的架构: $arch${COLOR_RESET}"
-    echo -e "${COLOR_ERROR}[Error] 仅支持 x86_64、aarch64 架构${COLOR_RESET}"
-    return 1
-    ;;
-  esac
-
-  # 检查本地MongoDB缓存文件是否存在
-  local mongodb_dir="/opt/mongodb"
-  local mongodb_server="$mongodb_dir/mongodb-org-server-7.0.21-1.el${el_version}.${pkg_arch}.rpm"
-  local mongodb_mongosh="$mongodb_dir/mongodb-mongosh-2.5.2.${pkg_arch}.rpm"
-
-  # 如果所有MongoDB文件都已缓存，则跳过网络检查
-  if [ -f "$mongodb_server" ] && [ -f "$mongodb_mongosh" ]; then
-    echo -e "${COLOR_INFO}[Info] MongoDB RPM文件已缓存，跳过网络连接检查${COLOR_RESET}"
-    base_urls=() # 清空URL列表
-    return 0
-  fi
-
-  # 如果缓存不完整，添加需要下载的URL到检查列表
-  base_urls=()
-  if [ ! -f "$mongodb_server" ]; then
-    base_urls+=("https://repo.mongodb.org/yum/redhat/${el_version}/mongodb-org/7.0/${pkg_arch}/RPMS/mongodb-org-server-7.0.21-1.el${el_version}.${pkg_arch}.rpm")
-  fi
-  if [ ! -f "$mongodb_mongosh" ]; then
-    base_urls+=("https://downloads.mongodb.com/compass/mongodb-mongosh-2.5.2.${pkg_arch}.rpm")
-  fi
-
-  if [ ${#base_urls[@]} -gt 0 ]; then
-    echo -e "${COLOR_INFO}[Info] 需要检查 ${#base_urls[@]} 个MongoDB相关URL的网络连接${COLOR_RESET}"
-  fi
-}
-
 # RAG专用URL列表（仅当RAG启用时检测）
 rag_urls=(
   "https://bgithub.xyz/pgvector/pgvector.git"
@@ -162,12 +115,8 @@ check_url_accessibility() {
     local RAG_INSTALL="n"
   fi
 
-  # 根据架构和RAG状态组合最终需要检测的URL列表
+  # 根据RAG状态组合最终需要检测的URL列表
   local detect_urls=()
-
-  # 初始化 MongoDB URLs
-  get_mongodb_urls
-  detect_urls+=("${base_urls[@]}")
 
   # 如果启用RAG，添加RAG专用URL
   if [ "$RAG_INSTALL" = "y" ]; then
@@ -432,6 +381,10 @@ check_framework_pkg() {
     "gcc-c++"
     "tar"
     "python3-pip"
+    "postgresql"
+    "postgresql-server"
+    "postgresql-server-devel"
+    "libpq-devel"
   )
   if ! check_packages "${pkgs[@]}"; then
     return 1
@@ -443,10 +396,6 @@ check_rag_pkg() {
     "clang"
     "llvm"
     "java-17-openjdk"
-    "postgresql"
-    "postgresql-server"
-    "postgresql-server-devel"
-    "libpq-devel"
   )
   if ! check_packages "${pkgs[@]}"; then
     return 1

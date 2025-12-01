@@ -796,8 +796,6 @@ init_rag() {
   cd "$SCRIPT_DIR" || return 1
   install_tika || return 1
   cd "$SCRIPT_DIR" || return 1
-  configure_postgresql || return 1
-  cd "$SCRIPT_DIR" || return 1
   install_minio || return 1
   cd "$SCRIPT_DIR" || return 1
   install_rag || return 1
@@ -838,6 +836,7 @@ main() {
   # 切换到脚本所在目录
   cd "$SCRIPT_DIR" || return 1
   update_password
+  configure_postgresql || return 1
   install_components || return 1
   install_framework || return 1
 }

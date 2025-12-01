@@ -16,8 +16,6 @@ pkgs=(
   "euler-copilot-rag"
   "euler-copilot-framework"
   "minio"
-  "mongodb-org-server"
-  "mongodb-mongosh"
 )
 
 # 清理函数（在中断或退出时调用）
@@ -63,7 +61,6 @@ uninstall_server() {
 
   # 捕获中断信号(Ctrl+C)和错误
   trap cleanup INT TERM ERR
-  flag=0
   # 检查并卸载每个包
   for pkg in "${pkgs[@]}"; do
     if rpm -q "$pkg" >/dev/null 2>&1; then
@@ -71,11 +68,6 @@ uninstall_server() {
 
       if [ "$pkg" = "authHub" ]; then
         systemctl stop authhub
-      elif [[ "$pkg" = "mongodb-org-server" || "$pkg" = "mongodb-mongosh" ]]; then
-        if [ "$flag" = "0" ]; then
-          systemctl stop mongod
-        fi
-        flag=1
       elif [[ "$pkg" = "euler-copilot-web" || "$pkg" = "euler-copilot-witchaind-web" || "$pkg" = "euler-copilot-rag" ]]; then
         : # 什么都不做
       elif [ "$pkg" = "minio" ]; then
@@ -116,9 +108,6 @@ uninstall_server() {
 
   done
   # 删除残留文件和目录
-  rm -rf /var/lib/mongo
-  rm -rf /var/log/mongodb
-  rm -rf /etc/mongod.conf
   rm -rf /usr/lib/euler-copilot-rag
   rm -rf /var/log/openEulerIntelligence
   rm -rf /etc/euler-copilot-framework

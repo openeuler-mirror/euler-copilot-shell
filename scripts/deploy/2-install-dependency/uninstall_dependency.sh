@@ -135,7 +135,6 @@ delete_dir() {
     "authhub"
     "copilot"
     "minio"
-    "mongodb"
     "pgvector"
     "scws*"
     "tika"

@@ -472,135 +472,6 @@ install_zhparser() {
   return 0
 }
 
-# 安装配置mongodb
-install_mongodb() {
-  local el_version arch
-  el_version=$(get_el_version)
-  arch=$(uname -m)
-
-  # 根据架构映射到对应的包架构名称
-  local pkg_arch mongodb_server_url mongodb_mongosh_url
-  case "$arch" in
-  x86_64 | i386 | i686)
-    pkg_arch="x86_64"
-    ;;
-  aarch64 | arm64)
-    pkg_arch="aarch64"
-    ;;
-  *)
-    echo -e "${COLOR_ERROR}[Error] 不支持的架构: $arch${COLOR_RESET}"
-    echo -e "${COLOR_ERROR}[Error] 仅支持 x86_64、aarch64 架构${COLOR_RESET}"
-    return 1
-    ;;
-  esac
-
-  mongodb_server_url="https://repo.mongodb.org/yum/redhat/${el_version}/mongodb-org/7.0/${pkg_arch}/RPMS/mongodb-org-server-7.0.21-1.el${el_version}.${pkg_arch}.rpm"
-  mongodb_mongosh_url="https://downloads.mongodb.com/compass/mongodb-mongosh-2.5.2.${pkg_arch}.rpm"
-
-  local mongodb_dir="/opt/mongodb"
-  local mongodb_server="$mongodb_dir/mongodb-org-server-7.0.21-1.el${el_version}.${pkg_arch}.rpm"
-  local mongodb_mongosh="$mongodb_dir/mongodb-mongosh-2.5.2.${pkg_arch}.rpm"
-  echo -e "${COLOR_INFO}[Info] 开始安装MongoDB...${COLOR_RESET}"
-  if rpm -q mongod &>/dev/null; then
-    echo -e "${COLOR_WARNING}[Warning] MongoDB 已安装，当前版本: $(rpm -q mongod)${COLOR_RESET}"
-    echo -e "${COLOR_INFO}[Info] 跳过MongoDB安装${COLOR_RESET}"
-    return 0
-  fi
-  echo -e "${COLOR_INFO}[Info] 安装MongoDB软件包...${COLOR_RESET}"
-
-  if ! mkdir -p "$mongodb_dir"; then
-    echo -e "${COLOR_ERROR}[Error] 创建目录失败: $mongodb_dir${COLOR_RESET}"
-    return 1
-  fi
-  if [ -f "$mongodb_server" ]; then
-    echo -e "${COLOR_INFO}[Info] MongoDB server软件包已存在于缓存目录，跳过下载${COLOR_RESET}"
-  else
-    echo -e "${COLOR_INFO}[Info] 正在下载MongoDB server软件包...${COLOR_RESET}"
-    local logfile
-    logfile=$(get_wget_log_filename "$mongodb_server")
-    if ! wget "$mongodb_server_url" --no-check-certificate -O "$mongodb_server" -o "$logfile"; then
-      echo -e "${COLOR_ERROR}[Error] MongoDB server下载失败${COLOR_RESET}"
-      return 1
-    fi
-  fi
-  if [ -f "$mongodb_mongosh" ]; then
-    echo -e "${COLOR_INFO}[Info] MongoDB mongosh软件包已存在于缓存目录，跳过下载${COLOR_RESET}"
-  else
-    echo -e "${COLOR_INFO}[Info] 正在下载MongoDB mongosh软件包...${COLOR_RESET}"
-    local logfile
-    logfile=$(get_wget_log_filename "$mongodb_mongosh")
-    if ! wget "$mongodb_mongosh_url" --no-check-certificate -O "$mongodb_mongosh" -o "$logfile"; then
-      echo -e "${COLOR_ERROR}[Error] MongoDB mongosh下载失败${COLOR_RESET}"
-      return 1
-    fi
-  fi
-  dnf install -y "$mongodb_server" || {
-    echo -e "${COLOR_ERROR}[Error] MongoDB server安装失败${COLOR_RESET}"
-    return 1
-  }
-  dnf install -y $mongodb_mongosh || {
-    echo -e "${COLOR_ERROR}[Error] MongoDB mongosh安装失败${COLOR_RESET}"
-    return 1
-  }
-  # 3. 配置MongoDB环境
-  echo -e "${COLOR_INFO}[Info] 配置 MongoDB 副本集环境...${COLOR_RESET}"
-  # 定义 MongoDB 配置文件路径
-  mongo_config_file="/etc/mongod.conf"
-  # 检查 MongoDB 配置文件是否存在
-  if [ ! -f "$mongo_config_file" ]; then
-    echo -e "${COLOR_ERROR}[Error] MongoDB 配置文件 $mongo_config_file 不存在${COLOR_RESET}"
-    return 1
-  fi
-  # 检查是否已经配置了副本集
-  if grep -q "replication:" "$mongo_config_file" && grep -q "replSetName:" "$mongo_config_file"; then
-    echo -e "${COLOR_WARNING}[Warning] MongoDB 副本集已经配置，跳过...${COLOR_RESET}"
-    return 0
-  fi
-  # 使用 sed 添加配置
-  if ! sed -i '/^#replication:/a replication:\n  replSetName: "rs0"' "$mongo_config_file"; then
-    echo -e "${COLOR_ERROR}[Error] 无法添加副本集配置${COLOR_RESET}"
-    return 1
-  fi
-  # 5. 启动服务
-  echo -e "${COLOR_INFO}[Info] 启动MongoDB服务...${COLOR_RESET}"
-  systemctl enable --now mongod || {
-    echo -e "${COLOR_ERROR}[Error] MongoDB服务启动失败${COLOR_RESET}"
-    return 1
-  }
-
-  # 6. 检查服务状态
-  echo -e "${COLOR_INFO}[Info] 检查MongoDB服务状态...${COLOR_RESET}"
-  if ! systemctl is-active --quiet mongod; then
-    echo -e "${COLOR_ERROR}[Error] MongoDB服务未正常运行${COLOR_RESET}"
-    return 1
-  fi
-  # 等待 MongoDB 服务完全启动
-  echo -e "${COLOR_INFO}[Info] 等待 MongoDB 服务启动..."
-  sleep 5
-
-  # 初始化副本集和创建用户
-  echo -e "${COLOR_INFO}[Info] 正在初始化副本集和创建用户..."
-  # 初始化副本集（单节点）
-  mongosh --eval 'rs.initiate({_id: "rs0", members: [{_id: 0, host: "localhost:27017"}]})' || {
-    echo -e "${COLOR_ERROR}[Error] 初始化副本集失败 ${COLOR_RESET}"
-    return 1
-  }
-  # 创建管理员用户
-  mongosh admin --eval '
-    db.createUser({
-      user: "euler_copilot",
-      pwd: "YqzzpxJtF5tMAMCrHWw6",
-      roles: [
-        { role: "readWrite", db: "admin" }
-      ]
-    })' || {
-    echo -e "${COLOR_ERROR}[Error] 创建管理员用户失败 ${COLOR_RESET}"
-    return 1
-  }
-  echo -e "${COLOR_SUCCESS}[Success] MongoDB安装配置完成${COLOR_RESET}"
-  return 0
-}
-
 check_pip_rag() {
   local need_install=0
   local install_list=()
@@ -667,7 +538,6 @@ check_pip_framework() {
   if [[ "$python_version" =~ ^3\.(11|[2-9][0-9])$ ]]; then
     # Python 3.11 或更新版本，检查并安装 DNF 源中缺失的 pip 依赖
     REQUIRED_PACKAGES=(
-      ["pymongo"]=""
       ["pydantic"]=""
     )
   elif [[ "$python_version" =~ ^3\.(9|10)$ ]]; then
@@ -737,13 +607,15 @@ install_framework() {
     "gcc-c++"
     "tar"
     "python3-pip"
+    "postgresql"
+    "postgresql-server"
+    "postgresql-server-devel"
+    "libpq-devel"
   )
   if ! install_and_verify "${pkgs[@]}"; then
     echo -e "${COLOR_ERROR}[Error] dnf安装验证未通过！${COLOR_RESET}"
     return 1
   fi
-  cd "$SCRIPT_DIR" || return 1
-  install_mongodb || return 1
   cd "$SCRIPT_DIR" || return 1
   check_pip_framework || return 1
 }
@@ -754,10 +626,6 @@ install_rag() {
     "clang"
     "llvm"
     "java-17-openjdk"
-    "postgresql"
-    "postgresql-server"
-    "postgresql-server-devel"
-    "libpq-devel"
   )
   if ! install_and_verify "${pkgs[@]}"; then
     echo -e "${COLOR_ERROR}[Error] dnf安装验证未通过！${COLOR_RESET}"
