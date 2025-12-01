@@ -45,9 +45,6 @@ class DeploymentResourceManager:
     ENV_TEMPLATE = RESOURCE_PATH / "env"
     CONFIG_TEMPLATE = RESOURCE_PATH / "config.toml"
 
-    # 系统配置文件路径
-    INSTALL_MODE_FILE = Path("/etc/euler_Intelligence_install_mode")
-
     @classmethod
     def check_installer_available(cls) -> bool:
         """检查安装器是否可用"""
@@ -145,16 +142,6 @@ class DeploymentResourceManager:
             msg = _("更新 TOML 配置失败: {error}").format(error=e)
             raise RuntimeError(msg) from e
 
-    @classmethod
-    def create_deploy_mode_content(cls, config: DeploymentConfig) -> str:
-        """创建部署模式配置内容"""
-        web_install = "y" if config.enable_web else "n"
-        rag_install = "y" if config.enable_rag else "n"
-
-        return f"""web_install={web_install}
-rag_install={rag_install}
-"""
-
 
 class DeploymentService:
     """
@@ -201,7 +188,7 @@ class DeploymentService:
         python_version = sys.version_info
         current_version = f"{python_version.major}.{python_version.minor}"
         if python_version < (3, 10) and progress_callback:
-            warning_msg = _("⚠ 检测到 Python {version}，低于 3.10 版本将不支持全量部署模式").format(
+            warning_msg = _("⚠ 检测到 Python {version}，建议升级至 3.10 或更高版本以获得最佳兼容性").format(
                 version=current_version,
             )
             temp_state.add_log(warning_msg)
@@ -253,35 +240,6 @@ class DeploymentService:
             system_info = platform.platform().lower()
             return "openeuler" in system_info
 
-    def check_python_version_for_deployment(self, deployment_mode: str) -> tuple[bool, str]:
-        """
-        检查 Python 版本是否支持指定的部署模式
-
-        Args:
-            deployment_mode: 部署模式 ("light" 或 "full")
-
-        Returns:
-            tuple[bool, str]: (是否支持, 错误信息)
-
-        """
-        try:
-            python_version = sys.version_info
-            current_version = f"{python_version.major}.{python_version.minor}"
-
-            # 检查是否低于 3.10
-            if python_version < (3, 10) and deployment_mode == "full":
-                return False, _(
-                    "当前 openEuler 版本低于 24.03 LTS，"
-                    "不支持全量部署模式。请使用轻量部署模式或升级到 openEuler 24.03+ 版本",
-                )
-
-        except Exception as e:
-            logger.exception("检查 Python 环境版本时发生错误")
-            return False, _("无法检查 Python 环境: {error}").format(error=e)
-        else:
-            # Python 版本符合要求
-            return True, _("Python 环境版本 {version} 符合要求").format(version=current_version)
-
     async def check_sudo_privileges(self) -> bool:
         """检查 sudo 权限"""
         try:
@@ -323,8 +281,6 @@ class DeploymentService:
             # 重置状态
             self.state.reset()
             self.state.is_running = True
-            # 根据部署模式设置总步数：轻量模式5步，全量模式4步
-            self.state.total_steps = 5 if config.deployment_mode == "light" else 4
 
             # 执行部署步骤
             success = await self._execute_deployment_steps(config, progress_callback)
@@ -426,7 +382,6 @@ class DeploymentService:
             return False
 
         steps = [
-            self._setup_deploy_mode,
             self._check_environment,
             self._run_env_check_script,
             self._run_install_dependency_script,
@@ -434,6 +389,8 @@ class DeploymentService:
             self._run_init_config_script,
             self._run_agent_init,
         ]
+
+        self.state.total_steps = len(steps)
 
         for step in steps:
             if not await step(config, progress_callback):
@@ -486,12 +443,6 @@ class DeploymentService:
             return False
         self.state.add_log(_("✓ 检测到 openEuler 操作系统"))
 
-        # 检查 openEuler & Python 版本是否支持指定的部署模式
-        python_check_ok, python_msg = self.check_python_version_for_deployment(config.deployment_mode)
-        if not python_check_ok:
-            self.state.add_log(_("✗ 错误: {msg}").format(msg=python_msg))
-            return False
-
         # 检查安装器资源
         if not self.resource_manager.check_installer_available():
             self.state.add_log(_("✗ 错误: openeuler-intelligence-installer 包未安装或资源缺失"))
@@ -504,56 +455,6 @@ class DeploymentService:
             self.state.add_log(_("✗ 错误: 需要管理员权限"))
             return False
         self.state.add_log(_("✓ 具有管理员权限"))
-
-        return True
-
-    async def _setup_deploy_mode(
-        self,
-        config: DeploymentConfig,
-        progress_callback: Callable[[DeploymentState], None] | None,
-    ) -> bool:
-        """设置部署模式"""
-        self.state.current_step = 0
-        self.state.current_step_name = _("初始化部署配置")
-        self.state.add_log(_("正在设置部署模式..."))
-
-        if progress_callback:
-            progress_callback(self.state)
-
-        try:
-            # 生成部署模式文件内容
-            mode_content = self.resource_manager.create_deploy_mode_content(config)
-
-            # 写入系统配置文件
-            cmd = [
-                "sudo",
-                "tee",
-                str(self.resource_manager.INSTALL_MODE_FILE),
-            ]
-
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-
-            _stdout, stderr = await process.communicate(mode_content.encode())
-
-            if process.returncode != 0:
-                error_msg = stderr.decode("utf-8", errors="ignore").strip()
-                self.state.add_log(_("✗ 设置部署模式失败: {error}").format(error=error_msg))
-                return False
-
-            web_status = _("启用") if config.enable_web else _("禁用")
-            rag_status = _("启用") if config.enable_rag else _("禁用")
-            status_msg = _("✓ 部署模式设置完成 (Web界面: {web}, RAG: {rag})").format(web=web_status, rag=rag_status)
-            self.state.add_log(status_msg)
-
-        except Exception as e:
-            self.state.add_log(_("✗ 设置部署模式失败: {error}").format(error=e))
-            logger.exception("设置部署模式失败")
-            return False
 
         return True
 
@@ -1037,12 +938,7 @@ class DeploymentService:
 
             # 根据部署配置更新 openEuler Intelligence 后端 URL
             server_host = LOCAL_DEPLOYMENT_HOST
-            if config.deployment_mode == "full":
-                # 全量部署模式：有 nginx，端口是 8080
-                eulerintelli_url = f"http://{server_host}:8080"
-            else:
-                # 轻量部署模式：无 nginx，端口是 8002
-                eulerintelli_url = f"http://{server_host}:8002"
+            eulerintelli_url = f"http://{server_host}:8002"
 
             config_manager.set_eulerintelli_url(eulerintelli_url)
             logger.info("已更新当前用户 openEuler Intelligence 后端 URL: %s", eulerintelli_url)
