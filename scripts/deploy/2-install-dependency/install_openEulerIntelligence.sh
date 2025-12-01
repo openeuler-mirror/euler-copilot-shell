@@ -616,6 +616,16 @@ install_framework() {
     echo -e "${COLOR_ERROR}[Error] dnf安装验证未通过！${COLOR_RESET}"
     return 1
   fi
+  # 安装 PostgreSQL 扩展
+  cd "$SCRIPT_DIR" || return 1
+  install_scws || return 1
+  cd "$SCRIPT_DIR" || return 1
+  install_pgvector || return 1
+  cd "$SCRIPT_DIR" || return 1
+  install_zhparser || return 1
+  # 安装 MinIO 对象存储
+  cd "$SCRIPT_DIR" || return 1
+  install_minio || return 1
   cd "$SCRIPT_DIR" || return 1
   check_pip_framework || return 1
 }
@@ -631,14 +641,6 @@ install_rag() {
     echo -e "${COLOR_ERROR}[Error] dnf安装验证未通过！${COLOR_RESET}"
     return 1
   fi
-  cd "$SCRIPT_DIR" || return 1
-  install_scws || return 1
-  cd "$SCRIPT_DIR" || return 1
-  install_pgvector || return 1
-  cd "$SCRIPT_DIR" || return 1
-  install_zhparser || return 1
-  cd "$SCRIPT_DIR" || return 1
-  install_minio || return 1
   cd "$SCRIPT_DIR" || return 1
   check_pip_rag || return 1
 }
