@@ -232,13 +232,12 @@ check_network_reachable() {
 
 setup_tiktoken_cache() {
   # 预置的本地资源路径
-  local local_tiktoken_file="../5-resource/9b5ad71b2ce5302211f9c61530b329a4922fc6a4"
+  local local_tiktoken_tar="../5-resource/tiktoken.tar"
   local cache_dir="/root/.cache/tiktoken"
-  local target_file="$cache_dir/9b5ad71b2ce5302211f9c61530b329a4922fc6a4"
 
   # 1. 检查本地资源文件是否存在
-  if [[ ! -f "$local_tiktoken_file" ]]; then
-    echo -e "${COLOR_ERROR}[Error] 本地tiktoken资源文件不存在: $local_tiktoken_file${COLOR_RESET}"
+  if [[ ! -f "$local_tiktoken_tar" ]]; then
+    echo -e "${COLOR_ERROR}[Error] 本地tiktoken资源文件不存在: $local_tiktoken_tar${COLOR_RESET}"
     return 1
   fi
 
@@ -249,24 +248,23 @@ setup_tiktoken_cache() {
     return 1
   fi
 
-  # 3. 复制文件到缓存目录
-  dos2unix "$local_tiktoken_file"
-  if ! cp -r "$local_tiktoken_file" "$target_file"; then
+  # 3. 解压tar文件到缓存目录
+  echo -e "${COLOR_INFO}[Info] 解压tiktoken缓存文件...${COLOR_RESET}"
+  if ! tar -xf "$local_tiktoken_tar" -C "$cache_dir"; then
     echo -e "${COLOR_ERROR}[Error] tiktoken.tar 解压失败${COLOR_RESET}"
     return 1
   fi
 
   # 4. 设置权限（确保可读）
-  chmod 644 "$target_file" || {
+  chmod 644 "$cache_dir"/* || {
     echo -e "${COLOR_WARNING}[Warning] 无法设置文件权限${COLOR_RESET}"
   }
 
-  # 6. 设置环境变量（影响当前进程）
-  # 特殊处理改 token 代码
+  # 5. 特殊处理改 token 代码
   FILE="/usr/lib/euler-copilot-framework/apps/llm/token.py"
   token_py_file="../5-resource/token.py"
   cp $token_py_file $FILE
-  echo -e "${COLOR_SUCCESS}[Success] tiktoken缓存已配置: $target_file${COLOR_RESET}"
+  echo -e "${COLOR_SUCCESS}[Success] tiktoken缓存已配置: $cache_dir${COLOR_RESET}"
 }
 
 install_framework() {
