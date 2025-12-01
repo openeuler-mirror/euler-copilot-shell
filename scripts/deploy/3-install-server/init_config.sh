@@ -207,66 +207,6 @@ configure_postgresql() {
   return 0
 }
 
-# 网络检测函数
-check_network_reachable() {
-  local test_url="https://openaipublic.blob.core.windows.net"
-  local timeout=3
-
-  echo -e "${COLOR_INFO}[Info] 检测网络连通性 (测试地址: $test_url)...${COLOR_RESET}"
-
-  # 使用curl检测
-  if curl --silent --connect-timeout $timeout --head $test_url >/dev/null; then
-    echo -e "${COLOR_SUCCESS}[Success] 网络连接正常${COLOR_RESET}"
-    return 0
-  fi
-
-  # 使用ping二次验证
-  if ping -c 1 -W $timeout openaipublic.blob.core.windows.net >/dev/null 2>&1; then
-    echo -e "${COLOR_SUCCESS}[Success] 网络连接正常 (ping检测)${COLOR_RESET}"
-    return 0
-  fi
-
-  echo -e "${COLOR_WARNING}[Warning] 网络不可达${COLOR_RESET}"
-  return 1
-}
-
-setup_tiktoken_cache() {
-  # 预置的本地资源路径
-  local local_tiktoken_tar="../5-resource/tiktoken.tar"
-  local cache_dir="/root/.cache/tiktoken"
-
-  # 1. 检查本地资源文件是否存在
-  if [[ ! -f "$local_tiktoken_tar" ]]; then
-    echo -e "${COLOR_ERROR}[Error] 本地tiktoken资源文件不存在: $local_tiktoken_tar${COLOR_RESET}"
-    return 1
-  fi
-
-  # 2. 创建缓存目录
-  echo -e "${COLOR_INFO}[Info] 创建tiktoken缓存目录...${COLOR_RESET}"
-  if ! mkdir -p "$cache_dir"; then
-    echo -e "${COLOR_ERROR}[Error] 无法创建缓存目录: $cache_dir${COLOR_RESET}"
-    return 1
-  fi
-
-  # 3. 解压tar文件到缓存目录
-  echo -e "${COLOR_INFO}[Info] 解压tiktoken缓存文件...${COLOR_RESET}"
-  if ! tar -xf "$local_tiktoken_tar" -C "$cache_dir"; then
-    echo -e "${COLOR_ERROR}[Error] tiktoken.tar 解压失败${COLOR_RESET}"
-    return 1
-  fi
-
-  # 4. 设置权限（确保可读）
-  chmod 644 "$cache_dir"/* || {
-    echo -e "${COLOR_WARNING}[Warning] 无法设置文件权限${COLOR_RESET}"
-  }
-
-  # 5. 特殊处理改 token 代码
-  FILE="/usr/lib/euler-copilot-framework/apps/llm/token.py"
-  token_py_file="../5-resource/token.py"
-  cp $token_py_file $FILE
-  echo -e "${COLOR_SUCCESS}[Success] tiktoken缓存已配置: $cache_dir${COLOR_RESET}"
-}
-
 install_framework() {
   # 1. 安装前检查
   echo -e "${COLOR_INFO}[Info] 开始初始化配置 euler-copilot-framework...${COLOR_RESET}"
@@ -359,12 +299,6 @@ install_framework() {
   }
   chmod 644 "$framework_service_target" || {
     echo -e "${COLOR_WARNING}[Warning] 无法设置服务文件权限${COLOR_RESET}"
-  }
-
-  # 特殊处理，如果 openaipublic.blob.core.windows.net 网络不可达
-  # 创建缓存目录（通常是 ~/.cache/tiktoken）
-  check_network_reachable || {
-    setup_tiktoken_cache || echo -e "${COLOR_WARNING}[Warning] 无网络 cl100k_base.tiktoken  文件下载失败,请检查网络${COLOR_RESET}"
   }
 
   # 8. 启动服务
