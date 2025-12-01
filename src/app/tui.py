@@ -21,7 +21,9 @@ from app.tui_mcp_handler import TUIMCPEventHandler
 from backend import BackendFactory, HermesChatClient, OpenAIClient
 from backend.hermes.exceptions import HermesAPIError
 from backend.hermes.mcp_helpers import (
+    LLM_STATS_PREFIX,
     MCPEmojis,
+    MCPTagInfo,
     MCPTags,
     extract_mcp_tag,
     format_error_message,
@@ -767,6 +769,8 @@ class IntelligentTerminal(App):
             is_first_content=stream_state["is_first_content"],
         )
 
+        is_llm_stats_chunk = content.startswith(LLM_STATS_PREFIX)
+
         processed_line = await self._process_content_chunk(
             params,
             stream_state["current_line"],
@@ -774,8 +778,8 @@ class IntelligentTerminal(App):
         )
 
         # 检查是否是 MCP 消息处理（返回值为 None 表示是 MCP 消息）
-        tool_name, _cleaned_content = extract_mcp_tag(content)
-        is_mcp_detected = processed_line is None and tool_name is not None
+        tag_info, _cleaned_content = extract_mcp_tag(content)
+        is_mcp_detected = processed_line is None and tag_info is not None
 
         # 只有当返回值不为None时才更新current_line
         if processed_line is not None:
@@ -787,6 +791,13 @@ class IntelligentTerminal(App):
             self._current_progress_block = None
 
         # 更新状态 - 但是不要让 MCP 消息影响流状态
+        if is_llm_stats_chunk:
+            stream_state["is_first_content"] = False
+            current_line_widget = stream_state.get("current_line")
+            if isinstance(current_line_widget, MarkdownOutput):
+                stream_state["current_content"] = current_line_widget.get_content()
+            return
+
         if not is_mcp_detected:
             if stream_state["is_first_content"]:
                 stream_state["is_first_content"] = False
@@ -824,27 +835,32 @@ class IntelligentTerminal(App):
         current_content = params.current_content
         is_first_content = params.is_first_content
 
+        # 处理 LLM 输出的统计段落
+        if is_llm_output and content.startswith(LLM_STATS_PREFIX):
+            stats_payload = content[len(LLM_STATS_PREFIX) :].strip()
+            return self._append_llm_stats_block(stats_payload, current_line, output_container)
+
         # 检查是否包含MCP标记（替换标记或MCP标记）
-        tool_name, cleaned_content = extract_mcp_tag(content)
-        replace_tool_name = None
-        mcp_tool_name = None
+        tag_info, cleaned_content = extract_mcp_tag(content)
+        replace_tag_info: MCPTagInfo | None = None
+        mcp_tag_info: MCPTagInfo | None = None
 
         # 根据原始内容判断标记类型
-        if tool_name:
+        if tag_info:
             if MCPTags.REPLACE_PREFIX in content:
-                replace_tool_name = tool_name
+                replace_tag_info = tag_info
             elif MCPTags.MCP_PREFIX in content:
-                mcp_tool_name = tool_name
+                mcp_tag_info = tag_info
 
         # 检查是否为 MCP 进度消息
-        tool_name = replace_tool_name or mcp_tool_name
-        is_progress_message = tool_name is not None and is_mcp_message(content)
+        step_tag = replace_tag_info or mcp_tag_info
+        is_progress_message = step_tag is not None and is_mcp_message(content)
 
         # 如果是进度消息，使用专门的处理方法，无论 is_llm_output 的值
-        if is_progress_message and tool_name:
+        if is_progress_message and step_tag:
             self._handle_mcp_progress_message(
                 cleaned_content,
-                tool_name,
+                step_tag,
                 output_container,
             )
             return None
@@ -888,21 +904,43 @@ class IntelligentTerminal(App):
         output_container.mount(new_line)
         return new_line
 
+    def _append_llm_stats_block(
+        self,
+        stats_payload: str,
+        current_line: OutputLine | MarkdownOutput | None,
+        output_container: Container,
+    ) -> OutputLine | MarkdownOutput | None:
+        """在 Markdown 输出末尾添加 LLM 统计段落"""
+        if not stats_payload:
+            return current_line
+
+        stats_paragraph = f"\n\n> {stats_payload}"
+
+        if isinstance(current_line, MarkdownOutput):
+            updated = current_line.get_content() + stats_paragraph
+            current_line.update_markdown(updated)
+            return current_line
+
+        # 没有现有 Markdown 输出时，创建新的 Markdown 块
+        new_line = MarkdownOutput(f"> {stats_payload}")
+        output_container.mount(new_line)
+        return new_line
+
     def _handle_mcp_progress_message(
         self,
         content: str,
-        tool_name: str,
+        step_tag: MCPTagInfo,
         output_container: Container,
     ) -> None:
         """处理 MCP 进度消息"""
-        progress_block = self._get_or_create_progress_block(tool_name, output_container)
+        progress_block = self._get_or_create_progress_block(step_tag.identifier, output_container)
         waiting_state = self._detect_waiting_state(content)
         if waiting_state:
             self._show_waiting_block(content, output_container)
             return
 
-        progress_block.upsert_step(tool_name, content)
-        self.logger.debug("[TUI] 更新工具 %s 的进度: %s", tool_name, content.strip()[:50])
+        progress_block.upsert_step(step_tag.identifier, content)
+        self.logger.debug("[TUI] 更新工具 %s 的进度: %s", step_tag.display_name, content.strip()[:50])
 
     def _get_or_create_progress_block(self, step_id: str, output_container: Container) -> MCPProgressBlock:
         """按步骤 ID 查找或创建 MCP 进度块"""
@@ -1371,8 +1409,8 @@ class IntelligentTerminal(App):
                     break
 
                 # 判断是否为 LLM 输出内容
-                tool_name, _cleaned_content = extract_mcp_tag(content)
-                is_llm_output = tool_name is None
+                tag_info, _cleaned_content = extract_mcp_tag(content)
+                is_llm_output = tag_info is None
 
                 # 处理内容
                 await self._process_stream_content(

@@ -10,6 +10,7 @@ import json
 from typing import TYPE_CHECKING, Any
 
 from backend.hermes.mcp_helpers import (
+    LLM_STATS_PREFIX,
     MCPEventTypes,
     MCPMessageTemplates,
     MCPRiskLevels,
@@ -95,6 +96,13 @@ class HermesStreamEvent:
         """获取内容部分"""
         return self.data.get("content", {})
 
+    def get_metadata(self) -> dict[str, Any]:
+        """获取统计信息元数据"""
+        metadata = self.data.get("metadata")
+        if isinstance(metadata, dict):
+            return metadata
+        return {}
+
     def is_mcp_step_event(self) -> bool:
         """判断是否为 MCP 步骤相关事件"""
         return self.event_type in MCPEventTypes.ALL_STEP_EVENTS
@@ -106,12 +114,12 @@ class HermesStreamProcessor:
     def __init__(self) -> None:
         """初始化流处理器"""
         self.logger = get_logger(__name__)
-        # 进度消息替换机制：跟踪当前工具的进度状态
-        self._current_tool_progress: dict[str, dict[str, Any]] = {}  # step_id -> progress_info
+        # 进度消息替换机制：跟踪当前步骤的进度状态
+        self._current_step_progress: dict[str, dict[str, Any]] = {}  # step_key -> progress_info
 
     def reset_status_tracking(self) -> None:
         """重置状态跟踪，用于新对话开始时"""
-        self._current_tool_progress.clear()
+        self._current_step_progress.clear()
         self.logger.debug("状态跟踪已重置")
 
     def handle_special_events(self, event: HermesStreamEvent) -> tuple[bool, str | None]:
@@ -150,6 +158,7 @@ class HermesStreamProcessor:
             return None
 
         event_type = event.event_type
+        metadata = event.get_metadata()
         step_status = event.get_step_status()
         executor_status = event.get_executor_status()
 
@@ -188,6 +197,7 @@ class HermesStreamProcessor:
             step_id,
             step_status,
             should_replace=should_replace,
+            metadata=metadata,
         )
 
     def _format_error_status(self, event: HermesStreamEvent) -> str:
@@ -225,7 +235,7 @@ class HermesStreamProcessor:
         message_content = content.get("message", "需要补充参数")
         return MCPMessageTemplates.waiting_param_message(step_name, message_content)
 
-    def _format_standard_status(
+    def _format_standard_status(  # noqa: PLR0913
         self,
         event_type: str,
         step_name: str,
@@ -233,6 +243,7 @@ class HermesStreamProcessor:
         step_status: str,
         *,
         should_replace: bool,
+        metadata: dict[str, Any] | None = None,
     ) -> str | None:
         """格式化标准步骤状态消息"""
         if step_status == "error":
@@ -250,6 +261,10 @@ class HermesStreamProcessor:
         if not base_message:
             return None
 
+        metadata_suffix = self._format_metadata_display(metadata)
+        if event_type in MCPEventTypes.FINAL_STATE_EVENTS and metadata_suffix:
+            base_message = self._append_stats_to_message(base_message, metadata_suffix)
+
         if event_type in MCPEventTypes.PROGRESS_MESSAGE_EVENTS and step_id:
             base_message = self._handle_progress_message(
                 event_type,
@@ -261,6 +276,54 @@ class HermesStreamProcessor:
 
         return base_message
 
+    def _format_metadata_display(self, metadata: dict[str, Any] | None) -> str | None:  # noqa: C901
+        """将 metadata 中的 tokens/time 转换成输出字符串"""
+        if not metadata:
+            return None
+
+        def _format_token_value(value: Any) -> str | None:
+            if isinstance(value, (int, float)):
+                if isinstance(value, float):
+                    return str(int(value))
+                return str(value)
+            return None
+
+        def _format_time_value(value: Any) -> str | None:
+            if not isinstance(value, (int, float)):
+                return None
+            normalized = float(value)
+            formatted = f"{normalized:.3f}".rstrip("0").rstrip(".")
+            return f"{formatted}s"
+
+        stats_parts: list[str] = []
+
+        input_tokens = _format_token_value(metadata.get("inputTokens"))
+        if input_tokens is not None:
+            stats_parts.append(f"↑{input_tokens}")
+
+        output_tokens = _format_token_value(metadata.get("outputTokens"))
+        if output_tokens is not None:
+            stats_parts.append(f"↓{output_tokens}")
+
+        time_cost = _format_time_value(metadata.get("timeCost"))
+        if time_cost is not None:
+            stats_parts.append(time_cost)
+
+        if not stats_parts:
+            return None
+
+        return " ".join(stats_parts)
+
+    def _append_stats_to_message(self, base_message: str, stats: str) -> str:
+        """在原有消息末尾追加统计信息，保持原有换行格式"""
+        stripped_message = base_message.rstrip("\n")
+        if not stripped_message:
+            stripped_message = base_message
+        suffix = f"  [ {stats} ]" if stats else ""
+        if base_message.endswith("\n"):
+            return f"{stripped_message}{suffix}\n"
+        return f"{stripped_message}{suffix}"
+
     def _handle_progress_message(
         self,
         event_type: str,
@@ -271,39 +334,52 @@ class HermesStreamProcessor:
         should_replace: bool,
     ) -> str:
         """处理进度消息的 MCP 标记和替换逻辑"""
+        progress_key = step_id or step_name or "__anonymous_step__"
         is_final_state = event_type in MCPEventTypes.FINAL_STATE_EVENTS
-        has_previous_progress = step_name in self._current_tool_progress
+        has_previous_progress = progress_key in self._current_step_progress
 
-        # 非最终状态：记录进度到跟踪字典（使用工具名称作为 key）
+        # 非最终状态：记录进度到跟踪字典（使用唯一 key）
         if not is_final_state:
-            self._current_tool_progress[step_name] = {
+            self._current_step_progress[progress_key] = {
                 "message": base_message,
                 "should_replace": should_replace,
                 "is_progress": True,
                 "step_id": step_id,
+                "step_name": step_name,
             }
 
-        # 添加 MCP 标记：如果存在之前的进度则标记为替换，否则为新消息
-        if has_previous_progress:
-            base_message = f"{create_mcp_tag(step_name, is_replace=True)}{base_message}"
-            if is_final_state:
-                self._current_tool_progress.pop(step_name, None)
-        else:
-            base_message = f"{create_mcp_tag(step_name, is_replace=False)}{base_message}"
+        tag = create_mcp_tag(step_name, step_id=step_id or None, is_replace=has_previous_progress)
+        base_message = f"{tag}{base_message}"
+
+        if has_previous_progress and is_final_state:
+            self._current_step_progress.pop(progress_key, None)
 
         return base_message
 
     def _should_replace_progress(self, event: HermesStreamEvent, step_id: str | None) -> bool:
         """判断是否应该替换之前的进度消息"""
         step_name = event.get_step_name()
-        if not step_name:
-            return False
-
         event_type = event.event_type
+        progress_key = step_id or step_name or "__anonymous_step__"
 
         # 进度消息类型 + 存在之前的记录 → 需要替换
-        if event_type in MCPEventTypes.PROGRESS_MESSAGE_EVENTS and step_name in self._current_tool_progress:
-            prev_info = self._current_tool_progress[step_name]
+        if event_type in MCPEventTypes.PROGRESS_MESSAGE_EVENTS and progress_key in self._current_step_progress:
+            prev_info = self._current_step_progress[progress_key]
             return prev_info.get("is_progress", False)
 
         return False
+
+    def format_llm_stats_marker(self, event: HermesStreamEvent) -> str | None:
+        """将 LLM 最终步骤的统计信息转换为专用标记"""
+        if event.event_type != "executor.stop":
+            return None
+
+        step_name = (event.get_step_name() or "").upper()
+        if step_name != "FINAL":
+            return None
+
+        metadata_suffix = self._format_metadata_display(event.get_metadata())
+        if not metadata_suffix:
+            return None
+
+        return f"{LLM_STATS_PREFIX}{metadata_suffix}"

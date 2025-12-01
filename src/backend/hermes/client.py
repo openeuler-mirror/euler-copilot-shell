@@ -547,6 +547,11 @@ class HermesChatClient(LLMClientBase):
                 # 通知 TUI 切换到参数输入界面
                 await self._mcp_handler.handle_waiting_for_param(event)
 
+        # 处理 LLM 最终输出的统计信息
+        llm_stats_marker = self.stream_processor.format_llm_stats_marker(event)
+        if llm_stats_marker:
+            yield llm_stats_marker
+
         # 处理文本内容：只有当不是 MCP 步骤事件时才输出文本内容
         # 这避免了 MCP 状态消息和文本内容的重复输出
         if not event.is_mcp_step_event():

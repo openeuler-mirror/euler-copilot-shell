@@ -7,7 +7,7 @@ MCP (Model Context Protocol) 相关常量定义
 from __future__ import annotations
 
 import re
-from typing import ClassVar
+from typing import ClassVar, NamedTuple
 
 from i18n.manager import _
 
@@ -19,6 +19,22 @@ class MCPTags:
     MCP_PREFIX = "[MCP:"
     REPLACE_PREFIX = "[REPLACE:"
     TAG_SUFFIX = "]"
+
+
+# LLM 统计信息标记
+LLM_STATS_PREFIX = "[LLM_STATS]"
+
+
+class MCPTagInfo(NamedTuple):
+    """封装 MCP 标记的元信息"""
+
+    identifier: str
+    tool_name: str | None = None
+
+    @property
+    def display_name(self) -> str:
+        """返回用于展示的名称"""
+        return self.tool_name or self.identifier
 
 
 # MCP 状态表情符号
@@ -307,36 +323,50 @@ def is_final_mcp_message(content: str) -> bool:
     return any(indicator in content for indicator in MCPIndicators.final_indicators())
 
 
-def extract_mcp_tag(content: str) -> tuple[str | None, str]:
+def extract_mcp_tag(content: str) -> tuple[MCPTagInfo | None, str]:
     """从内容中提取 MCP 标记并返回清理后的内容"""
-    # 构建 REPLACE 标记的正则表达式
+
+    def _extract(pattern: str, text: str) -> tuple[MCPTagInfo | None, str]:
+        match = re.search(pattern, text)
+        if not match:
+            return None, text
+
+        identifier = match.group(1)
+        tool_name = match.group(2) or None
+        cleaned = re.sub(pattern, "", text).strip()
+        if tool_name is None:
+            tool_name = identifier
+        return MCPTagInfo(identifier=identifier, tool_name=tool_name), cleaned
+
     replace_prefix = re.escape(MCPTags.REPLACE_PREFIX)
     tag_suffix = re.escape(MCPTags.TAG_SUFFIX)
-    replace_pattern = f"{replace_prefix}([^{tag_suffix}]+){tag_suffix}"
+    value_pattern = "[^|\\]]+"
+    replace_pattern = f"{replace_prefix}({value_pattern})(?:\\|({value_pattern}))?{tag_suffix}"
 
-    replace_match = re.search(replace_pattern, content)
-    if replace_match:
-        tool_name = replace_match.group(1)
-        cleaned_content = re.sub(replace_pattern, "", content).strip()
-        return tool_name, cleaned_content
+    tag_info, cleaned_content = _extract(replace_pattern, content)
+    if tag_info is not None:
+        return tag_info, cleaned_content
 
-    # 构建 MCP 标记的正则表达式
     mcp_prefix = re.escape(MCPTags.MCP_PREFIX)
-    mcp_pattern = f"{mcp_prefix}([^{tag_suffix}]+){tag_suffix}"
+    mcp_pattern = f"{mcp_prefix}({value_pattern})(?:\\|({value_pattern}))?{tag_suffix}"
 
-    mcp_match = re.search(mcp_pattern, content)
-    if mcp_match:
-        tool_name = mcp_match.group(1)
-        cleaned_content = re.sub(mcp_pattern, "", content).strip()
-        return tool_name, cleaned_content
-
-    return None, content
+    return _extract(mcp_pattern, content)
 
 
-def create_mcp_tag(tool_name: str, *, is_replace: bool = False) -> str:
+def create_mcp_tag(tool_name: str, *, step_id: str | None = None, is_replace: bool = False) -> str:
     """创建 MCP 标记字符串"""
+
+    def _sanitize(value: str) -> str:
+        return value.replace("|", "｜").replace("]", "］")
+
     prefix = MCPTags.REPLACE_PREFIX if is_replace else MCPTags.MCP_PREFIX
-    return f"{prefix}{tool_name}{MCPTags.TAG_SUFFIX}"
+    if step_id:
+        identifier = _sanitize(step_id)
+        sanitized_tool = _sanitize(tool_name)
+        return f"{prefix}{identifier}|{sanitized_tool}{MCPTags.TAG_SUFFIX}"
+
+    sanitized_tool = _sanitize(tool_name)
+    return f"{prefix}{sanitized_tool}{MCPTags.TAG_SUFFIX}"
 
 
 def format_error_message(error_text: str) -> str:
