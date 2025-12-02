@@ -76,7 +76,7 @@ class HermesChatClient(LLMClientBase):
     def user_manager(self) -> HermesUserManager:
         """获取用户管理器（延迟初始化）"""
         if self._user_manager is None:
-            self._user_manager = HermesUserManager(self.http_manager)
+            self._user_manager = HermesUserManager(self.http_manager, self.config_manager)
         return self._user_manager
 
     @property
