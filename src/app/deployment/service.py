@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import platform
-import re
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -42,7 +41,6 @@ class DeploymentResourceManager:
     DEPLOY_SCRIPT = INSTALLER_BASE_PATH / "deploy"
 
     # 配置文件模板路径
-    ENV_TEMPLATE = RESOURCE_PATH / "env"
     CONFIG_TEMPLATE = RESOURCE_PATH / "config.toml"
 
     @classmethod
@@ -52,7 +50,6 @@ class DeploymentResourceManager:
             cls.INSTALLER_BASE_PATH.exists()
             and cls.RESOURCE_PATH.exists()
             and cls.DEPLOY_SCRIPT.exists()
-            and cls.ENV_TEMPLATE.exists()
             and cls.CONFIG_TEMPLATE.exists()
         )
 
@@ -67,30 +64,7 @@ class DeploymentResourceManager:
             raise RuntimeError(msg) from e
 
     @classmethod
-    def update_config_values(cls, content: str, config: DeploymentConfig) -> str:
-        """根据用户配置更新配置文件内容"""
-
-        def safe_replace(pattern: str, replacement: str, text: str) -> str:
-            """安全的正则表达式替换，避免反向引用问题"""
-            # 使用 lambda 函数来避免反向引用问题
-            return re.sub(pattern, lambda m: m.group(1) + replacement, text)
-
-        # 更新 LLM 配置
-        content = safe_replace(r"(MODEL_NAME\s*=\s*).*", config.llm.model, content)
-        content = safe_replace(r"(OPENAI_API_BASE\s*=\s*).*", config.llm.endpoint, content)
-        content = safe_replace(r"(OPENAI_API_KEY\s*=\s*).*", config.llm.api_key, content)
-        content = safe_replace(r"(MAX_TOKENS\s*=\s*).*", str(config.llm.max_tokens), content)
-        content = safe_replace(r"(TEMPERATURE\s*=\s*).*", str(config.llm.temperature), content)
-        content = safe_replace(r"(REQUEST_TIMEOUT\s*=\s*).*", str(config.llm.request_timeout), content)
-
-        # 更新 Embedding 配置
-        content = safe_replace(r"(EMBEDDING_TYPE\s*=\s*).*", config.embedding.type, content)
-        content = safe_replace(r"(EMBEDDING_API_KEY\s*=\s*).*", config.embedding.api_key, content)
-        content = safe_replace(r"(EMBEDDING_ENDPOINT\s*=\s*).*", config.embedding.endpoint, content)
-        return safe_replace(r"(EMBEDDING_MODEL_NAME\s*=\s*).*", config.embedding.model, content)
-
-    @classmethod
-    def update_toml_values(cls, content: str, config: DeploymentConfig) -> str:
+    def update_toml_values(cls, content: str) -> str:
         """更新 TOML 配置文件的值"""
         try:
             # 解析 TOML 内容
@@ -98,37 +72,10 @@ class DeploymentResourceManager:
 
             # 更新服务器 IP
             server_host = LOCAL_DEPLOYMENT_HOST
-            if "login" in toml_data and "settings" in toml_data["login"]:
-                toml_data["login"]["settings"]["host"] = f"http://{server_host}:8000"
-                toml_data["login"]["settings"]["login_api"] = f"http://{server_host}:8080/api/auth/login"
 
             # 更新 fastapi 域名
             if "fastapi" in toml_data:
                 toml_data["fastapi"]["domain"] = server_host
-
-            # 更新 LLM 配置
-            if "llm" in toml_data:
-                toml_data["llm"]["endpoint"] = config.llm.endpoint
-                toml_data["llm"]["key"] = config.llm.api_key
-                toml_data["llm"]["model"] = config.llm.model
-                toml_data["llm"]["max_tokens"] = config.llm.max_tokens
-                toml_data["llm"]["temperature"] = config.llm.temperature
-
-            # 更新 function_call 配置
-            if "function_call" in toml_data:
-                toml_data["function_call"]["backend"] = config.detected_backend_type
-                toml_data["function_call"]["endpoint"] = config.llm.endpoint
-                toml_data["function_call"]["api_key"] = config.llm.api_key
-                toml_data["function_call"]["model"] = config.llm.model
-                toml_data["function_call"]["max_tokens"] = config.llm.max_tokens
-                toml_data["function_call"]["temperature"] = config.llm.temperature
-
-            # 更新 Embedding 配置
-            if "embedding" in toml_data:
-                toml_data["embedding"]["type"] = config.embedding.type
-                toml_data["embedding"]["endpoint"] = config.embedding.endpoint
-                toml_data["embedding"]["api_key"] = config.embedding.api_key
-                toml_data["embedding"]["model"] = config.embedding.model
 
             # 将更新后的数据转换回 TOML 格式
             return toml.dumps(toml_data)
@@ -606,10 +553,6 @@ class DeploymentService:
             progress_callback(self.state)
 
         try:
-            # 更新 env 文件
-            await self._update_env_file(config)
-            self.state.add_log(_("✓ 更新 env 配置文件"))
-
             # 更新 config.toml 文件
             await self._update_config_toml(config)
             self.state.add_log(_("✓ 更新 config.toml 配置文件"))
@@ -621,51 +564,6 @@ class DeploymentService:
 
         return True
 
-    async def _update_env_file(self, config: DeploymentConfig) -> None:
-        """更新 env 配置文件"""
-        template_content = self.resource_manager.get_template_content(
-            self.resource_manager.ENV_TEMPLATE,
-        )
-
-        updated_content = self.resource_manager.update_config_values(
-            template_content,
-            config,
-        )
-
-        # 备份原文件并写入新内容
-        backup_cmd = [
-            "sudo",
-            "cp",
-            str(self.resource_manager.ENV_TEMPLATE),
-            f"{self.resource_manager.ENV_TEMPLATE}.backup",
-        ]
-        backup_process = await asyncio.create_subprocess_exec(
-            *backup_cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _backup_stdout, backup_stderr = await backup_process.communicate()
-
-        if backup_process.returncode != 0:
-            error_msg = backup_stderr.decode("utf-8", errors="ignore").strip()
-            msg = _("备份 env 文件失败: {error}").format(error=error_msg)
-            raise RuntimeError(msg)
-
-        # 写入更新后的内容
-        write_cmd = ["sudo", "tee", str(self.resource_manager.ENV_TEMPLATE)]
-        process = await asyncio.create_subprocess_exec(
-            *write_cmd,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _write_stdout, write_stderr = await process.communicate(updated_content.encode())
-
-        if process.returncode != 0:
-            error_msg = write_stderr.decode("utf-8", errors="ignore").strip()
-            msg = _("写入 env 文件失败: {error}").format(error=error_msg)
-            raise RuntimeError(msg)
-
     async def _update_config_toml(self, config: DeploymentConfig) -> None:
         """更新 config.toml 配置文件"""
         template_content = self.resource_manager.get_template_content(
@@ -674,7 +572,6 @@ class DeploymentService:
 
         updated_content = self.resource_manager.update_toml_values(
             template_content,
-            config,
         )
 
         # 备份原文件并写入新内容

@@ -266,8 +266,6 @@ install_framework() {
   }
   echo -e "${COLOR_INFO}[Info] 更新配置文件参数...${COLOR_RESET}"
   port=8002
-  sed -i "/\[login\.settings\]/,/^\[/ s|host = '.*'|host = 'http://${ip_address}:8000'|" "$framework_file"
-  sed -i "s|login_api = '.*'|login_api = 'http://${ip_address}:8080/api/auth/login'|" $framework_file
   sed -i "s/domain = '.*'/domain = '$ip_address'/" $framework_file
 
   #更新 security key
