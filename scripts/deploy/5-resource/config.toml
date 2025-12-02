@@ -3,17 +3,6 @@ mode = 'local'
 cookie = 'domain'
 data_dir = '/var/lib/euler_copilot'
 
-[login]
-provider = 'authhub'
-admin_user = ["admin"]
-
-[login.settings]
-host = 'http://127.0.0.1:8000'
-host_inner = 'http://127.0.0.1:11120'
-login_api = 'http://127.0.0.1:8080/api/auth/login'
-app_id = ''
-app_secret = ''
-
 [rag]
 rag_service = 'http://127.0.0.1:9988'
 
