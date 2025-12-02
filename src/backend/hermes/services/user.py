@@ -363,23 +363,23 @@ class HermesUserManager:
         return True
 
     def _build_remote_user_header(self) -> dict[str, str]:
-        """构建带有当前 Linux 用户 UID 的请求头"""
-        remote_uid = self._get_remote_user_id()
-        if remote_uid is None:
+        """构建带有当前 Linux 用户名的请求头"""
+        remote_user = self._get_remote_user_name()
+        if remote_user is None:
             return {}
         return {
-            "X-Remote-User": remote_uid,
+            "X-Remote-User": remote_user,
         }
 
-    def _get_remote_user_id(self) -> str | None:
-        """获取当前 Linux 用户的 UID"""
+    def _get_remote_user_name(self) -> str | None:
+        """获取当前 Linux 用户名"""
         try:
-            uid = os.getuid()
+            username = os.getlogin()
         except AttributeError:
-            self.logger.warning("当前系统不支持 os.getuid()，无法设置 X-Remote-User 请求头")
+            self.logger.warning("当前系统不支持 os.getlogin()，无法设置 X-Remote-User 请求头")
             return None
         except OSError as error:  # pragma: no cover - 仅在异常系统状态下触发
-            self.logger.warning("获取当前用户 UID 失败: %s", error)
+            self.logger.warning("获取当前用户名失败: %s", error)
             return None
 
-        return str(uid)
+        return username
