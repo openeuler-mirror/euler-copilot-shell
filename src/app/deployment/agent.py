@@ -329,11 +329,10 @@ class AgentManager:
         if not configs:
             return {}
 
-        mcp_service_mapping = {}
+        mcp_service_mapping: dict[str, str] = {}
 
         for dir_name, config in configs:
             try:
-                # 写入配置文件
                 service_id = await self._write_single_mcp_config(
                     dir_name,
                     config,
@@ -769,8 +768,8 @@ class AgentManager:
         mcp_service_mapping: dict[str, str],
     ) -> tuple[list[str], list[str]]:
         """解析 MCP 路径为服务 ID"""
-        mcp_service_ids = []
-        missing_services = []
+        mcp_service_ids: list[str] = []
+        missing_services: list[str] = []
 
         for mcp_path in mcp_paths:
             if mcp_path in mcp_service_mapping:
