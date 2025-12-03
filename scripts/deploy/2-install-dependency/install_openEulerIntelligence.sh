@@ -292,46 +292,27 @@ install_and_verify() {
 # 安装pgvector服务
 install_pgvector() {
   local pgvector_dir="/opt/pgvector"
-  local zhparser_url="https://bgithub.xyz/pgvector/pgvector.git"
+  local pgvector_tar="../5-resource/pg-plugin/pgvector-0.8.1.tar.gz"
   local pgvector_installed_marker="/usr/share/pgsql/extension/vector.control" # pgvector安装后的标志文件
+
   echo -e "${COLOR_INFO}[Info] 开始安装pgvector...${COLOR_RESET}"
   if [ -f "$pgvector_installed_marker" ]; then
     echo -e "${COLOR_INFO}[Info] pgvector已安装，跳过安装过程${COLOR_RESET}"
     return 0
   fi
-  # 1. 临时禁用SSL验证
-  echo -e "${COLOR_INFO} 临时禁用Git SSL验证...${COLOR_RESET}"
-  git config --global http.sslVerify false
 
-  # 2. 克隆仓库
-  echo -e "${COLOR_INFO} 正在克隆zhparser仓库...${COLOR_RESET}"
-  if [ -d "$pgvector_dir" ]; then
-    echo -e "${COLOR_INFO} 目标目录已存在，尝试更新代码...${COLOR_RESET}"
-    cd "$pgvector_dir" || {
-      echo -e "${COLOR_ERROR}[Error] 无法进入目录: $pgvector_dir${COLOR_RESET}"
-      return 1
-    }
-    git pull origin master || {
-      echo -e "${COLOR_ERROR}[Error] 代码更新失败${COLOR_RESET}"
-      return 1
-    }
-  else
-    git clone --branch v0.8.0 "$zhparser_url" "$pgvector_dir" || {
-      echo -e "${COLOR_ERROR}[Error] 克隆仓库失败${COLOR_RESET}"
-      return 1
-    }
-    cd "$pgvector_dir" || {
-      echo -e "${COLOR_ERROR}[Error] 无法进入目录: $pgvector_dir${COLOR_RESET}"
-      return 1
-    }
+  # 1. 清理旧目录并解压源码
+  echo -e "${COLOR_INFO}[Info] 正在解压pgvector源码...${COLOR_RESET}"
+  rm -rf "$pgvector_dir"
+  mkdir -p "$pgvector_dir"
+
+  if ! tar -xzf "$pgvector_tar" -C "$pgvector_dir" --strip-components=1; then
+    echo -e "${COLOR_ERROR}[Error] 解压pgvector失败${COLOR_RESET}"
+    return 1
   fi
 
-  # 3. 恢复SSL验证
-  echo -e "${COLOR_INFO} 恢复Git SSL验证...${COLOR_RESET}"
-  git config --global http.sslVerify true
-
-  # 4. 进入解压目录编译安装
-  echo -e "${COLOR_INFO} 正在编译安装pgvector...${COLOR_RESET}"
+  # 2. 编译安装
+  echo -e "${COLOR_INFO}[Info] 正在编译安装pgvector...${COLOR_RESET}"
   cd "$pgvector_dir" || {
     echo -e "${COLOR_ERROR}[Error] 无法进入目录: $pgvector_dir${COLOR_RESET}"
     return 1
@@ -414,49 +395,34 @@ install_scws() {
 }
 # 安装zhparser服务
 install_zhparser() {
-  # 目标目录
   local zhparser_dir="/opt/zhparser"
-  local zhparser_url="https://bgithub.xyz/amutu/zhparser.git"
+  local zhparser_tar="../5-resource/pg-plugin/zhparser-2.3.tar.gz"
   local zhparser_installed_marker="/usr/share/pgsql/extension/zhparser.control" # zhparser安装后的标志文件
+
   echo -e "${COLOR_INFO}[Info] 开始安装zhparser...${COLOR_RESET}"
   # 检查是否已安装
   if [ -f "$zhparser_installed_marker" ]; then
     echo -e "${COLOR_INFO}[INFO] zhparser已安装，跳过安装过程${COLOR_RESET}"
     return 0
   fi
-  # 1. 临时禁用SSL验证
-  echo -e "${COLOR_INFO} 临时禁用Git SSL验证...${COLOR_RESET}"
-  git config --global http.sslVerify false
 
-  # 2. 克隆仓库
-  echo -e "${COLOR_INFO} 正在克隆zhparser仓库...${COLOR_RESET}"
-  if [ -d "$zhparser_dir" ]; then
-    echo -e "${COLOR_INFO}[Info] 目标目录已存在，尝试更新代码...${COLOR_RESET}"
-    cd "$zhparser_dir" || {
-      echo -e "${COLOR_ERROR}[Error] 无法进入目录: $zhparser_dir${COLOR_RESET}"
-      return 1
-    }
-    git pull origin master || {
-      echo -e "${COLOR_ERROR}[Error] 代码更新失败${COLOR_RESET}"
-      return 1
-    }
-  else
-    git clone "$zhparser_url" "$zhparser_dir" || {
-      echo -e "${COLOR_ERROR}[Error] 克隆仓库失败${COLOR_RESET}"
-      return 1
-    }
-    cd "$zhparser_dir" || {
-      echo -e "${COLOR_ERROR}[Error] 无法进入目录: $zhparser_dir${COLOR_RESET}"
-      return 1
-    }
+  # 1. 清理旧目录并解压源码
+  echo -e "${COLOR_INFO}[Info] 正在解压zhparser源码...${COLOR_RESET}"
+  rm -rf "$zhparser_dir"
+  mkdir -p "$zhparser_dir"
+
+  if ! tar -xzf "$zhparser_tar" -C "$zhparser_dir" --strip-components=1; then
+    echo -e "${COLOR_ERROR}[Error] 解压zhparser失败${COLOR_RESET}"
+    return 1
   fi
 
-  # 3. 恢复SSL验证
-  echo -e "${COLOR_INFO} 恢复Git SSL验证...${COLOR_RESET}"
-  git config --global http.sslVerify true
+  # 2. 编译安装
+  echo -e "${COLOR_INFO}[Info] 正在编译安装zhparser...${COLOR_RESET}"
+  cd "$zhparser_dir" || {
+    echo -e "${COLOR_ERROR}[Error] 无法进入目录: $zhparser_dir${COLOR_RESET}"
+    return 1
+  }
 
-  # 4. 编译安装
-  echo -e "${COLOR_INFO} 正在编译安装zhparser...${COLOR_RESET}"
   if ! make; then
     echo -e "${COLOR_ERROR}[Error] 编译失败${COLOR_RESET}"
     return 1
