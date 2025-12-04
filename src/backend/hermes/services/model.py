@@ -10,7 +10,8 @@ from urllib.parse import urljoin
 import httpx
 
 from backend.hermes.constants import HTTP_OK
-from backend.models import ModelInfo
+from backend.hermes.exceptions import HermesAPIError
+from backend.models import LLMConfig, LLMGlobalSetting, ModelInfo
 from log.manager import get_logger, log_api_request, log_exception
 
 if TYPE_CHECKING:
@@ -149,3 +150,302 @@ class HermesModelManager:
             return []
         else:
             return models
+
+    async def create_or_update_model(self, config: LLMConfig) -> bool:
+        """
+        创建或更新大模型配置（管理员接口）
+
+        通过调用 PUT /api/llm 接口创建或更新大模型。
+
+        Args:
+            config: 大模型配置对象
+
+        Returns:
+            bool: 操作是否成功
+
+        Raises:
+            HermesAPIError: 当 API 调用失败时抛出
+
+        """
+        start_time = time.time()
+        self.logger.info("开始创建/更新大模型: %s", config.id)
+
+        try:
+            client = await self.http_manager.get_client()
+            llm_url = urljoin(self.http_manager.base_url, "/api/llm")
+
+            headers = self.http_manager.build_headers()
+            request_data = config.to_api_dict()
+            response = await client.put(llm_url, headers=headers, json=request_data)
+
+            duration = time.time() - start_time
+
+            if response.status_code != HTTP_OK:
+                log_api_request(
+                    self.logger,
+                    "PUT",
+                    llm_url,
+                    response.status_code,
+                    duration,
+                    error="API 调用失败",
+                )
+                error_msg = f"创建/更新大模型失败: HTTP {response.status_code}"
+                self.logger.error(error_msg)
+                raise HermesAPIError(response.status_code, error_msg)
+
+            log_api_request(
+                self.logger,
+                "PUT",
+                llm_url,
+                response.status_code,
+                duration,
+                llm_id=config.id,
+            )
+            self.logger.info("成功创建/更新大模型: %s", config.id)
+
+        except httpx.HTTPError as e:
+            duration = time.time() - start_time
+            log_exception(self.logger, "创建/更新大模型 API 请求异常", e)
+            log_api_request(
+                self.logger,
+                "PUT",
+                f"{self.http_manager.base_url}/api/llm",
+                500,
+                duration,
+                error=str(e),
+            )
+            raise HermesAPIError(500, f"请求异常: {e}") from e
+        else:
+            return True
+
+    async def delete_model(self, llm_id: str) -> bool:
+        """
+        删除大模型（管理员接口）
+
+        通过调用 DELETE /api/llm?llmId=xxxx 接口删除大模型。
+
+        Args:
+            llm_id: 要删除的大模型 ID
+
+        Returns:
+            bool: 操作是否成功
+
+        Raises:
+            HermesAPIError: 当 API 调用失败时抛出
+
+        """
+        start_time = time.time()
+        self.logger.info("开始删除大模型: %s", llm_id)
+
+        try:
+            client = await self.http_manager.get_client()
+            llm_url = urljoin(self.http_manager.base_url, f"/api/llm?llmId={llm_id}")
+
+            headers = self.http_manager.build_headers()
+            response = await client.delete(llm_url, headers=headers)
+
+            duration = time.time() - start_time
+
+            if response.status_code != HTTP_OK:
+                log_api_request(
+                    self.logger,
+                    "DELETE",
+                    llm_url,
+                    response.status_code,
+                    duration,
+                    error="API 调用失败",
+                )
+                error_msg = f"删除大模型失败: HTTP {response.status_code}"
+                self.logger.error(error_msg)
+                raise HermesAPIError(response.status_code, error_msg)
+
+            log_api_request(
+                self.logger,
+                "DELETE",
+                llm_url,
+                response.status_code,
+                duration,
+                llm_id=llm_id,
+            )
+            self.logger.info("成功删除大模型: %s", llm_id)
+
+        except httpx.HTTPError as e:
+            duration = time.time() - start_time
+            log_exception(self.logger, "删除大模型 API 请求异常", e)
+            log_api_request(
+                self.logger,
+                "DELETE",
+                f"{self.http_manager.base_url}/api/llm",
+                500,
+                duration,
+                error=str(e),
+            )
+            raise HermesAPIError(500, f"请求异常: {e}") from e
+        else:
+            return True
+
+    async def get_model_config(self, llm_id: str) -> LLMConfig | None:
+        """
+        获取大模型详细配置（管理员接口）
+
+        通过调用 GET /api/llm/config?llmId=xxxx 接口获取模型详细信息。
+
+        Args:
+            llm_id: 大模型 ID
+
+        Returns:
+            LLMConfig | None: 模型配置对象，获取失败时返回 None
+
+        """
+        start_time = time.time()
+        self.logger.info("开始获取大模型配置: %s", llm_id)
+
+        try:
+            client = await self.http_manager.get_client()
+            llm_url = urljoin(self.http_manager.base_url, f"/api/llm/config?llmId={llm_id}")
+
+            headers = self.http_manager.build_headers()
+            response = await client.get(llm_url, headers=headers)
+
+            duration = time.time() - start_time
+
+            if response.status_code != HTTP_OK:
+                log_api_request(
+                    self.logger,
+                    "GET",
+                    llm_url,
+                    response.status_code,
+                    duration,
+                    error="API 调用失败",
+                )
+                self.logger.warning("获取大模型配置失败: %s", llm_id)
+                return None
+
+            data = response.json()
+
+            # 检查响应格式
+            if not isinstance(data, dict) or "result" not in data:
+                log_api_request(
+                    self.logger,
+                    "GET",
+                    llm_url,
+                    response.status_code,
+                    duration,
+                    error="响应格式无效",
+                )
+                self.logger.warning("获取大模型配置响应格式无效: %s", llm_id)
+                return None
+
+            result = data["result"]
+            if not isinstance(result, dict):
+                log_api_request(
+                    self.logger,
+                    "GET",
+                    llm_url,
+                    response.status_code,
+                    duration,
+                    error="result字段不是对象",
+                )
+                self.logger.warning("获取大模型配置 result 字段不是对象: %s", llm_id)
+                return None
+
+            # 解析配置
+            config = LLMConfig.from_api_response(result)
+
+            log_api_request(
+                self.logger,
+                "GET",
+                llm_url,
+                response.status_code,
+                duration,
+                llm_id=llm_id,
+            )
+            self.logger.info("成功获取大模型配置: %s", llm_id)
+
+        except (
+            httpx.HTTPError,
+            httpx.InvalidURL,
+            json.JSONDecodeError,
+            KeyError,
+            ValueError,
+        ) as e:
+            duration = time.time() - start_time
+            log_exception(self.logger, "获取大模型配置 API 请求异常", e)
+            log_api_request(
+                self.logger,
+                "GET",
+                f"{self.http_manager.base_url}/api/llm/config",
+                500,
+                duration,
+                error=str(e),
+            )
+            self.logger.warning("获取大模型配置请求异常: %s", llm_id)
+            return None
+        else:
+            return config
+
+    async def update_global_setting(self, setting: LLMGlobalSetting) -> bool:
+        """
+        修改全局 LLM 设置（管理员接口）
+
+        通过调用 PUT /api/llm/setting 接口修改全局设置。
+
+        Args:
+            setting: 全局设置对象
+
+        Returns:
+            bool: 操作是否成功
+
+        Raises:
+            HermesAPIError: 当 API 调用失败时抛出
+
+        """
+        start_time = time.time()
+        self.logger.info("开始修改全局 LLM 设置")
+
+        try:
+            client = await self.http_manager.get_client()
+            setting_url = urljoin(self.http_manager.base_url, "/api/llm/setting")
+
+            headers = self.http_manager.build_headers()
+            request_data = setting.to_api_dict()
+            response = await client.put(setting_url, headers=headers, json=request_data)
+
+            duration = time.time() - start_time
+
+            if response.status_code != HTTP_OK:
+                log_api_request(
+                    self.logger,
+                    "PUT",
+                    setting_url,
+                    response.status_code,
+                    duration,
+                    error="API 调用失败",
+                )
+                error_msg = f"修改全局设置失败: HTTP {response.status_code}"
+                self.logger.error(error_msg)
+                raise HermesAPIError(response.status_code, error_msg)
+
+            log_api_request(
+                self.logger,
+                "PUT",
+                setting_url,
+                response.status_code,
+                duration,
+            )
+            self.logger.info("成功修改全局 LLM 设置")
+
+        except httpx.HTTPError as e:
+            duration = time.time() - start_time
+            log_exception(self.logger, "修改全局设置 API 请求异常", e)
+            log_api_request(
+                self.logger,
+                "PUT",
+                f"{self.http_manager.base_url}/api/llm/setting",
+                500,
+                duration,
+                error=str(e),
+            )
+            raise HermesAPIError(500, f"请求异常: {e}") from e
+        else:
+            return True
