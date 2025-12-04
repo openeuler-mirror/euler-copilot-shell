@@ -140,36 +140,6 @@ function check_os_version {
   return $?
 }
 
-function check_hostname {
-  local current_hostname
-  current_hostname=$(cat /etc/hostname)
-  if [[ -z "$current_hostname" ]]; then
-    echo -e "${COLOR_WARNING}[Warning] 未设置主机名，自动设置为localhost${COLOR_RESET}"
-    set_hostname "localhost"
-    return $?
-  else
-    echo -e "${COLOR_INFO}[Info] 当前主机名为：$current_hostname${COLOR_RESET}"
-    echo -e "${COLOR_SUCCESS}[Success] 主机名已设置${COLOR_RESET}"
-    return 0
-  fi
-}
-
-function set_hostname {
-  if ! command -v hostnamectl &>/dev/null; then
-    echo -e "$1" >/etc/hostname
-    echo -e "${COLOR_SUCCESS}[Success] 手动设置主机名成功${COLOR_RESET}"
-    return 0
-  fi
-
-  if hostnamectl set-hostname "$1"; then
-    echo -e "${COLOR_SUCCESS}[Success] 主机名设置成功${COLOR_RESET}"
-    return 0
-  else
-    echo -e "${COLOR_ERROR}[Error] 主机名设置失败${COLOR_RESET}"
-    return 1
-  fi
-}
-
 # 检查单个软件包是否可用
 # 参数: 包名 [备用包名1] [备用包名2] ...
 check_package() {
@@ -251,15 +221,38 @@ check_framework_pkg() {
   fi
 }
 
+# 安装过程需要访问的站点列表
+REQUIRED_URLS=(
+  "dl.min.io:443"            # MinIO 下载
+  "www.xunsearch.com:80"     # SCWS 分词库下载
+  "repo.huaweicloud.com:443" # pip 华为云镜像源
+)
+
 function check_network {
   echo -e "${COLOR_INFO}[Info] 检查网络连接...${COLOR_RESET}"
 
-  # 使用TCP检查代替curl
-  if timeout 5 bash -c 'cat < /dev/null > /dev/tcp/www.baidu.com/80' 2>/dev/null; then
-    echo -e "${COLOR_SUCCESS}[Success] 网络连接正常${COLOR_RESET}"
+  local failed_sites=()
+  local timeout_seconds=5
+
+  for site in "${REQUIRED_URLS[@]}"; do
+    local host="${site%%:*}"
+    local port="${site##*:}"
+
+    printf "  %-35s" "检测: $host"
+    if timeout $timeout_seconds bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
+      echo -e "${COLOR_SUCCESS}[OK]${COLOR_RESET}"
+    else
+      echo -e "${COLOR_ERROR}[FAIL]${COLOR_RESET}"
+      failed_sites+=("$host")
+    fi
+  done
+
+  if [ ${#failed_sites[@]} -eq 0 ]; then
+    echo -e "${COLOR_SUCCESS}[Success] 所有必要站点均可访问${COLOR_RESET}"
     return 0
   else
-    echo -e "${COLOR_ERROR}[Error] 无法访问外部网络，请检查网络环境 ${COLOR_RESET}"
+    echo -e "${COLOR_WARNING}[Warning] 以下站点不可访问: ${failed_sites[*]}${COLOR_RESET}"
+    echo -e "${COLOR_INFO}[Info] 安装过程中相关功能可能失败，请检查网络或配置代理${COLOR_RESET}"
     return 1
   fi
 }
@@ -309,20 +302,6 @@ check_disk_space() {
     echo -e "${COLOR_INFO}[Info] $DIR 的磁盘使用率为 ${USAGE}%，低于阈值 ${THRESHOLD}%${COLOR_RESET}"
     return 0
   fi
-}
-
-function check_selinux {
-  sed -i 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
-  echo -e "${COLOR_SUCCESS}[Success] SELinux配置已禁用${COLOR_RESET}"
-  setenforce 0 &>/dev/null
-  echo -e "${COLOR_SUCCESS}[Success] SELinux已临时禁用${COLOR_RESET}"
-  return 0
-}
-
-function check_firewall {
-  systemctl disable --now firewalld &>/dev/null
-  echo -e "${COLOR_SUCCESS}[Success] 防火墙已关闭并禁用${COLOR_RESET}"
-  return 0
 }
 
 # 检查端口是否被占用
@@ -397,9 +376,8 @@ install_components() {
 function main {
   check_user || return 1
   check_os_version || return 1
-  check_hostname || return 1
 
-  # 网络检查与模式判断
+  # 检查软件包可用性
   install_components || return 1
 
   check_dns || return 1
@@ -412,7 +390,6 @@ function main {
     echo -e "${COLOR_SUCCESS}[Success] 磁盘空间正常${COLOR_RESET}"
   fi
 
-  check_selinux || return 1
   check_ports || return 1
   setup_firewall || return 1
 
