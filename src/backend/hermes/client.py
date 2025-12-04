@@ -83,7 +83,10 @@ class HermesChatClient(LLMClientBase):
     def model_manager(self) -> HermesModelManager:
         """获取模型管理器（延迟初始化）"""
         if self._model_manager is None:
-            self._model_manager = HermesModelManager(self.http_manager)
+            self._model_manager = HermesModelManager(
+                self.http_manager,
+                admin_checker=self.is_admin,
+            )
         return self._model_manager
 
     @property

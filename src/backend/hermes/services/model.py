@@ -10,21 +10,53 @@ from urllib.parse import urljoin
 import httpx
 
 from backend.hermes.constants import HTTP_OK
-from backend.hermes.exceptions import HermesAPIError
+from backend.hermes.exceptions import HermesAPIError, HermesPermissionError
 from backend.models import LLMConfig, LLMGlobalSetting, ModelInfo
 from log.manager import get_logger, log_api_request, log_exception
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .http import HermesHttpManager
 
 
 class HermesModelManager:
     """Hermes 模型管理器"""
 
-    def __init__(self, http_manager: HermesHttpManager) -> None:
-        """初始化模型管理器"""
+    def __init__(
+        self,
+        http_manager: HermesHttpManager,
+        admin_checker: Callable[[], bool] | None = None,
+    ) -> None:
+        """
+        初始化模型管理器
+
+        Args:
+            http_manager: HTTP 管理器
+            admin_checker: 管理员权限检查回调函数，返回 True 表示是管理员
+
+        """
         self.logger = get_logger(__name__)
         self.http_manager = http_manager
+        self._admin_checker = admin_checker
+
+    def _require_admin(self) -> None:
+        """
+        检查当前用户是否为管理员
+
+        Raises:
+            HermesPermissionError: 当用户不是管理员时抛出
+
+        """
+        if self._admin_checker is None:
+            self.logger.warning("未设置管理员检查器，拒绝访问管理员接口")
+            msg = "未配置权限检查，无法访问管理员接口"
+            raise HermesPermissionError(msg)
+
+        if not self._admin_checker():
+            self.logger.warning("非管理员用户尝试访问管理员接口")
+            msg = "需要管理员权限才能执行此操作"
+            raise HermesPermissionError(msg)
 
     async def get_available_models(self) -> list[ModelInfo]:
         """
@@ -164,9 +196,12 @@ class HermesModelManager:
             bool: 操作是否成功
 
         Raises:
+            HermesPermissionError: 当用户不是管理员时抛出
             HermesAPIError: 当 API 调用失败时抛出
 
         """
+        self._require_admin()
+
         start_time = time.time()
         self.logger.info("开始创建/更新大模型: %s", config.id)
 
@@ -231,9 +266,12 @@ class HermesModelManager:
             bool: 操作是否成功
 
         Raises:
+            HermesPermissionError: 当用户不是管理员时抛出
             HermesAPIError: 当 API 调用失败时抛出
 
         """
+        self._require_admin()
+
         start_time = time.time()
         self.logger.info("开始删除大模型: %s", llm_id)
 
@@ -296,7 +334,12 @@ class HermesModelManager:
         Returns:
             LLMConfig | None: 模型配置对象，获取失败时返回 None
 
+        Raises:
+            HermesPermissionError: 当用户不是管理员时抛出
+
         """
+        self._require_admin()
+
         start_time = time.time()
         self.logger.info("开始获取大模型配置: %s", llm_id)
 
@@ -397,9 +440,12 @@ class HermesModelManager:
             bool: 操作是否成功
 
         Raises:
+            HermesPermissionError: 当用户不是管理员时抛出
             HermesAPIError: 当 API 调用失败时抛出
 
         """
+        self._require_admin()
+
         start_time = time.time()
         self.logger.info("开始修改全局 LLM 设置")
 
