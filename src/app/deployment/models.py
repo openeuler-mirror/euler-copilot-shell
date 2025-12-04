@@ -38,6 +38,7 @@ class LLMConfig:
     api_key: str = ""
     model: str = ""
     max_tokens: int = 8192
+    ctx_length: int = 128000
     temperature: float = 0.7
     request_timeout: int = 300
 
@@ -54,6 +55,7 @@ class EmbeddingConfig:
     endpoint: str = ""
     api_key: str = ""
     model: str = ""
+    ctx_length: int = 8192
 
 
 @dataclass

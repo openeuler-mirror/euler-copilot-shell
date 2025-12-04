@@ -16,6 +16,9 @@ from typing import TYPE_CHECKING
 import httpx
 import toml
 
+from backend.hermes import HermesChatClient, HermesModelManager
+from backend.models import LLMConfig as HermesLLMConfig
+from backend.models import LLMGlobalSetting, LLMProvider
 from config.manager import ConfigManager
 from i18n.manager import _
 from log.manager import get_logger
@@ -254,6 +257,9 @@ class DeploymentService:
 
         # 创建全局配置模板，包含部署时的配置信息
         await self._create_global_config_template(config)
+
+        # 注册用户配置的 LLM 和 Embedding 模型到后端
+        await self._register_llm_models(config, progress_callback)
 
         if progress_callback:
             progress_callback(self.state)
@@ -923,3 +929,179 @@ class DeploymentService:
         await asyncio.sleep(1.0)
 
         return True
+
+    async def _register_llm_models(
+        self,
+        config: DeploymentConfig,
+        progress_callback: Callable[[DeploymentState], None] | None,
+    ) -> None:
+        """
+        注册用户配置的 LLM 和 Embedding 模型到后端
+
+        部署完成后，将用户在部署 UI 中填写的模型信息注册到 Hermes 后端：
+        1. 使用 ConfigManager 获取已保存的配置，创建 HermesChatClient
+        2. 注册 LLM 模型（类型为 chat + function）
+        3. 注册 Embedding 模型（类型为 embedding）
+        4. 更新全局设置，指定 function call 和 embedding 使用的模型
+
+        部署服务一定是 sudoer 运行的，所以登录后的用户一定是 admin。
+
+        Args:
+            config: 部署配置
+            progress_callback: 进度回调函数
+
+        """
+        self.state.add_log(_("正在注册大模型配置..."))
+        if progress_callback:
+            progress_callback(self.state)
+
+        # 使用 ConfigManager 获取已保存的配置，验证前面写入的配置是否正确
+        config_manager = ConfigManager()
+        base_url = config_manager.get_eulerintelli_url()
+
+        if not base_url:
+            self.state.add_log(_("⚠ 未找到 Hermes 后端 URL 配置，跳过模型注册"))
+            logger.warning("未找到 Hermes 后端 URL 配置，跳过模型注册")
+            return
+
+        # 使用 ConfigManager 创建 HermesChatClient，验证配置正确性
+        hermes_client = HermesChatClient(base_url, config_manager=config_manager)
+
+        try:
+            # 连接并验证管理员权限
+            is_admin = await self._connect_hermes_as_admin(hermes_client, progress_callback)
+            if not is_admin:
+                return
+
+            # 执行模型注册
+            await self._do_register_models(hermes_client.model_manager, config)
+
+        except Exception as e:  # noqa: BLE001
+            # 模型注册失败不影响部署成功，只记录警告
+            self.state.add_log(_("⚠ 注册模型时发生错误: {error}").format(error=e))
+            logger.warning("注册模型时发生错误: %s", e)
+
+        finally:
+            await hermes_client.close()
+
+        if progress_callback:
+            progress_callback(self.state)
+
+    async def _connect_hermes_as_admin(
+        self,
+        hermes_client: HermesChatClient,
+        progress_callback: Callable[[DeploymentState], None] | None,
+    ) -> bool:
+        """
+        连接 Hermes 后端并验证管理员权限
+
+        Args:
+            hermes_client: Hermes 客户端
+            progress_callback: 进度回调函数
+
+        Returns:
+            bool: 是否成功连接且为管理员
+
+        """
+        self.state.add_log(_("正在连接 Hermes 后端服务..."))
+        if progress_callback:
+            progress_callback(self.state)
+
+        # 加载用户信息（会自动触发登录流程获取 token）
+        user_info_loaded = await hermes_client.ensure_user_info_loaded()
+        if not user_info_loaded:
+            self.state.add_log(_("⚠ 无法连接 Hermes 后端服务，跳过模型注册"))
+            logger.warning("无法加载用户信息，跳过模型注册")
+            return False
+
+        # 验证当前用户是否为管理员
+        if not hermes_client.is_admin():
+            self.state.add_log(_("⚠ 当前用户非管理员，跳过模型注册"))
+            logger.warning("当前用户非管理员，跳过模型注册")
+            return False
+
+        self.state.add_log(_("✓ 已连接 Hermes 后端服务（管理员权限）"))
+        logger.info("已成功连接 Hermes 后端，用户: %s (管理员)", hermes_client.get_user_name())
+        return True
+
+    async def _do_register_models(
+        self,
+        model_manager: HermesModelManager,
+        config: DeploymentConfig,
+    ) -> None:
+        """
+        执行模型注册操作
+
+        Args:
+            model_manager: Hermes 模型管理器
+            config: 部署配置
+
+        """
+        llm_model_id: str | None = None
+        embedding_model_id: str | None = None
+
+        # 1. 注册 LLM 模型（chat + function）
+        if config.llm.endpoint:
+            llm_model_id = await self._register_llm_model(model_manager, config)
+
+        # 2. 注册 Embedding 模型
+        if config.embedding.endpoint:
+            embedding_model_id = await self._register_embedding_model(model_manager, config)
+
+        # 3. 更新全局设置
+        if llm_model_id or embedding_model_id:
+            global_setting = LLMGlobalSetting(
+                function_llm=llm_model_id,
+                embedding_llm=embedding_model_id,
+            )
+            await model_manager.update_global_setting(global_setting)
+            self.state.add_log(_("✓ 已更新全局模型设置"))
+            logger.info("已更新全局模型设置 - function: %s, embedding: %s", llm_model_id, embedding_model_id)
+
+    async def _register_llm_model(
+        self,
+        model_manager: HermesModelManager,
+        config: DeploymentConfig,
+    ) -> str:
+        """注册 LLM 模型"""
+        llm_model_id = config.llm.model or "default-llm"
+        llm_config = HermesLLMConfig(
+            provider=LLMProvider.OPENAI,
+            ctx_length=config.llm.ctx_length,
+            id=llm_model_id,
+            base_url=config.llm.endpoint,
+            api_key=config.llm.api_key,
+            model_name=config.llm.model,
+            max_tokens=config.llm.max_tokens,
+            llm_description=_("部署时配置的 Chat 模型（支持 Function Call）"),
+            extra_data={"temperature": config.llm.temperature},
+        )
+
+        await model_manager.create_or_update_model(llm_config)
+        self.state.add_log(_("✓ 已注册 LLM 模型: {model}").format(model=llm_model_id))
+        logger.info("已注册 LLM 模型: %s", llm_model_id)
+        return llm_model_id
+
+    async def _register_embedding_model(
+        self,
+        model_manager: HermesModelManager,
+        config: DeploymentConfig,
+    ) -> str:
+        """注册 Embedding 模型"""
+        embedding_model_id = config.embedding.model or "default-embedding"
+        embedding_provider = LLMProvider.TEI if config.embedding.type == "mindie" else LLMProvider.OPENAI
+
+        embedding_config = HermesLLMConfig(
+            provider=embedding_provider,
+            ctx_length=config.embedding.ctx_length,
+            id=embedding_model_id,
+            base_url=config.embedding.endpoint,
+            api_key=config.embedding.api_key,
+            model_name=config.embedding.model,
+            llm_description=_("部署时配置的 Embedding 模型"),
+        )
+
+        await model_manager.create_or_update_model(embedding_config)
+        self.state.add_log(_("✓ 已注册 Embedding 模型: {model}").format(model=embedding_model_id))
+        logger.info("已注册 Embedding 模型: %s", embedding_model_id)
+        return embedding_model_id

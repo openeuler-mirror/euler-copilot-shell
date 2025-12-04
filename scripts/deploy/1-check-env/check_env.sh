@@ -63,76 +63,6 @@ get_el_version() {
   return 1
 }
 
-# Postgres 插件 URL 列表
-postgres_plugin_urls=(
-  "https://bgithub.xyz/pgvector/pgvector.git"
-  "https://bgithub.xyz/amutu/zhparser.git"
-)
-
-# 检测URL可达性的函数
-check_url_accessibility() {
-  # 首先检查wget是否安装
-  if ! command -v wget &>/dev/null; then
-    echo -e "${COLOR_WARNING}[WARN] wget未安装，尝试自动安装...${COLOR_RESET}"
-    if ! install_wget; then
-      echo -e "${COLOR_ERROR}[ERROR] URL检测中止：wget安装失败${COLOR_RESET}"
-      return 1
-    fi
-  fi
-
-  local detect_urls=("${postgres_plugin_urls[@]}")
-  echo -e "${COLOR_INFO} 将检测 Postgres 插件必要 URL（共${#detect_urls[@]}个）${COLOR_RESET}"
-
-  local all_success=true
-  local timeout_seconds=15 # 设置超时时间
-  local failed_urls=()     # 存储失败的URL
-  local temp_file          # 创建临时文件
-  temp_file=$(mktemp)
-
-  echo -e "${COLOR_INFO}开始检测URL可达性...${COLOR_RESET}"
-  echo -e "${COLOR_INFO}超时时间: ${timeout_seconds}秒${COLOR_RESET}"
-
-  for url in "${detect_urls[@]}"; do
-    # 格式化输出，保持对齐
-    printf "%-80s" "检测: $url"
-
-    # 使用timeout命令控制超时，--spider只检查URL是否存在不下载
-    if timeout $timeout_seconds wget --spider --timeout=$timeout_seconds --tries=1 --no-check-certificate "$url" >"$temp_file" 2>&1; then
-      echo -e "${COLOR_SUCCESS} [OK]${COLOR_RESET}"
-    else
-      echo -e "${COLOR_ERROR} [FAIL]${COLOR_RESET}"
-
-      # 提取错误原因
-      if grep -q "timed out" "$temp_file"; then
-        error_msg="操作超时 (${timeout_seconds}秒)"
-      else
-        error_msg=$(grep -i "error\|failed\|timeout" "$temp_file" | head -1 | cut -d' ' -f4- | sed 's/[[:cntrl:]]//g')
-      fi
-
-      echo -e "  ${COLOR_WARNING}原因: ${error_msg:-未知错误}${COLOR_RESET}"
-      all_success=false
-      failed_urls+=("$url")
-    fi
-  done
-
-  # 清理临时文件
-  rm -rf "$temp_file"
-
-  # 结果汇总
-  echo -e "\n${COLOR_INFO}====== 检测结果 ======${COLOR_RESET}"
-  if $all_success; then
-    echo -e "${COLOR_SUCCESS}[Success] 所有必要URL均可访问${COLOR_RESET}"
-    return 0
-  else
-    echo -e "${COLOR_ERROR}[Error] ${#failed_urls[@]}个URL不可访问:${COLOR_RESET}"
-    printf "  - %s\n" "${failed_urls[@]}"
-    echo -e "${COLOR_INFO}建议检查:${COLOR_RESET}"
-    echo -e "  1. 网络连接是否正常"
-    echo -e "  2. 是否需要配置代理(export http_proxy=...)"
-    return 1
-  fi
-}
-
 # 全局变量：默认端口列表
 PORTS=(8002)
 
@@ -208,36 +138,6 @@ function check_os_version {
     ;;
   esac
   return $?
-}
-
-function check_hostname {
-  local current_hostname
-  current_hostname=$(cat /etc/hostname)
-  if [[ -z "$current_hostname" ]]; then
-    echo -e "${COLOR_WARNING}[Warning] 未设置主机名，自动设置为localhost${COLOR_RESET}"
-    set_hostname "localhost"
-    return $?
-  else
-    echo -e "${COLOR_INFO}[Info] 当前主机名为：$current_hostname${COLOR_RESET}"
-    echo -e "${COLOR_SUCCESS}[Success] 主机名已设置${COLOR_RESET}"
-    return 0
-  fi
-}
-
-function set_hostname {
-  if ! command -v hostnamectl &>/dev/null; then
-    echo -e "$1" >/etc/hostname
-    echo -e "${COLOR_SUCCESS}[Success] 手动设置主机名成功${COLOR_RESET}"
-    return 0
-  fi
-
-  if hostnamectl set-hostname "$1"; then
-    echo -e "${COLOR_SUCCESS}[Success] 主机名设置成功${COLOR_RESET}"
-    return 0
-  else
-    echo -e "${COLOR_ERROR}[Error] 主机名设置失败${COLOR_RESET}"
-    return 1
-  fi
 }
 
 # 检查单个软件包是否可用
@@ -321,15 +221,38 @@ check_framework_pkg() {
   fi
 }
 
+# 安装过程需要访问的站点列表
+REQUIRED_URLS=(
+  "dl.min.io:443"            # MinIO 下载
+  "www.xunsearch.com:80"     # SCWS 分词库下载
+  "repo.huaweicloud.com:443" # pip 华为云镜像源
+)
+
 function check_network {
   echo -e "${COLOR_INFO}[Info] 检查网络连接...${COLOR_RESET}"
 
-  # 使用TCP检查代替curl
-  if timeout 5 bash -c 'cat < /dev/null > /dev/tcp/www.baidu.com/80' 2>/dev/null; then
-    echo -e "${COLOR_SUCCESS}[Success] 网络连接正常${COLOR_RESET}"
+  local failed_sites=()
+  local timeout_seconds=5
+
+  for site in "${REQUIRED_URLS[@]}"; do
+    local host="${site%%:*}"
+    local port="${site##*:}"
+
+    printf "  %-35s" "检测: $host"
+    if timeout $timeout_seconds bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
+      echo -e "${COLOR_SUCCESS}[OK]${COLOR_RESET}"
+    else
+      echo -e "${COLOR_ERROR}[FAIL]${COLOR_RESET}"
+      failed_sites+=("$host")
+    fi
+  done
+
+  if [ ${#failed_sites[@]} -eq 0 ]; then
+    echo -e "${COLOR_SUCCESS}[Success] 所有必要站点均可访问${COLOR_RESET}"
     return 0
   else
-    echo -e "${COLOR_ERROR}[Error] 无法访问外部网络，请检查网络环境 ${COLOR_RESET}"
+    echo -e "${COLOR_WARNING}[Warning] 以下站点不可访问: ${failed_sites[*]}${COLOR_RESET}"
+    echo -e "${COLOR_INFO}[Info] 安装过程中相关功能可能失败，请检查网络或配置代理${COLOR_RESET}"
     return 1
   fi
 }
@@ -379,20 +302,6 @@ check_disk_space() {
     echo -e "${COLOR_INFO}[Info] $DIR 的磁盘使用率为 ${USAGE}%，低于阈值 ${THRESHOLD}%${COLOR_RESET}"
     return 0
   fi
-}
-
-function check_selinux {
-  sed -i 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
-  echo -e "${COLOR_SUCCESS}[Success] SELinux配置已禁用${COLOR_RESET}"
-  setenforce 0 &>/dev/null
-  echo -e "${COLOR_SUCCESS}[Success] SELinux已临时禁用${COLOR_RESET}"
-  return 0
-}
-
-function check_firewall {
-  systemctl disable --now firewalld &>/dev/null
-  echo -e "${COLOR_SUCCESS}[Success] 防火墙已关闭并禁用${COLOR_RESET}"
-  return 0
 }
 
 # 检查端口是否被占用
@@ -467,9 +376,8 @@ install_components() {
 function main {
   check_user || return 1
   check_os_version || return 1
-  check_hostname || return 1
 
-  # 网络检查与模式判断
+  # 检查软件包可用性
   install_components || return 1
 
   check_dns || return 1
@@ -482,14 +390,12 @@ function main {
     echo -e "${COLOR_SUCCESS}[Success] 磁盘空间正常${COLOR_RESET}"
   fi
 
-  check_selinux || return 1
   check_ports || return 1
   setup_firewall || return 1
-  check_url_accessibility || return 1
 
   # 最终部署提示
   echo -e "\n${COLOR_SUCCESS}#####################################"
-  echo -e "#   环境检查完成，准备在线部署     #"
+  echo -e "#         环境检查完成             #"
   echo -e "#####################################${COLOR_RESET}"
   return 0
 }

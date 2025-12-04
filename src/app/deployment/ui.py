@@ -211,6 +211,14 @@ class DeploymentConfigScreen(ModalScreen[bool]):
                 )
 
             with Horizontal(classes="form-row"):
+                yield Label(_("上下文长度:"), classes="form-label")
+                yield Input(
+                    value="128000",
+                    id="llm_ctx_length",
+                    classes="form-input",
+                )
+
+            with Horizontal(classes="form-row"):
                 yield Label(_("Temperature:"), classes="form-label")
                 yield Input(
                     value="0.7",
@@ -264,6 +272,14 @@ class DeploymentConfigScreen(ModalScreen[bool]):
             with Horizontal(classes="form-row"):
                 yield Label(_("验证状态:"), classes="form-label")
                 yield Static(_("未验证"), id="embedding_validation_status", classes="form-input")
+
+            with Horizontal(classes="form-row"):
+                yield Label(_("上下文长度:"), classes="form-label")
+                yield Input(
+                    value="8192",
+                    id="embedding_ctx_length",
+                    classes="form-input",
+                )
 
     @on(Button.Pressed, "#deploy")
     async def on_deploy_button_pressed(self) -> None:
@@ -477,6 +493,7 @@ class DeploymentConfigScreen(ModalScreen[bool]):
             self.config.llm.api_key = self.query_one("#llm_api_key", Input).value.strip()
             self.config.llm.model = self.query_one("#llm_model", Input).value.strip()
             self.config.llm.max_tokens = int(self.query_one("#llm_max_tokens", Input).value or "8192")
+            self.config.llm.ctx_length = int(self.query_one("#llm_ctx_length", Input).value or "128000")
             self.config.llm.temperature = float(self.query_one("#llm_temperature", Input).value or "0.7")
             self.config.llm.request_timeout = int(self.query_one("#llm_timeout", Input).value or "300")
         except (ValueError, AttributeError):
@@ -491,7 +508,10 @@ class DeploymentConfigScreen(ModalScreen[bool]):
             self.config.embedding.endpoint = self.query_one("#embedding_endpoint", Input).value.strip()
             self.config.embedding.api_key = self.query_one("#embedding_api_key", Input).value.strip()
             self.config.embedding.model = self.query_one("#embedding_model", Input).value.strip()
-        except AttributeError:
+            self.config.embedding.ctx_length = int(
+                self.query_one("#embedding_ctx_length", Input).value or "8192",
+            )
+        except (ValueError, AttributeError):
             # 如果获取失败，使用默认值
             pass
 
@@ -504,6 +524,7 @@ class DeploymentConfigScreen(ModalScreen[bool]):
                 api_key=self.query_one("#llm_api_key", Input).value.strip(),
                 model=self.query_one("#llm_model", Input).value.strip(),
                 max_tokens=int(self.query_one("#llm_max_tokens", Input).value or "8192"),
+                ctx_length=int(self.query_one("#llm_ctx_length", Input).value or "128000"),
                 temperature=float(self.query_one("#llm_temperature", Input).value or "0.7"),
                 request_timeout=int(self.query_one("#llm_timeout", Input).value or "300"),
             )
@@ -514,6 +535,7 @@ class DeploymentConfigScreen(ModalScreen[bool]):
                 endpoint=self.query_one("#embedding_endpoint", Input).value.strip(),
                 api_key=self.query_one("#embedding_api_key", Input).value.strip(),
                 model=self.query_one("#embedding_model", Input).value.strip(),
+                ctx_length=int(self.query_one("#embedding_ctx_length", Input).value or "8192"),
             )
 
         except (ValueError, AttributeError) as e:
