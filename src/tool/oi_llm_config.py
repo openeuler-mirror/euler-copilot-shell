@@ -12,7 +12,6 @@ import json
 import os
 import sys
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any, ClassVar
 
 from textual import on, work
@@ -54,16 +53,6 @@ DEFAULT_MAX_TOKENS = 8192
 # ============================================================================
 
 
-class ModelCategory(str, Enum):
-    """模型类别"""
-
-    LLM = "llm"
-    """大语言模型（支持 chat、function、vision、thinking）"""
-
-    EMBEDDING = "embedding"
-    """嵌入模型"""
-
-
 @dataclass
 class EditableModelConfig:
     """
@@ -79,14 +68,15 @@ class EditableModelConfig:
     llm_description: str = ""
     """模型描述"""
 
-    # 模型类别和类型
-    category: ModelCategory = ModelCategory.LLM
-    """模型类别：LLM 或 Embedding"""
+    # LLM 类型选项（可任意组合）
+    has_chat: bool = True
+    """是否支持 Chat（聊天对话）"""
 
-    # LLM 类型选项（仅当 category 为 LLM 时有效）
-    # chat 是默认开启的，其他可选
     has_function: bool = False
     """是否支持 Function Call"""
+
+    has_embedding: bool = False
+    """是否支持 Embedding（向量嵌入）"""
 
     has_vision: bool = False
     """是否支持图片理解"""
@@ -124,13 +114,13 @@ class EditableModelConfig:
 
     def get_llm_types(self) -> list[LLMType]:
         """获取 LLM 类型列表"""
-        if self.category == ModelCategory.EMBEDDING:
-            return [LLMType.EMBEDDING]
-
-        # LLM 类型：chat 是默认的，再加上用户选择的
-        types = [LLMType.CHAT]
+        types: list[LLMType] = []
+        if self.has_chat:
+            types.append(LLMType.CHAT)
         if self.has_function:
             types.append(LLMType.FUNCTION)
+        if self.has_embedding:
+            types.append(LLMType.EMBEDDING)
         if self.has_vision:
             types.append(LLMType.VISION)
         if self.has_thinking:
@@ -166,15 +156,9 @@ class EditableModelConfig:
 
     def to_hermes_config(self) -> HermesLLMConfig:
         """转换为 Hermes API 配置对象"""
-        # 根据类别设置默认的 ctx_length
-        ctx_length = self.ctx_length
-        if self.category == ModelCategory.EMBEDDING and ctx_length == DEFAULT_LLM_CTX_LENGTH:
-            # Embedding 默认使用较小的上下文长度
-            ctx_length = DEFAULT_EMBEDDING_CTX_LENGTH
-
         return HermesLLMConfig(
             provider=self.provider,
-            ctx_length=ctx_length,
+            ctx_length=self.ctx_length,
             id=self.llm_id if self.llm_id else None,
             base_url=self.base_url,
             api_key=self.api_key,
@@ -195,12 +179,10 @@ class EditableModelConfig:
             config: 模型详细配置（可选）
 
         """
-        # 判断模型类别
-        is_embedding = LLMType.EMBEDDING in model.llm_type
-        category = ModelCategory.EMBEDDING if is_embedding else ModelCategory.LLM
-
         # 解析 LLM 类型
+        has_chat = LLMType.CHAT in model.llm_type
         has_function = LLMType.FUNCTION in model.llm_type
+        has_embedding = LLMType.EMBEDDING in model.llm_type
         has_vision = LLMType.VISION in model.llm_type
         has_thinking = LLMType.THINKING in model.llm_type
 
@@ -209,7 +191,7 @@ class EditableModelConfig:
         base_url = ""
         api_key = ""
         model_name = model.model_name
-        ctx_length = DEFAULT_LLM_CTX_LENGTH if not is_embedding else DEFAULT_EMBEDDING_CTX_LENGTH
+        ctx_length = DEFAULT_LLM_CTX_LENGTH
         max_tokens = model.max_tokens or DEFAULT_MAX_TOKENS
         extra_data_json = "{}"
 
@@ -226,8 +208,9 @@ class EditableModelConfig:
         return cls(
             llm_id=model.llm_id or "",
             llm_description=model.llm_description or "",
-            category=category,
+            has_chat=has_chat,
             has_function=has_function,
+            has_embedding=has_embedding,
             has_vision=has_vision,
             has_thinking=has_thinking,
             provider=provider,
@@ -293,10 +276,12 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
         color: $primary;
         padding: 1;
         margin-bottom: 1;
+        height: auto;
     }
 
     .edit-scroll {
         height: 1fr;
+        min-height: 10;
         scrollbar-size: 1 1;
     }
 
@@ -304,16 +289,19 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
         margin-bottom: 1;
         padding: 1;
         border: solid $primary-darken-2;
+        height: auto;
     }
 
     .section-title {
         text-style: bold;
         color: $primary;
         margin-bottom: 1;
+        height: auto;
     }
 
     .form-row {
-        height: 3;
+        height: auto;
+        min-height: 3;
         margin-bottom: 0;
     }
 
@@ -322,18 +310,22 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
         text-align: right;
         content-align: right middle;
         padding-right: 1;
+        height: auto;
     }
 
     .form-input {
         width: 1fr;
+        height: auto;
     }
 
     .form-input-short {
         width: 30;
+        height: auto;
     }
 
     .checkbox-row {
-        height: 3;
+        height: auto;
+        min-height: 3;
         margin-bottom: 0;
     }
 
@@ -342,6 +334,7 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
         text-align: right;
         content-align: right middle;
         padding-right: 1;
+        height: auto;
     }
 
     .checkbox-group {
@@ -356,6 +349,7 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
 
     .json-editor-container {
         height: 12;
+        min-height: 8;
         margin-top: 1;
     }
 
@@ -365,7 +359,7 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
     }
 
     .json-status {
-        height: 1;
+        height: auto;
         color: $text-muted;
         text-style: italic;
         padding: 0 1;
@@ -376,10 +370,11 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
     }
 
     .button-row {
-        height: 3;
+        height: auto;
+        min-height: 3;
         align: center middle;
         margin-top: 1;
-        dock: bottom;
+        padding: 1 0;
     }
 
     .button-row > Button {
@@ -427,7 +422,6 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
                     placeholder=_("唯一标识符，如 gpt-4o"),
                     id="llm_id",
                     classes="form-input",
-                    disabled=not self.config.is_new,
                 )
 
             with Horizontal(classes="form-row"):
@@ -442,27 +436,16 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
     def _compose_model_type_section(self) -> ComposeResult:
         """组合模型类型区域"""
         with Vertical(classes="form-section"):
-            yield Static(_("模型类型"), classes="section-title")
+            yield Static(_("模型能力"), classes="section-title")
 
-            with Horizontal(classes="form-row"):
-                yield Label(_("类别:"), classes="form-label")
-                yield Select(
-                    [
-                        (_("大语言模型 (LLM)"), ModelCategory.LLM.value),
-                        (_("嵌入模型 (Embedding)"), ModelCategory.EMBEDDING.value),
-                    ],
-                    value=self.config.category.value,
-                    id="category",
-                    classes="form-input-short",
-                )
-
-            with Horizontal(classes="checkbox-row", id="llm-capabilities"):
-                yield Label(_("能力:"), classes="checkbox-label")
+            with Horizontal(classes="checkbox-row"):
+                yield Label(_("类型:"), classes="checkbox-label")
                 with Horizontal(classes="checkbox-group"):
-                    yield Static("Chat ✓", classes="checkbox-item")
-                    yield Checkbox(_("Function"), self.config.has_function, id="has_function")
-                    yield Checkbox(_("Vision"), self.config.has_vision, id="has_vision")
-                    yield Checkbox(_("Thinking"), self.config.has_thinking, id="has_thinking")
+                    yield Checkbox("Chat", self.config.has_chat, id="has_chat")
+                    yield Checkbox("Function", self.config.has_function, id="has_function")
+                    yield Checkbox("Embedding", self.config.has_embedding, id="has_embedding")
+                    yield Checkbox("Vision", self.config.has_vision, id="has_vision")
+                    yield Checkbox("Thinking", self.config.has_thinking, id="has_thinking")
 
     def _compose_api_config_section(self) -> ComposeResult:
         """组合 API 配置区域"""
@@ -556,24 +539,8 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
 
     def on_mount(self) -> None:
         """界面挂载时的初始化"""
-        # 根据类别显示/隐藏 LLM 能力选项
-        self._update_capability_visibility()
         # 验证初始 JSON
         self._validate_json()
-
-    @on(Select.Changed, "#category")
-    def on_category_changed(self, event: Select.Changed) -> None:
-        """处理类别变更"""
-        self._update_capability_visibility()
-        # 更新默认的上下文长度
-        try:
-            ctx_input = self.query_one("#ctx_length", Input)
-            if event.value == ModelCategory.EMBEDDING.value and ctx_input.value == str(DEFAULT_LLM_CTX_LENGTH):
-                ctx_input.value = str(DEFAULT_EMBEDDING_CTX_LENGTH)
-            elif event.value == ModelCategory.LLM.value and ctx_input.value == str(DEFAULT_EMBEDDING_CTX_LENGTH):
-                ctx_input.value = str(DEFAULT_LLM_CTX_LENGTH)
-        except LookupError:
-            logger.debug("无法查询 ctx_length 输入框")
 
     @on(TextArea.Changed, "#extra_data")
     def on_json_changed(self, event: TextArea.Changed) -> None:
@@ -598,16 +565,6 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
     def action_cancel(self) -> None:
         """处理取消按钮"""
         self.dismiss(None)
-
-    def _update_capability_visibility(self) -> None:
-        """更新能力选项的可见性"""
-        try:
-            category_select = self.query_one("#category", Select)
-            capabilities_row = self.query_one("#llm-capabilities")
-            is_llm = category_select.value == ModelCategory.LLM.value
-            capabilities_row.display = is_llm
-        except LookupError:
-            logger.debug("无法查询类别选择器或能力行")
 
     def _validate_json(self) -> None:
         """验证 JSON 格式"""
@@ -638,19 +595,12 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
             self.config.llm_id = self.query_one("#llm_id", Input).value.strip()
             self.config.llm_description = self.query_one("#llm_description", Input).value.strip()
 
-            # 模型类别
-            category_value = self.query_one("#category", Select).value
-            self.config.category = ModelCategory(category_value)
-
             # LLM 能力
-            if self.config.category == ModelCategory.LLM:
-                self.config.has_function = self.query_one("#has_function", Checkbox).value
-                self.config.has_vision = self.query_one("#has_vision", Checkbox).value
-                self.config.has_thinking = self.query_one("#has_thinking", Checkbox).value
-            else:
-                self.config.has_function = False
-                self.config.has_vision = False
-                self.config.has_thinking = False
+            self.config.has_chat = self.query_one("#has_chat", Checkbox).value
+            self.config.has_function = self.query_one("#has_function", Checkbox).value
+            self.config.has_embedding = self.query_one("#has_embedding", Checkbox).value
+            self.config.has_vision = self.query_one("#has_vision", Checkbox).value
+            self.config.has_thinking = self.query_one("#has_thinking", Checkbox).value
 
             # API 配置
             provider_value = self.query_one("#provider", Select).value
@@ -1001,14 +951,7 @@ class LLMConfigScreen(ModalScreen[bool]):
             # 获取模型详细配置
             llm_config = await self._client.model_manager.get_model_config(model.llm_id or model.model_name)
             config = EditableModelConfig.from_model_info(model, llm_config)
-
-            # 在主线程中推送屏幕
-            self.app.call_from_thread(
-                self.app.push_screen,
-                ModelEditScreen(config),
-                self._handle_edit_result,
-            )
-
+            self.app.push_screen(ModelEditScreen(config), self._handle_edit_result)
         except Exception as e:
             logger.exception("获取模型配置失败")
             self.notify(_("获取模型配置失败: {error}").format(error=str(e)), severity="error")
