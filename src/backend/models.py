@@ -138,6 +138,9 @@ class LLMConfig:
     llm_description: str = ""
     """模型描述"""
 
+    llm_type: list[LLMType] = field(default_factory=list)
+    """LLM 类型列表，如 [LLMType.CHAT, LLMType.FUNCTION]"""
+
     extra_data: dict[str, Any] | None = None
     """额外配置数据"""
 
@@ -162,6 +165,8 @@ class LLMConfig:
             data["id"] = self.id
         if self.model_name is not None:
             data["modelName"] = self.model_name
+        if self.llm_type:
+            data["llmType"] = [t.value for t in self.llm_type]
         if self.extra_data is not None:
             data["extraData"] = self.extra_data
 
@@ -186,6 +191,9 @@ class LLMConfig:
         except ValueError:
             provider = LLMProvider.OPENAI
 
+        # 解析 llmType
+        llm_types = ModelInfo.parse_llm_types(data.get("llmType"))
+
         return cls(
             provider=provider,
             ctx_length=data.get("ctxLength", 0),
@@ -195,6 +203,7 @@ class LLMConfig:
             model_name=data.get("modelName"),
             max_tokens=data.get("maxTokens", 8192),
             llm_description=data.get("llmDescription", ""),
+            llm_type=llm_types,
             extra_data=data.get("extraConfig") or data.get("extraData"),
         )
 
