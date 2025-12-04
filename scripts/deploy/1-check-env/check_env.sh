@@ -209,6 +209,8 @@ check_framework_pkg() {
     "make"
     "gcc"
     "gcc-c++"
+    "clang"
+    "llvm"
     "tar"
     "python3-pip"
     "postgresql"

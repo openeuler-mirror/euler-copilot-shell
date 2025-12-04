@@ -9,8 +9,6 @@ COLOR_RESET='\033[0m'    # 重置颜色
 declare -a installed_pkgs=()
 install_success=true
 missing_pkgs=()
-LOCAL_REPO_DIR="/var/cache/rpms"
-LOCAL_REPO_FILE="/etc/yum.repos.d/local.repo"
 
 # 检查系统版本并返回兼容的 el 版本
 get_el_version() {
@@ -67,41 +65,6 @@ get_el_version() {
   return 1
 }
 
-# 初始化本地仓库
-init_local_repo() {
-  [ "$(id -u)" -ne 0 ] && {
-    echo "需要root权限"
-    return 1
-  }
-
-  # 检查仓库目录和repo文件是否存在
-  if [ ! -d "$LOCAL_REPO_DIR" ] 2>/dev/null; then
-    return 0
-  fi
-
-  # 配置本地仓库
-  cat >"$LOCAL_REPO_FILE" <<EOF
-[local-rpms]
-name=Local RPM Repository
-baseurl=file://$LOCAL_REPO_DIR
-enabled=1
-gpgcheck=0
-priority=1  # 本地仓库优先
-metadata_expire=never
-EOF
-
-  # 重建元数据（如果已有rpm文件）
-  if ls "$LOCAL_REPO_DIR"/*.rpm &>/dev/null; then
-    if ! command -v createrepo &>/dev/null; then
-      dnf install -y createrepo
-    fi
-    createrepo --update "$LOCAL_REPO_DIR"
-  fi
-
-  dnf clean all
-  dnf makecache
-
-}
 # 获取 wget 日志文件名
 get_wget_log_filename() {
   local file_path=$1
@@ -221,17 +184,10 @@ install_minio() {
 smart_install() {
   local pkg_spec=$1
   local retry=3
-  local LOCAL_REPO_DIR="/var/cache/rpms"
-  local use_local=false
 
   # 解析包名和备用包名
   IFS=':' read -ra pkg_names <<<"$pkg_spec"
   local primary_pkg="${pkg_names[0]}"
-
-  # 检查本地仓库目录是否存在
-  if [ -d "$LOCAL_REPO_DIR" ]; then
-    use_local=true
-  fi
 
   echo -e "${COLOR_INFO}[Info] 正在安装 $primary_pkg ...${COLOR_RESET}"
 
@@ -240,21 +196,6 @@ smart_install() {
     local current_retry=$retry
 
     while [ $current_retry -gt 0 ]; do
-      # 本地安装模式（仅在本地仓库可用时尝试）
-      if [[ "$use_local" == true ]]; then
-        # 检查本地是否存在包（支持模糊匹配）
-        local local_pkg
-        local_pkg=$(find "$LOCAL_REPO_DIR" -name "${pkg}-*.rpm" | head -1)
-
-        if [[ -n "$local_pkg" ]]; then
-          if dnf --disablerepo='*' --enablerepo=local-rpms install -y "$pkg"; then
-            installed_pkgs+=("$primary_pkg")
-            return 0
-          fi
-        fi
-      fi
-
-      # 在线安装模式（本地仓库不可用或本地安装失败）
       if dnf install -y "$pkg"; then
         installed_pkgs+=("$primary_pkg")
         return 0
@@ -276,11 +217,29 @@ smart_install() {
 install_and_verify() {
   # 接收传入的包列表参数
   local pkgs=("$@")
-  # 检查并安装每个包
+  local primary_pkgs=()
+
+  # 提取主包名（处理备用包名格式 "包名:备用包名1:备用包名2"）
+  for pkg_spec in "${pkgs[@]}"; do
+    IFS=':' read -ra pkg_names <<<"$pkg_spec"
+    primary_pkgs+=("${pkg_names[0]}")
+  done
+
+  echo -e "${COLOR_INFO}[Info] 正在批量安装 ${#primary_pkgs[@]} 个软件包...${COLOR_RESET}"
+
+  # 使用一行 dnf 命令批量安装所有包
+  if dnf install -y "${primary_pkgs[@]}"; then
+    echo -e "${COLOR_SUCCESS}[Success] dnf 包安装完成！${COLOR_RESET}"
+    installed_pkgs+=("${primary_pkgs[@]}")
+    return 0
+  fi
+
+  # 批量安装失败，尝试逐个安装以确定哪些包失败
+  echo -e "${COLOR_WARNING}[Warning] 批量安装失败，尝试逐个安装...${COLOR_RESET}"
   for pkg in "${pkgs[@]}"; do
     smart_install "$pkg"
-    sleep 1
   done
+
   # 检查安装结果
   if $install_success; then
     echo -e "${COLOR_SUCCESS}[Success] dnf 包安装完成！${COLOR_RESET}"
@@ -554,8 +513,7 @@ main() {
   cd "$SCRIPT_DIR" || return 1
 
   systemctl stop dnf-makecache.timer
-  # 执行安装验证
-  init_local_repo
+  # 执行安装
   install_framework || return 1
   echo -e "${COLOR_SUCCESS}[Success] 安装 openEuler Intelligence 完成！${COLOR_RESET}"
   return 0
