@@ -517,6 +517,8 @@ install_framework() {
     "make"
     "gcc"
     "gcc-c++"
+    "clang"
+    "llvm"
     "tar"
     "python3-pip"
     "postgresql"

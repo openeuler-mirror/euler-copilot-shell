@@ -706,36 +706,57 @@ class DeploymentService:
         server_port: int,
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
-        """检查 oi-runtime API 健康状态，每10秒检查一次，5分钟后超时"""
-        max_attempts = 30
-        check_interval = 10.0  # 10秒
-        api_url = f"http://{server_host}:{server_port}/api/user"
-        http_ok = 200  # HTTP OK 状态码
+        """
+        检查 oi-runtime API 健康状态
+
+        通过尝试登录 Hermes 后端验证服务是否就绪。
+        每5秒检查一次，2分钟后超时。
+
+        Args:
+            server_host: 服务器地址
+            server_port: 服务器端口
+            progress_callback: 进度回调函数
+
+        Returns:
+            bool: 服务是否就绪
+
+        """
+        max_attempts = 24
+        check_interval = 5.0  # 5秒
+        base_url = f"http://{server_host}:{server_port}"
 
         self.state.add_log(_("等待 openEuler Intelligence 服务就绪"))
 
-        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
-            for attempt in range(1, max_attempts + 1):
-                logger.debug("第 %d 次检查 openEuler Intelligence 服务状态...", attempt)
-                if progress_callback:
-                    progress_callback(self.state)
+        # 创建配置管理器用于保存登录后的 token
+        config_manager = ConfigManager()
+
+        for attempt in range(1, max_attempts + 1):
+            logger.debug("第 %d 次检查 openEuler Intelligence 服务状态...", attempt)
+            if progress_callback:
+                progress_callback(self.state)
+
+            try:
+                hermes_client = HermesChatClient(base_url, config_manager=config_manager)
 
                 try:
-                    response = await client.get(api_url)
+                    user_info_loaded = await hermes_client.ensure_user_info_loaded()
 
-                    if response.status_code == http_ok:
+                    if user_info_loaded:
                         self.state.add_log(_("✓ openEuler Intelligence 服务已就绪"))
                         return True
 
-                except httpx.ConnectError:
-                    pass
-                except httpx.TimeoutException:
-                    self.state.add_log(_("连接 {url} 超时").format(url=api_url))
-                except (httpx.RequestError, OSError) as e:
-                    self.state.add_log(_("API 连通性检查时发生错误: {error}").format(error=e))
+                finally:
+                    await hermes_client.close()
 
-                if attempt < max_attempts:
-                    await asyncio.sleep(check_interval)
+            except httpx.ConnectError:
+                pass
+            except httpx.TimeoutException:
+                self.state.add_log(_("连接 {url} 超时").format(url=base_url))
+            except (httpx.RequestError, OSError) as e:
+                self.state.add_log(_("API 连通性检查时发生错误: {error}").format(error=e))
+
+            if attempt < max_attempts:
+                await asyncio.sleep(check_interval)
 
         self.state.add_log(_("✗ openEuler Intelligence API 服务检查超时失败"))
         return False
@@ -791,6 +812,8 @@ class DeploymentService:
         这样可以确保模板包含部署过程中生成的所有配置信息（如 Agent AppID 等）
         同时将部署时经过验证的大模型配置设置为默认的 OpenAI 配置
 
+        注意：模板中不包含 token，其他用户需要自己登录获取 token
+
         Args:
             config: 部署配置
 
@@ -805,10 +828,14 @@ class DeploymentService:
             current_config_manager.set_model(config.llm.model)
             current_config_manager.set_api_key(config.llm.api_key)
 
+            # 清除 token，每个用户需要自己登录获取
+            # _check_framework_api_health 会写入当前用户的 token，但不应该传播给其他用户
+            current_config_manager.set_eulerintelli_key("")
+
             # 创建专用的模板配置管理器
             template_manager = ConfigManager.create_deployment_manager()
 
-            # 将当前 root 用户的完整配置复制到模板中
+            # 将当前 root 用户的完整配置复制到模板中（已清除 token）
             template_manager.data = current_config_manager.data
 
             # 创建全局配置模板文件

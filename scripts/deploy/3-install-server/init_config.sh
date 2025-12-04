@@ -169,22 +169,36 @@ configure_postgresql() {
     return 1
   }
 
-  sudo -u postgres psql -d euler_copilot -c "CREATE TEXT SEARCH CONFIGURATION IF NOT EXISTS zhparser (PARSER = zhparser);" || {
+  # CREATE TEXT SEARCH CONFIGURATION 不支持 IF NOT EXISTS，需要先检查再创建
+  sudo -u postgres psql -d euler_copilot -c "DO \$\$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = 'zhparser') THEN
+        CREATE TEXT SEARCH CONFIGURATION zhparser (PARSER = zhparser);
+        ALTER TEXT SEARCH CONFIGURATION zhparser ADD MAPPING FOR n,v,a,i,e,l WITH simple;
+    END IF;
+END
+\$\$;" || {
     echo -e "${COLOR_ERROR}[Error] 无法创建全文搜索配置${COLOR_RESET}"
-    return 1
-  }
-
-  sudo -u postgres psql -d euler_copilot -c "ALTER TEXT SEARCH CONFIGURATION zhparser ADD MAPPING FOR n,v,a,i,e,l WITH simple;" || {
-    echo -e "${COLOR_ERROR}[Error] 无法添加映射${COLOR_RESET}"
     return 1
   }
 
   # 6. 查找并修改pg_hba.conf
   echo -e "${COLOR_INFO}[Info] 配置认证方式...${COLOR_RESET}"
   local pg_hba_conf
-  pg_hba_conf=$(find / -name pg_hba.conf 2>/dev/null | head -n 1)
+  if [ -f "/var/lib/pgsql/data/pg_hba.conf" ]; then
+    pg_hba_conf="/var/lib/pgsql/data/pg_hba.conf"
+  elif [ -f "/var/lib/postgresql/data/pg_hba.conf" ]; then
+    pg_hba_conf="/var/lib/postgresql/data/pg_hba.conf"
+  else
+    # 使用 pg_config 获取数据目录
+    local pg_data_dir
+    pg_data_dir=$(sudo -u postgres psql -t -c "SHOW data_directory;" 2>/dev/null | tr -d ' ')
+    if [ -n "$pg_data_dir" ] && [ -f "${pg_data_dir}/pg_hba.conf" ]; then
+      pg_hba_conf="${pg_data_dir}/pg_hba.conf"
+    fi
+  fi
 
-  if [ -z "$pg_hba_conf" ]; then
+  if [ -z "$pg_hba_conf" ] || [ ! -f "$pg_hba_conf" ]; then
     echo -e "${COLOR_ERROR}[Error] 找不到 pg_hba.conf 文件${COLOR_RESET}"
     return 1
   fi
