@@ -103,7 +103,9 @@ uninstall_full() {
     # Remove additional directories
     rm -rf /opt/aops /opt/authhub /opt/minio /opt/mongodb /opt/pgvector /opt/scws* /opt/zhparser
     rm -rf /usr/lib/euler-copilot-rag /var/log/openEulerIntelligence /etc/euler-copilot-rag
-    rm -rf /etc/nginx/conf.d/authhub.nginx.conf.bak /etc/systemd/system/oi-runtime.service /etc/systemd/system/multi-user.target.wants/oi-runtime.service
+    rm -rf /etc/nginx/conf.d/authhub.nginx.conf.bak
+    rm -rf /etc/systemd/system/sysagent.service /etc/systemd/system/multi-user.target.wants/sysagent.service
+    rm -rf /etc/systemd/system/oi-runtime.service /etc/systemd/system/multi-user.target.wants/oi-runtime.service # 兼容旧版本
 
     # Clean additional database data
     rm -rf /var/lib/mysql /var/log/mysql /var/lib/pgsql
@@ -113,7 +115,7 @@ uninstall_full() {
 
 echo "Stopping services..."
 # For each expected service, first check if the unit file exists, then stop if running and disable it.
-for svc in oi-runtime oi-rag tika authhub; do
+for svc in sysagent oi-runtime oi-rag tika authhub; do
     unit="${svc}.service"
     # Check if the service unit exists on the system
     if systemctl list-unit-files --type=service | awk '{print $1}' | grep -Fxq "$unit"; then
@@ -158,8 +160,10 @@ done
 echo "Cleaning deployment files..."
 # Remove framework data
 rm -rf /opt/copilot
-rm -rf /usr/lib/euler-copilot-framework
-rm -rf /etc/euler-copilot-framework
+rm -rf /usr/lib/sysagent
+rm -rf /etc/sysagent
+rm -rf /usr/lib/euler-copilot-framework # 兼容旧版本
+rm -rf /etc/euler-copilot-framework     # 兼容旧版本
 # Remove Tika
 rm -rf /opt/tika
 rm -f /etc/systemd/system/tika.service

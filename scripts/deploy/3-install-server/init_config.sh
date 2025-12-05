@@ -223,7 +223,7 @@ END
 
 install_framework() {
   # 1. 安装前检查
-  echo -e "${COLOR_INFO}[Info] 开始初始化配置 euler-copilot-framework...${COLOR_RESET}"
+  echo -e "${COLOR_INFO}[Info] 开始初始化配置 sysagent...${COLOR_RESET}"
 
   # 2. 检查并创建必要目录
   echo -e "${COLOR_INFO}[Info] 创建数据目录...${COLOR_RESET}"
@@ -260,17 +260,13 @@ install_framework() {
 
   # 5. 配置文件处理
   local framework_file="../5-resource/config.toml"
-  local framework_target="/etc/euler-copilot-framework/config.toml"
-  local framework_service_file="../5-resource/oi-runtime.service"
-  local framework_service_target="/etc/systemd/system/oi-runtime.service"
+  local framework_target="/etc/sysagent/config.toml"
 
   # 检查源文件是否存在
-  for file in "$framework_file" "$framework_service_file"; do
-    if [[ ! -f "$file" ]]; then
-      echo -e "${COLOR_ERROR}[Error] 找不到配置文件: $file${COLOR_RESET}"
-      return 1
-    fi
-  done
+  if [[ ! -f "$framework_file" ]]; then
+    echo -e "${COLOR_ERROR}[Error] 找不到配置文件: $framework_file${COLOR_RESET}"
+    return 1
+  fi
 
   # 备份原文件
   echo -e "${COLOR_INFO}[Info] 备份配置文件...${COLOR_RESET}"
@@ -299,45 +295,37 @@ install_framework() {
     return 1
   fi
 
-  if ! cp -v "$framework_service_file" "$framework_service_target"; then
-    echo -e "${COLOR_ERROR}[Error] 无法复制服务文件到 $framework_service_target${COLOR_RESET}"
-    return 1
-  fi
-
   # 7. 设置文件权限
   echo -e "${COLOR_INFO}[Info] 设置文件权限...${COLOR_RESET}"
   chmod 640 "$framework_target" || {
     echo -e "${COLOR_WARNING}[Warning] 无法设置配置文件权限${COLOR_RESET}"
   }
-  chmod 644 "$framework_service_target" || {
-    echo -e "${COLOR_WARNING}[Warning] 无法设置服务文件权限${COLOR_RESET}"
-  }
 
   # 8. 启动服务
-  echo -e "${COLOR_INFO}[Info] 启动 oi-runtime 服务...${COLOR_RESET}"
+  echo -e "${COLOR_INFO}[Info] 启动 sysagent 服务...${COLOR_RESET}"
   systemctl daemon-reload || {
     echo -e "${COLOR_ERROR}[Error] systemd 配置重载失败${COLOR_RESET}"
     return 1
   }
 
-  if ! systemctl enable --now oi-runtime; then
-    echo -e "${COLOR_ERROR}[Error] 无法启动 oi-runtime 服务${COLOR_RESET}"
-    systemctl status oi-runtime --no-pager
+  if ! systemctl enable --now sysagent; then
+    echo -e "${COLOR_ERROR}[Error] 无法启动 sysagent 服务${COLOR_RESET}"
+    systemctl status sysagent --no-pager
     return 1
   fi
 
   # 9. 验证服务状态
   echo -e "${COLOR_INFO}[Info] 检查服务状态...${COLOR_RESET}"
-  if ! systemctl is-active --quiet oi-runtime; then
-    echo -e "${COLOR_ERROR}[Error] oi-runtime 服务未运行${COLOR_RESET}"
-    journalctl -u oi-runtime --no-pager -n 20
+  if ! systemctl is-active --quiet sysagent; then
+    echo -e "${COLOR_ERROR}[Error] sysagent 服务未运行${COLOR_RESET}"
+    journalctl -u sysagent --no-pager -n 20
     return 1
   fi
 
   # 10. 清理备份文件
   rm -f "${framework_file}.bak"
 
-  echo -e "${COLOR_SUCCESS}[Success] euler-copilot-framework 安装完成${COLOR_RESET}"
+  echo -e "${COLOR_SUCCESS}[Success] sysagent 安装完成${COLOR_RESET}"
   echo -e "${COLOR_INFO}[Info] 服务访问地址: http://${ip_address}:$port${COLOR_RESET}"
   return 0
 }

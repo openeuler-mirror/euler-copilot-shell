@@ -176,7 +176,7 @@ class AgentManager:
         self.app_dir = self.semantics_dir / "app"
 
         # 资源路径
-        self.resource_dir = Path("/usr/lib/euler-copilot-framework/mcp_center")
+        self.resource_dir = Path("/usr/lib/sysagent/mcp_center")
         self.mcp_config_dir = self.resource_dir / "mcp_config"
         self.run_script_path = self.resource_dir / "run.sh"
         self.service_dir = self.resource_dir / "service"
@@ -232,11 +232,11 @@ class AgentManager:
         if not await self._verify_mcp_services(state, progress_callback):
             return AgentInitStatus.FAILED
 
-        # 4. 停止 oi-runtime 服务，准备写入配置
-        if not await self._stop_oi_runtime_service(state, progress_callback):
+        # 4. 停止 sysagent 服务，准备写入配置
+        if not await self._stop_sysagent_service(state, progress_callback):
             self._report_progress(
                 state,
-                _("[yellow]停止 oi-runtime 服务失败，但继续执行[/yellow]"),
+                _("[yellow]停止 sysagent 服务失败，但继续执行[/yellow]"),
                 progress_callback,
             )
 
@@ -255,11 +255,11 @@ class AgentManager:
             progress_callback,
         )
 
-        # 7. 重新启动 oi-runtime 服务
-        if not await self._start_oi_runtime_service(state, progress_callback):
+        # 7. 重新启动 sysagent 服务
+        if not await self._start_sysagent_service(state, progress_callback):
             self._report_progress(
                 state,
-                _("[yellow]启动 oi-runtime 服务失败，请手动检查[/yellow]"),
+                _("[yellow]启动 sysagent 服务失败，请手动检查[/yellow]"),
                 progress_callback,
             )
 
@@ -886,21 +886,21 @@ class AgentManager:
 
     # ========== 以下是 systemd 服务相关方法 ==========
 
-    async def _stop_oi_runtime_service(
+    async def _stop_sysagent_service(
         self,
         state: DeploymentState,
         callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
-        """停止 oi-runtime 服务"""
+        """停止 sysagent 服务"""
         self._report_progress(
             state,
-            _("[cyan]停止 oi-runtime 服务...[/cyan]"),
+            _("[cyan]停止 sysagent 服务...[/cyan]"),
             callback,
         )
 
         try:
             # 先检查服务是否存在
-            check_cmd = "systemctl list-unit-files oi-runtime.service"
+            check_cmd = "systemctl list-unit-files sysagent.service"
             check_process = await asyncio.create_subprocess_shell(
                 check_cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -909,17 +909,17 @@ class AgentManager:
             stdout, _stderr = await check_process.communicate()
             output = stdout.decode("utf-8") if stdout else ""
 
-            if "oi-runtime.service" not in output:
+            if "sysagent.service" not in output:
                 self._report_progress(
                     state,
-                    _("[yellow]oi-runtime 服务不存在，跳过停止操作[/yellow]"),
+                    _("[yellow]sysagent 服务不存在，跳过停止操作[/yellow]"),
                     callback,
                 )
-                logger.info("oi-runtime 服务不存在，跳过停止操作")
+                logger.info("sysagent 服务不存在，跳过停止操作")
                 return True
 
             # 检查服务是否正在运行
-            status_cmd = "systemctl is-active oi-runtime"
+            status_cmd = "systemctl is-active sysagent"
             status_process = await asyncio.create_subprocess_shell(
                 status_cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -931,14 +931,14 @@ class AgentManager:
             if status != "active":
                 self._report_progress(
                     state,
-                    _("[green]oi-runtime 服务未运行，无需停止[/green]"),
+                    _("[green]sysagent 服务未运行，无需停止[/green]"),
                     callback,
                 )
-                logger.info("oi-runtime 服务未运行")
+                logger.info("sysagent 服务未运行")
                 return True
 
             # 停止服务
-            stop_cmd = "sudo systemctl stop oi-runtime"
+            stop_cmd = "sudo systemctl stop sysagent"
             stop_process = await asyncio.create_subprocess_shell(
                 stop_cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -950,47 +950,47 @@ class AgentManager:
         except Exception:
             self._report_progress(
                 state,
-                _("[red]停止 oi-runtime 服务时发生异常[/red]"),
+                _("[red]停止 sysagent 服务时发生异常[/red]"),
                 callback,
             )
-            logger.exception("停止 oi-runtime 服务时发生异常")
+            logger.exception("停止 sysagent 服务时发生异常")
             return False
         else:
             if stop_process.returncode == 0:
                 self._report_progress(
                     state,
-                    _("[green]oi-runtime 服务已停止[/green]"),
+                    _("[green]sysagent 服务已停止[/green]"),
                     callback,
                 )
-                logger.info("oi-runtime 服务已停止")
+                logger.info("sysagent 服务已停止")
                 return True
 
             error_output = stderr.decode("utf-8") if stderr else ""
             self._report_progress(
                 state,
-                _("[red]停止 oi-runtime 服务失败: {error}[/red]").format(
+                _("[red]停止 sysagent 服务失败: {error}[/red]").format(
                     error=error_output,
                 ),
                 callback,
             )
-            logger.error("停止 oi-runtime 服务失败: %s", error_output)
+            logger.error("停止 sysagent 服务失败: %s", error_output)
             return False
 
-    async def _start_oi_runtime_service(
+    async def _start_sysagent_service(
         self,
         state: DeploymentState,
         callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
-        """启动 oi-runtime 服务"""
+        """启动 sysagent 服务"""
         self._report_progress(
             state,
-            _("[cyan]启动 oi-runtime 服务...[/cyan]"),
+            _("[cyan]启动 sysagent 服务...[/cyan]"),
             callback,
         )
 
         try:
             # 先检查服务是否存在
-            check_cmd = "systemctl list-unit-files oi-runtime.service"
+            check_cmd = "systemctl list-unit-files sysagent.service"
             check_process = await asyncio.create_subprocess_shell(
                 check_cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -999,17 +999,17 @@ class AgentManager:
             stdout, _stderr = await check_process.communicate()
             output = stdout.decode("utf-8") if stdout else ""
 
-            if "oi-runtime.service" not in output:
+            if "sysagent.service" not in output:
                 self._report_progress(
                     state,
-                    _("[yellow]oi-runtime 服务不存在，跳过启动操作[/yellow]"),
+                    _("[yellow]sysagent 服务不存在，跳过启动操作[/yellow]"),
                     callback,
                 )
-                logger.info("oi-runtime 服务不存在，跳过启动操作")
+                logger.info("sysagent 服务不存在，跳过启动操作")
                 return True
 
             # 启动服务
-            start_cmd = "sudo systemctl start oi-runtime"
+            start_cmd = "sudo systemctl start sysagent"
             start_process = await asyncio.create_subprocess_shell(
                 start_cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -1021,19 +1021,19 @@ class AgentManager:
         except Exception:
             self._report_progress(
                 state,
-                _("[red]启动 oi-runtime 服务时发生异常[/red]"),
+                _("[red]启动 sysagent 服务时发生异常[/red]"),
                 callback,
             )
-            logger.exception("启动 oi-runtime 服务时发生异常")
+            logger.exception("启动 sysagent 服务时发生异常")
             return False
         else:
             if start_process.returncode == 0:
                 self._report_progress(
                     state,
-                    _("[green]oi-runtime 服务已启动[/green]"),
+                    _("[green]sysagent 服务已启动[/green]"),
                     callback,
                 )
-                logger.info("oi-runtime 服务已启动")
+                logger.info("sysagent 服务已启动")
                 # 等待服务启动完成
                 await asyncio.sleep(2)
                 return True
@@ -1041,12 +1041,12 @@ class AgentManager:
             error_output = stderr.decode("utf-8") if stderr else ""
             self._report_progress(
                 state,
-                _("[red]启动 oi-runtime 服务失败: {error}[/red]").format(
+                _("[red]启动 sysagent 服务失败: {error}[/red]").format(
                     error=error_output,
                 ),
                 callback,
             )
-            logger.error("启动 oi-runtime 服务失败: %s", error_output)
+            logger.error("启动 sysagent 服务失败: %s", error_output)
             return False
 
     def _get_service_files(

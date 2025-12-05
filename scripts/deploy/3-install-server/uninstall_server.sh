@@ -28,7 +28,8 @@ uninstall_server() {
       echo -e "${COLOR_INFO}[Info] 正在卸载 $pkg...${COLOR_RESET}"
 
       if [ "$pkg" = "euler-copilot-framework" ]; then
-        systemctl stop oi-runtime
+        systemctl stop sysagent 2>/dev/null || true
+        systemctl stop oi-runtime 2>/dev/null || true # 兼容旧版本
       elif [ "$pkg" = "minio" ]; then
         systemctl stop minio >/dev/null 2>&1
       else
@@ -53,9 +54,12 @@ uninstall_server() {
   done
   # 删除残留文件和目录
   rm -rf /var/log/openEulerIntelligence
-  rm -rf /etc/euler-copilot-framework
-  rm -rf /etc/systemd/system/oi-runtime.service
-  rm -rf /etc/systemd/system/multi-user.target.wants/oi-runtime.service
+  rm -rf /etc/sysagent
+  rm -rf /etc/euler-copilot-framework # 兼容旧版本
+  rm -rf /etc/systemd/system/sysagent.service
+  rm -rf /etc/systemd/system/multi-user.target.wants/sysagent.service
+  rm -rf /etc/systemd/system/oi-runtime.service                         # 兼容旧版本
+  rm -rf /etc/systemd/system/multi-user.target.wants/oi-runtime.service # 兼容旧版本
 
   # 清理系统配置
   systemctl daemon-reload

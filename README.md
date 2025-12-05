@@ -144,11 +144,11 @@ oi --login
 
 `--llm-config` 命令用于配置已部署的 openEuler Intelligence 后端的 LLM 和 Embedding 模型参数，它提供了一个简洁的 TUI 界面来管理系统级配置：
 
-1. **系统配置管理**: 直接修改系统配置文件 `/etc/euler-copilot-framework/config.toml` 和 `/etc/euler-copilot-rag/data_chain/env`
+1. **系统配置管理**: 直接修改系统配置文件 `/etc/sysagent/config.toml` 和 `/etc/euler-copilot-rag/data_chain/env`
 2. **LLM 配置**: 设置大语言模型的端点、API 密钥、模型名称、最大输出令牌数和温度参数
 3. **Embedding 配置**: 配置嵌入模型的端点、API 密钥和模型名称
 4. **实时验证**: 自动验证 API 连接性和配置有效性
-5. **服务重启**: 配置保存后自动重启相关系统服务（`oi-runtime` 和 `oi-rag`）
+5. **服务重启**: 配置保存后自动重启相关系统服务（`sysagent` 和 `oi-rag`）
 
 **使用要求**:
 
@@ -184,7 +184,7 @@ oi --login
 **注意**:
 
 1. 此命令直接修改系统配置文件，请在生产环境使用前仔细评估；
-2. 配置保存后会自动重启 `oi-runtime` 和 `oi-rag` 服务，可能会影响正在运行的服务；
+2. 配置保存后会自动重启 `sysagent` 和 `oi-rag` 服务，可能会影响正在运行的服务；
 3. 如果系统配置文件不存在或权限不足，工具会显示相应错误信息并退出；
 4. 建议在修改配置前备份原有的配置文件。
 

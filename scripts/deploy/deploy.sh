@@ -43,7 +43,7 @@ show_restart_menu() {
   echo "        服务重启菜单           "
   echo "=============================="
   echo "可重启的服务列表："
-  echo "1) oi-runtime"
+  echo "1) sysagent"
   echo "2) postgresql"
   echo "3) 返回主菜单"
   echo "=============================="
@@ -218,7 +218,7 @@ while true; do
       show_restart_menu
       read -r restart_choice
       case $restart_choice in
-      1) service="oi-runtime" ;;
+      1) service="sysagent" ;;
       2) service="postgresql" ;;
       3) break ;;
       *)

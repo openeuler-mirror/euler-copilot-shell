@@ -60,21 +60,21 @@ start_bak() {
     return $init_result
   fi
 
-  # 重启 oi-runtime 服务
-  echo -e "${COLOR_INFO}[Info] 开始重启 oi-runtime 服务...${COLOR_RESET}"
-  if ! systemctl restart oi-runtime; then
-    echo -e "${COLOR_ERROR}[Error] oi-runtime 服务重启失败${COLOR_RESET}"
+  # 重启 sysagent 服务
+  echo -e "${COLOR_INFO}[Info] 开始重启 sysagent 服务...${COLOR_RESET}"
+  if ! systemctl restart sysagent; then
+    echo -e "${COLOR_ERROR}[Error] sysagent 服务重启失败${COLOR_RESET}"
     return 1
   fi
 
   # 检查服务状态
-  echo -e "${COLOR_INFO}[Info] 验证 oi-runtime 服务状态...${COLOR_RESET}"
+  echo -e "${COLOR_INFO}[Info] 验证 sysagent 服务状态...${COLOR_RESET}"
   sleep 5
-  if systemctl is-active --quiet oi-runtime; then
-    echo -e "${COLOR_SUCCESS}[Success] oi-runtime 服务重启成功并正常运行${COLOR_RESET}"
+  if systemctl is-active --quiet sysagent; then
+    echo -e "${COLOR_SUCCESS}[Success] sysagent 服务重启成功并正常运行${COLOR_RESET}"
     return 0
   else
-    echo -e "${COLOR_ERROR}[Error] oi-runtime 服务重启后未正常运行${COLOR_RESET}"
+    echo -e "${COLOR_ERROR}[Error] sysagent 服务重启后未正常运行${COLOR_RESET}"
     return 1
   fi
 }

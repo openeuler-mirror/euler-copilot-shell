@@ -330,7 +330,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """执行所有部署步骤"""
-        # 检查并停止旧的 oi-runtime 服务
+        # 检查并停止旧的 oi-runtime、oi-rag 和 sysagent 服务
         if not await self._check_and_stop_old_service(progress_callback):
             return False
 
@@ -642,8 +642,8 @@ class DeploymentService:
         server_port: int,
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
-        """检查 oi-runtime 服务健康状态"""
-        # 1. 检查 systemctl oi-runtime 服务状态
+        """检查 sysagent 服务健康状态"""
+        # 1. 检查 systemctl sysagent 服务状态
         if not await self._check_systemctl_service_status(progress_callback):
             return False
 
@@ -654,13 +654,13 @@ class DeploymentService:
         self,
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
-        """检查 systemctl oi-runtime 服务状态，每2秒检查一次，5次后超时"""
+        """检查 systemctl sysagent 服务状态，每2秒检查一次，5次后超时"""
         max_attempts = 5
         check_interval = 2.0  # 2秒
 
         for attempt in range(1, max_attempts + 1):
             self.state.add_log(
-                _("检查 oi-runtime 服务状态 ({current}/{total})...").format(
+                _("检查 sysagent 服务状态 ({current}/{total})...").format(
                     current=attempt,
                     total=max_attempts,
                 ),
@@ -674,7 +674,7 @@ class DeploymentService:
                 process = await asyncio.create_subprocess_exec(
                     "systemctl",
                     "is-active",
-                    "oi-runtime",
+                    "sysagent",
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
@@ -707,7 +707,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """
-        检查 oi-runtime API 健康状态
+        检查 sysagent API 健康状态
 
         通过尝试登录 Hermes 后端验证服务是否就绪。
         每5秒检查一次，2分钟后超时。
@@ -881,7 +881,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """
-        检查并停止旧的 oi-runtime 和 oi-rag 服务
+        检查并停止旧的 oi-runtime、oi-rag 和 sysagent 服务
 
         Args:
             progress_callback: 进度回调函数
@@ -893,7 +893,7 @@ class DeploymentService:
         if progress_callback:
             progress_callback(self.state)
 
-        services_to_check = ["oi-runtime", "oi-rag"]
+        services_to_check = ["oi-runtime", "oi-rag", "sysagent"]
 
         for service_name in services_to_check:
             try:
