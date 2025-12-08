@@ -194,77 +194,85 @@ configure_postgresql() {
     return 1
   }
 
-  # 5. 确保 postgres 用户可以本地连接
+  # 5. 确保 postgres 用户可以本地连接（使用 peer 认证）
   local pg_hba_conf="/var/lib/pgsql/data/pg_hba.conf"
   if [ ! -f "$pg_hba_conf" ]; then
     pg_hba_conf="/var/lib/postgresql/data/pg_hba.conf"
   fi
 
   if [ -f "$pg_hba_conf" ]; then
-    # 临时确保 postgres 用户可以用 peer 认证连接
-    if grep -q "local.*all.*postgres.*md5" "$pg_hba_conf"; then
-      echo -e "${COLOR_INFO}[Info] 临时恢复 postgres 用户本地认证...${COLOR_RESET}"
-      sed -i -E 's/(local\s+all\s+postgres\s+)md5/\1peer/' "$pg_hba_conf"
+    # 临时确保本地连接使用 peer 认证（重新部署时可能已被改为 md5）
+    if grep -qE "^local\s+all\s+all\s+md5" "$pg_hba_conf"; then
+      echo -e "${COLOR_INFO}[Info] 临时恢复本地 peer 认证以配置数据库...${COLOR_RESET}"
+      sed -i -E 's/^(local\s+all\s+all\s+)md5/\1peer/' "$pg_hba_conf"
       systemctl reload postgresql
-      sleep 1
+      sleep 2
     fi
   fi
 
   # 6. 创建或更新 euler_copilot 用户和数据库
   echo -e "${COLOR_INFO}[Info] 配置 euler_copilot 用户和数据库...${COLOR_RESET}"
 
+  # 定义 psql 执行函数
+  # 脚本以 root 运行，使用 su 切换到 postgres 用户
+  run_psql() {
+    su - postgres -c "psql $*"
+  }
+
   # 检查用户是否存在
-  if sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='euler_copilot'" | grep -q 1; then
+  if run_psql "-tAc \"SELECT 1 FROM pg_roles WHERE rolname='euler_copilot'\"" | grep -q 1; then
     echo -e "${COLOR_INFO}[Info] 用户已存在，更新密码...${COLOR_RESET}"
-    sudo -u postgres psql -c "ALTER USER euler_copilot WITH PASSWORD '$PGSQL_PASSWORD';" || {
+    run_psql "-c \"ALTER USER euler_copilot WITH PASSWORD '$PGSQL_PASSWORD';\"" || {
       echo -e "${COLOR_ERROR}[Error] 更新用户密码失败${COLOR_RESET}"
       return 1
     }
   else
     echo -e "${COLOR_INFO}[Info] 创建用户...${COLOR_RESET}"
-    sudo -u postgres psql -c "CREATE USER euler_copilot WITH PASSWORD '$PGSQL_PASSWORD';" || {
+    run_psql "-c \"CREATE USER euler_copilot WITH PASSWORD '$PGSQL_PASSWORD';\"" || {
       echo -e "${COLOR_ERROR}[Error] 创建用户失败${COLOR_RESET}"
       return 1
     }
   fi
 
   # 检查数据库是否存在
-  if sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='euler_copilot'" | grep -q 1; then
+  if run_psql "-tAc \"SELECT 1 FROM pg_database WHERE datname='euler_copilot'\"" | grep -q 1; then
     echo -e "${COLOR_INFO}[Info] 数据库已存在，跳过创建${COLOR_RESET}"
   else
     echo -e "${COLOR_INFO}[Info] 创建数据库...${COLOR_RESET}"
-    sudo -u postgres psql -c "CREATE DATABASE euler_copilot OWNER euler_copilot;" || {
+    run_psql "-c \"CREATE DATABASE euler_copilot OWNER euler_copilot;\"" || {
       echo -e "${COLOR_ERROR}[Error] 创建数据库失败${COLOR_RESET}"
       return 1
     }
   fi
 
-  sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE euler_copilot TO euler_copilot;" || {
+  run_psql "-c \"GRANT ALL PRIVILEGES ON DATABASE euler_copilot TO euler_copilot;\"" || {
     echo -e "${COLOR_ERROR}[Error] 授权失败${COLOR_RESET}"
     return 1
   }
 
-  # 7. 启用扩展（在 euler_copilot 数据库中）
+  # 7. 在 euler_copilot 数据库中启用扩展
   echo -e "${COLOR_INFO}[Info] 启用 PostgreSQL 扩展...${COLOR_RESET}"
-  sudo -u postgres psql -d euler_copilot -c "CREATE EXTENSION IF NOT EXISTS zhparser;" || {
+  run_psql "-d euler_copilot -c \"CREATE EXTENSION IF NOT EXISTS zhparser;\"" || {
     echo -e "${COLOR_ERROR}[Error] 无法启用 zhparser 扩展${COLOR_RESET}"
     return 1
   }
 
-  sudo -u postgres psql -d euler_copilot -c "CREATE EXTENSION IF NOT EXISTS vector;" || {
+  run_psql "-d euler_copilot -c \"CREATE EXTENSION IF NOT EXISTS vector;\"" || {
     echo -e "${COLOR_ERROR}[Error] 无法启用 vector 扩展${COLOR_RESET}"
     return 1
   }
 
   # CREATE TEXT SEARCH CONFIGURATION 不支持 IF NOT EXISTS，需要先检查再创建
-  sudo -u postgres psql -d euler_copilot -c "DO \$\$
+  run_psql "-d euler_copilot" <<'EOSQL' || {
+DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = 'zhparser') THEN
         CREATE TEXT SEARCH CONFIGURATION zhparser (PARSER = zhparser);
         ALTER TEXT SEARCH CONFIGURATION zhparser ADD MAPPING FOR n,v,a,i,e,l WITH simple;
     END IF;
 END
-\$\$;" || {
+$$;
+EOSQL
     echo -e "${COLOR_ERROR}[Error] 无法创建全文搜索配置${COLOR_RESET}"
     return 1
   }
