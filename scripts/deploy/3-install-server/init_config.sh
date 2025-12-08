@@ -193,7 +193,23 @@ configure_postgresql() {
     return 1
   }
 
-  # 5. 创建或更新 euler_copilot 用户和数据库
+  # 5. 确保 postgres 用户可以本地连接
+  local pg_hba_conf="/var/lib/pgsql/data/pg_hba.conf"
+  if [ ! -f "$pg_hba_conf" ]; then
+    pg_hba_conf="/var/lib/postgresql/data/pg_hba.conf"
+  fi
+
+  if [ -f "$pg_hba_conf" ]; then
+    # 临时确保 postgres 用户可以用 peer 认证连接
+    if grep -q "local.*all.*postgres.*md5" "$pg_hba_conf"; then
+      echo -e "${COLOR_INFO}[Info] 临时恢复 postgres 用户本地认证...${COLOR_RESET}"
+      sed -i -E 's/(local\s+all\s+postgres\s+)md5/\1peer/' "$pg_hba_conf"
+      systemctl reload postgresql
+      sleep 1
+    fi
+  fi
+
+  # 6. 创建或更新 euler_copilot 用户和数据库
   echo -e "${COLOR_INFO}[Info] 配置 euler_copilot 用户和数据库...${COLOR_RESET}"
 
   # 检查用户是否存在
@@ -227,7 +243,7 @@ configure_postgresql() {
     return 1
   }
 
-  # 6. 启用扩展（在 euler_copilot 数据库中）
+  # 7. 启用扩展（在 euler_copilot 数据库中）
   echo -e "${COLOR_INFO}[Info] 启用 PostgreSQL 扩展...${COLOR_RESET}"
   sudo -u postgres psql -d euler_copilot -c "CREATE EXTENSION IF NOT EXISTS zhparser;" || {
     echo -e "${COLOR_ERROR}[Error] 无法启用 zhparser 扩展${COLOR_RESET}"
@@ -252,19 +268,16 @@ END
     return 1
   }
 
-  # 7. 查找并修改pg_hba.conf
+  # 8. 配置认证方式（将 peer/ident 改为 md5）
   echo -e "${COLOR_INFO}[Info] 配置认证方式...${COLOR_RESET}"
-  local pg_hba_conf
-  if [ -f "/var/lib/pgsql/data/pg_hba.conf" ]; then
-    pg_hba_conf="/var/lib/pgsql/data/pg_hba.conf"
-  elif [ -f "/var/lib/postgresql/data/pg_hba.conf" ]; then
-    pg_hba_conf="/var/lib/postgresql/data/pg_hba.conf"
-  else
-    # 使用 pg_config 获取数据目录
-    local pg_data_dir
-    pg_data_dir=$(sudo -u postgres psql -t -c "SHOW data_directory;" 2>/dev/null | tr -d ' ')
-    if [ -n "$pg_data_dir" ] && [ -f "${pg_data_dir}/pg_hba.conf" ]; then
-      pg_hba_conf="${pg_data_dir}/pg_hba.conf"
+
+  # pg_hba_conf 已在步骤 5 中设置
+  if [ -z "$pg_hba_conf" ] || [ ! -f "$pg_hba_conf" ]; then
+    # 重新查找
+    if [ -f "/var/lib/pgsql/data/pg_hba.conf" ]; then
+      pg_hba_conf="/var/lib/pgsql/data/pg_hba.conf"
+    elif [ -f "/var/lib/postgresql/data/pg_hba.conf" ]; then
+      pg_hba_conf="/var/lib/postgresql/data/pg_hba.conf"
     fi
   fi
 
@@ -281,7 +294,7 @@ END
   sed -i -E 's/(host\s+all\s+all\s+127\.0\.0\.1\/32\s+)ident/\1md5/' "$pg_hba_conf"
   sed -i -E 's/(host\s+all\s+all\s+::1\/128\s+)ident/\1md5/' "$pg_hba_conf"
 
-  # 8. 重启服务
+  # 9. 重启服务
   echo -e "${COLOR_INFO}[Info] 重启 PostgreSQL 服务...${COLOR_RESET}"
   systemctl daemon-reload
   systemctl restart postgresql || {
