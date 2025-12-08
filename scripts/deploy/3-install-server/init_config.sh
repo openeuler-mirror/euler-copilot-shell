@@ -15,11 +15,9 @@ generate_random_password() {
   echo "$password"
 }
 
-# 配置参数（自动生成随机密码）
-MINIO_ROOT_PASSWORD=$(generate_random_password)
-PGSQL_PASSWORD=$(generate_random_password)
-
-config_toml_file="../5-resource/config.toml"
+config_toml_file=""
+MINIO_ROOT_PASSWORD=""
+PGSQL_PASSWORD=""
 
 # 配置MinIO（RPM安装后的配置）
 install_minio() {
@@ -68,11 +66,47 @@ EOF
   fi
 }
 
-# 更新配置文件中的密码
 update_password() {
-  # 更新 config.toml 中的 minio 和 postgres 密码
-  sed -i "s/secret_key = '.*'/secret_key = '$MINIO_ROOT_PASSWORD'/" $config_toml_file
-  sed -i "/\[postgres\]/,/^\[/ s/password = '.*'/password = '$PGSQL_PASSWORD'/" $config_toml_file
+  echo -e "${COLOR_INFO}[Info] 更新配置文件中的密码...${COLOR_RESET}"
+
+  if [[ ! -f "$config_toml_file" ]]; then
+    echo -e "${COLOR_ERROR}[Error] 配置文件不存在: $config_toml_file${COLOR_RESET}"
+    return 1
+  fi
+
+  sed -i "s/secret_key = '.*'/secret_key = '$MINIO_ROOT_PASSWORD'/" "$config_toml_file" || {
+    echo -e "${COLOR_ERROR}[Error] 更新 minio secret_key 失败${COLOR_RESET}"
+    return 1
+  }
+  sed -i "/\[postgres\]/,/^\[/ s/password = '.*'/password = '$PGSQL_PASSWORD'/" "$config_toml_file" || {
+    echo -e "${COLOR_ERROR}[Error] 更新 postgres password 失败${COLOR_RESET}"
+    return 1
+  }
+
+  local key1 key2 key3 key4
+  key1=$(generate_random_password 20)
+  key2=$(generate_random_password 20)
+  key3=$(generate_random_password 20)
+  key4=$(generate_random_password 20)
+
+  sed -i "s/half_key1 = '.*'/half_key1 = '$key1'/" "$config_toml_file" || {
+    echo -e "${COLOR_ERROR}[Error] 更新 half_key1 失败${COLOR_RESET}"
+    return 1
+  }
+  sed -i "s/half_key2 = '.*'/half_key2 = '$key2'/" "$config_toml_file" || {
+    echo -e "${COLOR_ERROR}[Error] 更新 half_key2 失败${COLOR_RESET}"
+    return 1
+  }
+  sed -i "s/half_key3 = '.*'/half_key3 = '$key3'/" "$config_toml_file" || {
+    echo -e "${COLOR_ERROR}[Error] 更新 half_key3 失败${COLOR_RESET}"
+    return 1
+  }
+  sed -i "s/jwt_key = '.*'/jwt_key = '$key4'/" "$config_toml_file" || {
+    echo -e "${COLOR_ERROR}[Error] 更新 jwt_key 失败${COLOR_RESET}"
+    return 1
+  }
+
+  echo -e "${COLOR_SUCCESS}[Success] 配置文件密码更新完成${COLOR_RESET}"
   return 0
 }
 
@@ -276,18 +310,9 @@ install_framework() {
   }
   echo -e "${COLOR_INFO}[Info] 更新配置文件参数...${COLOR_RESET}"
   port=8002
-  sed -i "s/domain = '.*'/domain = '$ip_address'/" $framework_file
+  sed -i "s/domain = '.*'/domain = '$ip_address'/" "$framework_file"
 
-  #更新 security key
-  key1=$(generate_random_password 20)
-  key2=$(generate_random_password 20)
-  key3=$(generate_random_password 20)
-  key4=$(generate_random_password 20)
-  sed -i "s/half_key1 = '.*'/half_key1 = '$key1'/" $framework_file
-  sed -i "s/half_key2 = '.*'/half_key2 = '$key2'/" $framework_file
-  sed -i "s/half_key3 = '.*'/half_key3 = '$key3'/" $framework_file
-  sed -i "s/jwt_key = '.*'/jwt_key = '$key4'/" $framework_file
-  # 6. 部署配置文件
+  # 部署配置文件
   echo -e "${COLOR_INFO}[Info] 部署配置文件...${COLOR_RESET}"
   mkdir -p "$(dirname "$framework_target")"
   if ! cp -v "$framework_file" "$framework_target"; then
@@ -331,11 +356,15 @@ install_framework() {
 }
 
 main() {
-  # 获取脚本所在的绝对路径
   SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-  # 切换到脚本所在目录
   cd "$SCRIPT_DIR" || return 1
-  update_password
+
+  config_toml_file="$SCRIPT_DIR/../5-resource/config.toml"
+  MINIO_ROOT_PASSWORD=$(generate_random_password)
+  PGSQL_PASSWORD=$(generate_random_password)
+
+  update_password || return 1
+
   configure_postgresql || return 1
   install_minio || return 1
   install_framework || return 1
