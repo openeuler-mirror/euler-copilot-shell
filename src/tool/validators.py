@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import os
-import webbrowser
 from typing import Any
 
 import httpx
@@ -72,35 +71,6 @@ def _resolve_verify_ssl(*, verify_ssl: bool | None = None) -> bool:
 def should_verify_ssl(*, verify_ssl: bool | None = None) -> bool:
     """公开的 SSL 校验决策入口，供其他模块复用"""
     return _resolve_verify_ssl(verify_ssl=verify_ssl)
-
-
-def is_browser_available() -> bool:
-    """
-    检测浏览器是否可用
-
-    在纯命令行或 SSH 环境下，webbrowser 模块无法正常工作。
-    此函数用于检测当前环境是否支持打开浏览器。
-
-    Returns:
-        True 如果可以打开浏览器，False 否则
-
-    """
-    logger = get_logger(__name__)
-
-    try:
-        # 尝试获取默认浏览器
-        browser = webbrowser.get()
-    except webbrowser.Error:
-        # 没有可用的浏览器
-        logger.debug("未检测到可用的浏览器")
-        return False
-    except (OSError, RuntimeError) as e:
-        # 其他异常也认为浏览器不可用
-        logger.debug("检测浏览器可用性时发生异常: %s", e)
-        return False
-    else:
-        # 如果能获取到浏览器实例，认为可用
-        return browser is not None
 
 
 class APIValidator:

@@ -28,7 +28,6 @@ from tool.validators import (
     APIValidator,
     _parse_env_flag,
     _resolve_verify_ssl,
-    is_browser_available,
     should_verify_ssl,
 )
 
@@ -119,38 +118,6 @@ class TestShouldVerifySSL:
         """测试委托给 _resolve_verify_ssl"""
         assert should_verify_ssl(verify_ssl=True) is True
         assert should_verify_ssl(verify_ssl=False) is False
-
-
-class TestIsBrowserAvailable:
-    """测试 is_browser_available 函数"""
-
-    def test_browser_available(self) -> None:
-        """测试浏览器可用"""
-        mock_browser = Mock()
-        with patch("webbrowser.get", return_value=mock_browser):
-            assert is_browser_available() is True
-
-    def test_browser_returns_none(self) -> None:
-        """测试浏览器返回 None"""
-        with patch("webbrowser.get", return_value=None):
-            assert is_browser_available() is False
-
-    def test_browser_error(self) -> None:
-        """测试浏览器错误"""
-        import webbrowser  # noqa: PLC0415
-
-        with patch("webbrowser.get", side_effect=webbrowser.Error("No browser")):
-            assert is_browser_available() is False
-
-    def test_browser_os_error(self) -> None:
-        """测试 OSError"""
-        with patch("webbrowser.get", side_effect=OSError("OS error")):
-            assert is_browser_available() is False
-
-    def test_browser_runtime_error(self) -> None:
-        """测试 RuntimeError"""
-        with patch("webbrowser.get", side_effect=RuntimeError("Runtime error")):
-            assert is_browser_available() is False
 
 
 class TestAPIValidator:

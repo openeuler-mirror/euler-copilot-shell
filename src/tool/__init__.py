@@ -8,12 +8,10 @@ if TYPE_CHECKING:
     from .command_processor import is_command_safe, process_command
     from .oi_backend_init import backend_init
     from .oi_llm_config import llm_config
-    from .oi_login import browser_login
     from .oi_select_agent import select_agent
 
 __all__ = [
     "backend_init",
-    "browser_login",
     "is_command_safe",
     "llm_config",
     "process_command",
@@ -24,10 +22,6 @@ __all__ = [
 def _lazy_import(name: str) -> Any:
     if name == "backend_init":
         from .oi_backend_init import backend_init as target  # noqa: PLC0415
-
-        return target
-    if name == "browser_login":
-        from .oi_login import browser_login as target  # noqa: PLC0415
 
         return target
     if name == "is_command_safe":
