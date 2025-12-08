@@ -150,22 +150,6 @@ class DeploymentConfigScreen(ModalScreen[bool]):
 
     async def on_mount(self) -> None:
         """界面挂载时初始化状态"""
-        # 初始化验证状态
-        self._initialize_validation_status()
-
-    def _initialize_validation_status(self) -> None:
-        """初始化验证状态"""
-        if self._is_embedding_required():
-            self.embedding_validation_status = ValidationStatus.PENDING
-        else:
-            self.embedding_validation_status = ValidationStatus.NOT_REQUIRED
-            try:
-                embedding_status = self.query_one("#embedding_validation_status", Static)
-                embedding_status.update(_("[dim]不需要验证[/dim]"))
-            except (ValueError, AttributeError):
-                pass
-
-        # 更新部署按钮状态
         self._update_deploy_button_state()
 
     def _compose_llm_config(self) -> ComposeResult:
@@ -238,11 +222,6 @@ class DeploymentConfigScreen(ModalScreen[bool]):
         """组合 Embedding 配置组件"""
         with Vertical(classes="embedding-config-container"):
             yield Static(_("嵌入模型配置"), classes="form-label")
-
-            yield Static(
-                _("[dim]Embedding 配置为可选项；若需启用 RAG 功能，请填写以下信息。[/dim]"),
-                classes="form-input",
-            )
 
             with Horizontal(classes="form-row"):
                 yield Label(_("API 端点:"), classes="form-label")
@@ -324,10 +303,7 @@ class DeploymentConfigScreen(ModalScreen[bool]):
     async def on_embedding_field_changed(self, event: Input.Changed) -> None:
         """处理 Embedding 字段变化，检查是否需要自动验证"""
         # 重置 Embedding 验证状态
-        if self._is_embedding_required():
-            self.embedding_validation_status = ValidationStatus.PENDING
-        else:
-            self.embedding_validation_status = ValidationStatus.NOT_REQUIRED
+        self.embedding_validation_status = ValidationStatus.PENDING
 
         # 取消之前的验证任务
         if self._embedding_validation_task and not self._embedding_validation_task.done():
@@ -397,7 +373,7 @@ class DeploymentConfigScreen(ModalScreen[bool]):
                 return
 
             # 检查 Embedding 验证状态
-            if self._is_embedding_required() and self.embedding_validation_status in (
+            if self.embedding_validation_status in (
                 ValidationStatus.PENDING,
                 ValidationStatus.VALIDATING,
                 ValidationStatus.INVALID,
