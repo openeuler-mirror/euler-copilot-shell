@@ -74,11 +74,12 @@ update_password() {
     return 1
   fi
 
-  sed -i "s/secret_key = '.*'/secret_key = '$MINIO_ROOT_PASSWORD'/" "$config_toml_file" || {
+  # 支持单引号和双引号两种格式
+  sed -i "s/secret_key = ['\"][^'\"]*['\"]/secret_key = '$MINIO_ROOT_PASSWORD'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 minio secret_key 失败${COLOR_RESET}"
     return 1
   }
-  sed -i "/\[postgres\]/,/^\[/ s/password = '.*'/password = '$PGSQL_PASSWORD'/" "$config_toml_file" || {
+  sed -i "/\[postgres\]/,/^\[/ s/password = ['\"][^'\"]*['\"]/password = '$PGSQL_PASSWORD'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 postgres password 失败${COLOR_RESET}"
     return 1
   }
@@ -89,19 +90,19 @@ update_password() {
   key3=$(generate_random_password 20)
   key4=$(generate_random_password 20)
 
-  sed -i "s/half_key1 = '.*'/half_key1 = '$key1'/" "$config_toml_file" || {
+  sed -i "s/half_key1 = ['\"][^'\"]*['\"]/half_key1 = '$key1'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 half_key1 失败${COLOR_RESET}"
     return 1
   }
-  sed -i "s/half_key2 = '.*'/half_key2 = '$key2'/" "$config_toml_file" || {
+  sed -i "s/half_key2 = ['\"][^'\"]*['\"]/half_key2 = '$key2'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 half_key2 失败${COLOR_RESET}"
     return 1
   }
-  sed -i "s/half_key3 = '.*'/half_key3 = '$key3'/" "$config_toml_file" || {
+  sed -i "s/half_key3 = ['\"][^'\"]*['\"]/half_key3 = '$key3'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 half_key3 失败${COLOR_RESET}"
     return 1
   }
-  sed -i "s/jwt_key = '.*'/jwt_key = '$key4'/" "$config_toml_file" || {
+  sed -i "s/jwt_key = ['\"][^'\"]*['\"]/jwt_key = '$key4'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 jwt_key 失败${COLOR_RESET}"
     return 1
   }
