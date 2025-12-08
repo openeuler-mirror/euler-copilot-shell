@@ -261,8 +261,8 @@ install_framework() {
 
   # 2. 检查并创建必要目录
   echo -e "${COLOR_INFO}[Info] 创建数据目录...${COLOR_RESET}"
-  mkdir -p /var/lib/euler_copilot || {
-    echo -e "${COLOR_ERROR}[Error] 无法创建数据目录 /var/lib/euler_copilot${COLOR_RESET}"
+  mkdir -p /var/lib/sysagent || {
+    echo -e "${COLOR_ERROR}[Error] 无法创建数据目录 /var/lib/sysagent${COLOR_RESET}"
     return 1
   }
 

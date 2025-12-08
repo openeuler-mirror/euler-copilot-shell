@@ -153,7 +153,7 @@ delete_dir() {
   for dir in "${dirs[@]}"; do
     echo "  $BASE_PWD/$dir" | tee -a "$LOG_FILE"
   done
-  echo "  /var/lib/euler_copilot" | tee -a "$LOG_FILE"
+  echo "  /var/lib/sysagent" | tee -a "$LOG_FILE"
 
   # 捕获中断信号
   trap 'echo -e "${COLOR_ERROR}[Error] 操作被中断！${COLOR_RESET}" | tee -a "$LOG_FILE"; exit 1' INT TERM
@@ -182,15 +182,15 @@ delete_dir() {
   done
 
   # 删除 euler_copilot 数据目录
-  if [ -d "/var/lib/euler_copilot" ]; then
-    echo -e "${COLOR_INFO}[Info] 正在删除: /var/lib/euler_copilot${COLOR_RESET}" | tee -a "$LOG_FILE"
-    if rm -rf "/var/lib/euler_copilot"; then
-      deleted_dirs+=("/var/lib/euler_copilot")
-      echo -e "${COLOR_INFO}[Info] 成功删除: /var/lib/euler_copilot${COLOR_RESET}" | tee -a "$LOG_FILE"
+  if [ -d "/var/lib/sysagent" ]; then
+    echo -e "${COLOR_INFO}[Info] 正在删除: /var/lib/sysagent${COLOR_RESET}" | tee -a "$LOG_FILE"
+    if rm -rf "/var/lib/sysagent"; then
+      deleted_dirs+=("/var/lib/sysagent")
+      echo -e "${COLOR_INFO}[Info] 成功删除: /var/lib/sysagent${COLOR_RESET}" | tee -a "$LOG_FILE"
     else
-      failed_dirs+=("/var/lib/euler_copilot")
+      failed_dirs+=("/var/lib/sysagent")
       delete_success=false
-      echo -e "${COLOR_ERROR}[Error] 删除失败: /var/lib/euler_copilot${COLOR_RESET}" | tee -a "$LOG_FILE"
+      echo -e "${COLOR_ERROR}[Error] 删除失败: /var/lib/sysagent${COLOR_RESET}" | tee -a "$LOG_FILE"
     fi
   fi
 

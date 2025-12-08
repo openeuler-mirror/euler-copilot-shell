@@ -31,7 +31,7 @@ logger = logging.getLogger("mcp_manager")
 
 # 配置参数 - 可通过环境变量覆盖
 BASE_URL = os.getenv("MCP_BASE_URL", "http://127.0.0.1:8002")
-BASE_DIR = os.getenv("MCP_BASE_DIR", "/var/lib/euler_copilot/semantics/mcp/template")
+BASE_DIR = os.getenv("MCP_BASE_DIR", "/var/lib/sysagent/semantics/mcp/template")
 REQUEST_TIMEOUT = 30  # 请求超时时间(秒)
 MAX_RETRY_COUNT = 3  # API请求重试次数
 RETRY_DELAY = 2  # 重试延迟(秒)
