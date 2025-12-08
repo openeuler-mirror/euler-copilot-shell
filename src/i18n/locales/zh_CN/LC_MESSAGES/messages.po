@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: oi-cli\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
-"POT-Creation-Date: 2025-12-05 17:37+0800\n"
+"POT-Creation-Date: 2025-12-08 10:01+0800\n"
 "PO-Revision-Date: 2025-10-21 09:40+0800\n"
 "Last-Translator: openEuler Intelligence Team\n"
 "Language-Team: Chinese (Simplified)\n"
@@ -1566,32 +1566,23 @@ msgstr ""
 "  https://gitee.com/openeuler/euler-copilot-shell/tree/master/docs\n"
 "        "
 
-#: src/main.py:38
-msgid "General Options"
-msgstr "通用选项"
-
-#: src/main.py:39
-msgid "Show help and version information"
-msgstr "显示帮助信息和版本信息"
-
-#: src/main.py:45
-msgid "Show this help message and exit"
-msgstr "显示此帮助信息并退出"
-
-#: src/main.py:52
+#: src/main.py:41
 msgid "Show program version number and exit"
 msgstr "显示程序版本号并退出"
 
+#: src/main.py:47
+msgid "Available Commands"
+msgstr "可用命令"
+
+#: src/main.py:48
+msgid "Use 'oi <command> --help' for more information on a specific command"
+msgstr "使用 'oi <命令> --help' 查看特定命令的详细信息"
+
+#: src/main.py:55
+msgid "Initialize openEuler Intelligence backend"
+msgstr "初始化 openEuler Intelligence 后端"
+
 #: src/main.py:57
-msgid "Backend Configuration Options"
-msgstr "后端配置选项"
-
-#: src/main.py:58
-msgid ""
-"For initializing and configuring openEuler Intelligence backend services"
-msgstr "用于初始化和配置 openEuler Intelligence 后端服务"
-
-#: src/main.py:64
 msgid ""
 "Initialize openEuler Intelligence backend\n"
 " * Initialization requires administrator privileges and network connection"
@@ -1599,7 +1590,27 @@ msgstr ""
 "初始化 openEuler Intelligence 后端\n"
 " * 初始化操作需要管理员权限和网络连接"
 
-#: src/main.py:72
+#: src/main.py:66 src/main.py:67
+msgid "View and manage application logs"
+msgstr "查看和管理应用日志"
+
+#: src/main.py:76
+msgid "Number of log lines to display (default: 1000)"
+msgstr "显示的日志行数 (默认: 1000)"
+
+#: src/main.py:82 src/main.py:83
+msgid "Login via browser to obtain API key"
+msgstr "通过浏览器登录以获取 API 密钥"
+
+#: src/main.py:90
+msgid "Configure default settings"
+msgstr "配置默认设置"
+
+#: src/main.py:91
+msgid "Configure default settings for openEuler Intelligence"
+msgstr "配置 openEuler Intelligence 的默认设置"
+
+#: src/main.py:98
 msgid ""
 "Change openEuler Intelligence LLM settings (requires valid local backend "
 "service)\n"
@@ -1608,110 +1619,75 @@ msgstr ""
 "更改 openEuler Intelligence 大模型设置（需要有效的本地后端服务）\n"
 " * 配置编辑操作需要管理员权限"
 
-#: src/main.py:79
-msgid "Application Configuration Options"
-msgstr "应用配置选项"
-
-#: src/main.py:80
-msgid "For configuring application frontend behavior and preferences"
-msgstr "用于配置应用前端行为和偏好设置"
-
-#: src/main.py:85
+#: src/main.py:105
 msgid "Select default agent"
 msgstr "选择默认智能体"
 
-#: src/main.py:90
-msgid "Authentication Management Options"
-msgstr "身份认证管理选项"
-
-#: src/main.py:91
-msgid "For managing login and authentication"
-msgstr "用于管理登录和身份认证"
-
-#: src/main.py:96
-msgid "Login via browser to obtain API key"
-msgstr "通过浏览器登录以获取 API 密钥"
-
-#: src/main.py:101
-msgid "Language Settings"
-msgstr "语言设置"
-
-#: src/main.py:102
-msgid "For configuring application display language"
-msgstr "用于配置应用显示语言"
-
-#: src/main.py:110
+#: src/main.py:113
 #, python-brace-format
 msgid "Set display language (available: {locales})"
 msgstr "设置显示语言 (可选: {locales})"
 
-#: src/main.py:115
-msgid "Log Management Options"
-msgstr "日志管理选项"
-
-#: src/main.py:116
-msgid "For viewing and configuring log output"
-msgstr "用于查看和配置日志输出"
-
-#: src/main.py:121
-msgid "Show latest log content (up to 1000 lines)"
-msgstr "显示最新的日志内容（最多1000行）"
-
-#: src/main.py:127
+#: src/main.py:119
 msgid "Set log level (available: DEBUG, INFO, WARNING, ERROR)"
 msgstr "设置日志级别 (可选: DEBUG, INFO, WARNING, ERROR)"
 
-#: src/main.py:150
+#: src/main.py:148
 #, python-brace-format
 msgid "Failed to retrieve logs: {error}\n"
 msgstr "获取日志失败: {error}\n"
 
-#: src/main.py:157
+#: src/main.py:155
 #, python-brace-format
 msgid "Invalid log level: {level}\n"
 msgstr "无效的日志级别: {level}\n"
 
-#: src/main.py:166
+#: src/main.py:164
 #, python-format
 msgid "Log level has been set to: %s"
 msgstr "日志级别已设置为: %s"
 
-#: src/main.py:167
+#: src/main.py:165
 msgid "This is a DEBUG level test message"
 msgstr "这是一条 DEBUG 级别的测试消息"
 
-#: src/main.py:168
+#: src/main.py:166
 msgid "This is an INFO level test message"
 msgstr "这是一条 INFO 级别的测试消息"
 
-#: src/main.py:169
+#: src/main.py:167
 msgid "This is a WARNING level test message"
 msgstr "这是一条 WARNING 级别的测试消息"
 
-#: src/main.py:170
+#: src/main.py:168
 msgid "This is an ERROR level test message"
 msgstr "这是一条 ERROR 级别的测试消息"
 
-#: src/main.py:172
+#: src/main.py:170
 #, python-brace-format
 msgid "✓ Log level successfully set to: {level}\n"
 msgstr "✓ 日志级别已成功设置为: {level}\n"
 
-#: src/main.py:173
+#: src/main.py:171
 msgid "✓ Logging system initialized\n"
 msgstr "✓ 日志系统初始化完成\n"
 
-#: src/main.py:201
+#: src/main.py:192
 #, python-brace-format
 msgid "✓ Language set to: {locale}\n"
 msgstr "✓ 语言已设置为: {locale}\n"
 
-#: src/main.py:203
+#: src/main.py:194
 #, python-brace-format
 msgid "✗ Unsupported language: {locale}\n"
 msgstr "✗ 不支持的语言: {locale}\n"
 
-#: src/main.py:246
+#: src/main.py:216
+msgid ""
+"No option specified. Use 'oi set-default --help' for available options.\n"
+msgstr "未指定选项。使用 'oi set-default --help' 查看可用选项。\n"
+
+#: src/main.py:275
 msgid "Fatal error in Intelligent Shell application"
 msgstr "智能 Shell 应用发生致命错误"
 

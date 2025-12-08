@@ -30,21 +30,10 @@ For more information and documentation, please visit:
   https://gitee.com/openeuler/euler-copilot-shell/tree/master/docs
         """),
         formatter_class=argparse.RawTextHelpFormatter,
-        add_help=False,
     )
 
-    # 通用选项组
-    general_group = parser.add_argument_group(
-        _("General Options"),
-        _("Show help and version information"),
-    )
-    general_group.add_argument(
-        "-h",
-        "--help",
-        action="help",
-        help=_("Show this help message and exit"),
-    )
-    general_group.add_argument(
+    # 主命令的版本参数
+    parser.add_argument(
         "-V",
         "--version",
         action="version",
@@ -52,20 +41,57 @@ For more information and documentation, please visit:
         help=_("Show program version number and exit"),
     )
 
-    # 后端配置选项组
-    backend_group = parser.add_argument_group(
-        _("Backend Configuration Options"),
-        _("For initializing and configuring openEuler Intelligence backend services"),
+    # 创建子命令解析器
+    subparsers = parser.add_subparsers(
+        dest="command",
+        title=_("Available Commands"),
+        description=_("Use 'oi <command> --help' for more information on a specific command"),
+        metavar="<command>",
     )
-    backend_group.add_argument(
-        "--init",
-        action="store_true",
-        help=_(
+
+    # init 子命令
+    subparsers.add_parser(
+        "init",
+        help=_("Initialize openEuler Intelligence backend"),
+        description=_(
             "Initialize openEuler Intelligence backend\n"
             " * Initialization requires administrator privileges and network connection",
         ),
+        formatter_class=argparse.RawTextHelpFormatter,
     )
-    backend_group.add_argument(
+
+    # logs 子命令
+    logs_parser = subparsers.add_parser(
+        "logs",
+        help=_("View and manage application logs"),
+        description=_("View and manage application logs"),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    logs_parser.add_argument(
+        "-n",
+        "--lines",
+        type=int,
+        default=1000,
+        metavar="N",
+        help=_("Number of log lines to display (default: 1000)"),
+    )
+
+    # login 子命令
+    subparsers.add_parser(
+        "login",
+        help=_("Login via browser to obtain API key"),
+        description=_("Login via browser to obtain API key"),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+
+    # set-default 子命令
+    set_default_parser = subparsers.add_parser(
+        "set-default",
+        help=_("Configure default settings"),
+        description=_("Configure default settings for openEuler Intelligence"),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    set_default_parser.add_argument(
         "--llm-config",
         action="store_true",
         help=_(
@@ -73,54 +99,20 @@ For more information and documentation, please visit:
             " * Configuration editing requires administrator privileges",
         ),
     )
-
-    # 应用配置选项组
-    app_group = parser.add_argument_group(
-        _("Application Configuration Options"),
-        _("For configuring application frontend behavior and preferences"),
-    )
-    app_group.add_argument(
+    set_default_parser.add_argument(
         "--agent",
         action="store_true",
         help=_("Select default agent"),
     )
-
-    # 认证管理选项组
-    auth_group = parser.add_argument_group(
-        _("Authentication Management Options"),
-        _("For managing login and authentication"),
-    )
-    auth_group.add_argument(
-        "--login",
-        action="store_true",
-        help=_("Login via browser to obtain API key"),
-    )
-
-    # 语言设置选项组
-    i18n_group = parser.add_argument_group(
-        _("Language Settings"),
-        _("For configuring application display language"),
-    )
     locale_choices = list(get_supported_locales().keys())
     locale_names = ", ".join(f"{k} ({v})" for k, v in get_supported_locales().items())
-    i18n_group.add_argument(
+    set_default_parser.add_argument(
         "--locale",
         choices=locale_choices,
         metavar="LOCALE",
         help=_("Set display language (available: {locales})").format(locales=locale_names),
     )
-
-    # 日志管理选项组
-    log_group = parser.add_argument_group(
-        _("Log Management Options"),
-        _("For viewing and configuring log output"),
-    )
-    log_group.add_argument(
-        "--logs",
-        action="store_true",
-        help=_("Show latest log content (up to 1000 lines)"),
-    )
-    log_group.add_argument(
+    set_default_parser.add_argument(
         "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         metavar="LEVEL",
@@ -133,8 +125,14 @@ For more information and documentation, please visit:
     return parser.parse_args()
 
 
-def show_logs() -> None:
-    """显示最新的日志内容"""
+def show_logs(max_lines: int = 1000) -> None:
+    """
+    显示最新的日志内容。
+
+    Args:
+        max_lines: 最大显示行数，默认 1000 行
+
+    """
     # 初始化配置和日志系统
     config_manager = ConfigManager()
     setup_logging(config_manager)
@@ -142,7 +140,7 @@ def show_logs() -> None:
     enable_console_output()
 
     try:
-        log_lines = get_latest_logs(max_lines=1000)
+        log_lines = get_latest_logs(max_lines=max_lines)
         for line in log_lines:
             # 直接输出到标准输出，保持原有的日志格式
             sys.stdout.write(line.rstrip() + "\n")
@@ -173,7 +171,56 @@ def set_log_level(config_manager: ConfigManager, level: str) -> None:
     sys.stdout.write(_("✓ Logging system initialized\n"))
 
 
-def main() -> None:  # noqa: C901, PLR0911
+def handle_set_default(args: argparse.Namespace, config_manager: ConfigManager) -> bool:
+    """
+    处理 set-default 子命令。
+
+    Args:
+        args: 解析后的命令行参数
+        config_manager: 配置管理器实例
+
+    Returns:
+        bool: 是否执行了任何操作
+
+    """
+    handled = False
+
+    # 处理语言设置参数
+    if args.locale:
+        if set_locale(args.locale):
+            config_manager.set_locale(args.locale)
+            sys.stdout.write(_("✓ Language set to: {locale}\n").format(locale=args.locale))
+        else:
+            sys.stderr.write(_("✗ Unsupported language: {locale}\n").format(locale=args.locale))
+            sys.exit(1)
+        handled = True
+
+    # 处理日志级别设置
+    if args.log_level:
+        set_log_level(config_manager, args.log_level)
+        handled = True
+
+    # 处理 LLM 配置
+    if args.llm_config:
+        llm_config()
+        handled = True
+
+    # 处理 agent 选择
+    if args.agent:
+        asyncio.run(select_agent())
+        handled = True
+
+    # 如果没有指定任何参数，显示帮助信息
+    if not handled:
+        sys.stderr.write(
+            _("No option specified. Use 'oi set-default --help' for available options.\n"),
+        )
+        sys.exit(1)
+
+    return handled
+
+
+def main() -> None:
     """主函数"""
     # 首先初始化配置管理器
     config_manager = ConfigManager()
@@ -194,42 +241,24 @@ def main() -> None:  # noqa: C901, PLR0911
     # 解析命令行参数（需要在初始化 i18n 后进行，以支持翻译）
     args = parse_args()
 
-    # 处理语言设置参数
-    if args.locale:
-        if set_locale(args.locale):
-            config_manager.set_locale(args.locale)
-            sys.stdout.write(_("✓ Language set to: {locale}\n").format(locale=args.locale))
-        else:
-            sys.stderr.write(_("✗ Unsupported language: {locale}\n").format(locale=args.locale))
-            sys.exit(1)
-        return
-
-    if args.logs:
-        show_logs()
-        return
-
-    if args.init:
+    # 根据子命令分发处理
+    if args.command == "init":
         backend_init()
         return
 
-    if args.agent:
-        asyncio.run(select_agent())
+    if args.command == "logs":
+        show_logs(max_lines=args.lines)
         return
 
-    if args.llm_config:
-        llm_config()
-        return
-
-    # 处理命令行参数设置的日志级别
-    if args.log_level:
-        set_log_level(config_manager, args.log_level)
-        return
-
-    # 处理认证相关参数
-    if args.login:
+    if args.command == "login":
         browser_login()
         return
 
+    if args.command == "set-default":
+        handle_set_default(args, config_manager)
+        return
+
+    # 没有指定子命令时，启动 TUI
     setup_logging(config_manager)
     # 在 TUI 模式下禁用控制台日志输出，避免干扰界面
     disable_console_output()
