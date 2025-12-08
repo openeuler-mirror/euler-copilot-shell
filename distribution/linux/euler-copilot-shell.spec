@@ -135,6 +135,30 @@ rm -f /usr/lib/openeuler-intelligence/scripts/5-resource/env.*
 fi
 
 %changelog
+* Mon Dec 08 2025 openEuler <contact@openeuler.org> - 2.0.0-1
+- Major update to version 2.0.0
+
+* Wed Dec 03 2025 openEuler <contact@openeuler.org> - 0.10.2-7
+- cli: Add support for select text in LLM response TUI
+
+* Thu Nov 13 2025 openEuler <contact@openeuler.org> - 0.10.2-6
+- installer: Add support for package name and alternative package name formats
+- cli: Fix TUI keyboard interaction issue in some environments
+
+* Tue Nov 11 2025 openEuler <contact@openeuler.org> - 0.10.2-5
+- Fix detecting el version issue in deployment script
+
+* Tue Nov 04 2025 openEuler <contact@openeuler.org> - 0.10.2-4
+- Fix timeout when executing complex MCP tasks
+- Feature: Add login through browser (requires proper desktop environment)
+
+* Wed Oct 29 2025 openEuler <contact@openeuler.org> - 0.10.2-3
+- Fix issue where failing to fetch mcp when creating agent with oi-manager
+
+* Sat Oct 25 2025 openEuler <contact@openeuler.org> - 0.10.2-2
+- Add internationalization support (currently supports English and Simplified Chinese)
+- Fix issue where settings page may reopen multiple times
+
 * Mon Oct 20 2025 openEuler <contact@openeuler.org> - 0.10.2-1
 - 修复后端可用性校验，优化令牌格式验证
 
