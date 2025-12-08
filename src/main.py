@@ -17,7 +17,7 @@ from log.manager import (
     get_logger,
     setup_logging,
 )
-from tool import backend_init, browser_login, llm_config, select_agent
+from tool import backend_init, llm_config, select_agent
 
 
 def parse_args() -> argparse.Namespace:
@@ -74,14 +74,6 @@ For more information and documentation, please visit:
         default=1000,
         metavar="N",
         help=_("Number of log lines to display (default: 1000)"),
-    )
-
-    # login 子命令
-    subparsers.add_parser(
-        "login",
-        help=_("Login via browser to obtain API key"),
-        description=_("Login via browser to obtain API key"),
-        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     # set-default 子命令
@@ -248,10 +240,6 @@ def main() -> None:
 
     if args.command == "logs":
         show_logs(max_lines=args.lines)
-        return
-
-    if args.command == "login":
-        browser_login()
         return
 
     if args.command == "set-default":
