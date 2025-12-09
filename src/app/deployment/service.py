@@ -258,9 +258,6 @@ class DeploymentService:
         # 创建全局配置模板，包含部署时的配置信息
         await self._create_global_config_template(config)
 
-        # 注册用户配置的 LLM 和 Embedding 模型到后端
-        await self._register_llm_models(config, progress_callback)
-
         if progress_callback:
             progress_callback(self.state)
 
@@ -340,6 +337,7 @@ class DeploymentService:
             self._run_install_dependency_script,
             self._generate_config_files,
             self._run_init_config_script,
+            self._register_llm_models_step,
             self._run_agent_init,
         ]
 
@@ -761,14 +759,27 @@ class DeploymentService:
         self.state.add_log(_("✗ openEuler Intelligence API 服务检查超时失败"))
         return False
 
-    async def _run_agent_init(
+    async def _register_llm_models_step(
         self,
         config: DeploymentConfig,
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
-        """运行 Agent 初始化脚本"""
+        """
+        第 5 步：注册 LLM 模型
+
+        在后端服务拉起后，先进行健康检查，然后注册 LLM 和 Embedding 模型。
+        这一步包含用户登录、获取 token 等操作。
+
+        Args:
+            config: 部署配置
+            progress_callback: 进度回调函数
+
+        Returns:
+            bool: 是否成功
+
+        """
         self.state.current_step = 5
-        self.state.current_step_name = _("初始化 Agent 服务")
+        self.state.current_step_name = _("注册大模型配置")
         self.state.add_log(_("正在检查 openEuler Intelligence 后端服务状态..."))
 
         if progress_callback:
@@ -783,7 +794,22 @@ class DeploymentService:
             self.state.add_log(_("✗ openEuler Intelligence 服务检查失败"))
             return False
 
-        self.state.add_log(_("✓ openEuler Intelligence 服务检查通过，开始初始化 Agent..."))
+        self.state.add_log(_("✓ openEuler Intelligence 服务检查通过"))
+
+        # 注册用户配置的 LLM 和 Embedding 模型到后端
+        await self._register_llm_models(config, progress_callback)
+
+        return True
+
+    async def _run_agent_init(
+        self,
+        config: DeploymentConfig,
+        progress_callback: Callable[[DeploymentState], None] | None,
+    ) -> bool:
+        """运行 Agent 初始化脚本"""
+        self.state.current_step = 6
+        self.state.current_step_name = _("初始化 Agent 服务")
+        self.state.add_log(_("正在初始化 Agent 和 MCP 服务..."))
 
         if progress_callback:
             progress_callback(self.state)
