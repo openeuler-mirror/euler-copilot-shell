@@ -786,7 +786,7 @@ class LLMConfigScreen(ModalScreen[bool]):
                 yield ListView(id="model-list", classes="model-list")
 
             yield Static(
-                _("快捷键: [N] 新建  [Enter] 编辑  [D] 删除  [R] 刷新  [Esc] 退出"),
+                _("快捷键: \\[N] 新建  \\[Enter] 编辑  \\[D] 删除  \\[R] 刷新  \\[Esc] 退出"),
                 classes="help-text",
             )
             yield Static("", id="status-bar", classes="status-bar")
