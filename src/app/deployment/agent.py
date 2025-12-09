@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import getpass
 import json
 import subprocess
 import tomllib
@@ -175,6 +176,7 @@ class AgentManager:
     def __init__(self) -> None:
         """初始化智能体管理器"""
         self.config_manager = ConfigManager()
+        self.current_user = getpass.getuser()
 
         # 从 sysagent 配置读取数据目录
         data_dir = self._get_data_dir_from_sysagent_config()
@@ -425,7 +427,7 @@ class AgentManager:
                 "overview": config.overview,
                 "description": config.description,
                 "mcpType": config.mcp_type,
-                "author": config.author,
+                "author": self.current_user,
             }
 
             config_file = target_dir / "config.json"
@@ -770,7 +772,7 @@ class AgentManager:
                 id=app_id,
                 name=app_config.name,
                 description=app_config.description,
-                author=app_config.author,
+                author=self.current_user,
                 app_type=app_config.app_type,
                 published=app_config.published,
                 history_len=app_config.history_len,
