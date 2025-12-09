@@ -373,13 +373,44 @@ class HermesUserManager:
 
     def _get_remote_user_name(self) -> str | None:
         """获取当前 Linux 用户名"""
+        # 尝试多种方法获取用户名，按优先级排序
+        username = None
+
+        # 方法1: 尝试 os.getlogin()（最可靠，但在某些环境下会失败）
         try:
             username = os.getlogin()
-        except AttributeError:
-            self.logger.warning("当前系统不支持 os.getlogin()，无法设置 X-Remote-User 请求头")
-            return None
-        except OSError as error:  # pragma: no cover - 仅在异常系统状态下触发
-            self.logger.warning("获取当前用户名失败: %s", error)
-            return None
+            if username:
+                return username
+        except (AttributeError, OSError):
+            # os.getlogin() 在容器、某些终端或 SSH 会话中可能失败
+            pass
 
-        return username
+        # 方法2: 尝试从环境变量获取
+        for env_var in ("USER", "LOGNAME", "USERNAME"):
+            username = os.environ.get(env_var)
+            if username:
+                self.logger.debug("从环境变量 %s 获取到用户名: %s", env_var, username)
+                return username
+
+        # 方法3: 尝试使用 pwd 模块（基于 UID）
+        try:
+            import pwd
+            username = pwd.getpwuid(os.getuid()).pw_name
+            if username:
+                self.logger.debug("从 pwd 模块获取到用户名: %s", username)
+                return username
+        except (ImportError, KeyError, OSError):
+            pass
+
+        # 方法4: 尝试使用 getpass 模块
+        try:
+            import getpass
+            username = getpass.getuser()
+            if username:
+                self.logger.debug("从 getpass 模块获取到用户名: %s", username)
+                return username
+        except (ImportError, OSError):
+            pass
+
+        self.logger.warning("无法通过任何方法获取当前用户名，无法设置 X-Remote-User 请求头")
+        return None

@@ -1475,6 +1475,7 @@ class IntelligentTerminal(App):
 
     async def _validate_backend_configuration(self, backend: Backend) -> bool:
         """验证后端配置"""
+        self.logger.info("开始验证后端配置: %s", backend)
         try:
             if backend == Backend.OPENAI:
                 # 验证 OpenAI 配置
@@ -1488,13 +1489,25 @@ class IntelligentTerminal(App):
                     model=model,
                     timeout=10,
                 )
+                self.logger.info("OpenAI 配置验证结果: %s", valid)
                 return valid
 
             if backend == Backend.EULERINTELLI:
                 # 验证 Hermes 配置
                 llm_client = self.get_llm_client()
                 if isinstance(llm_client, HermesChatClient):
-                    return await llm_client.ensure_user_info_loaded()
+                    # 检查当前 token 状态
+                    current_token = self.config_manager.get_eulerintelli_key()
+                    http_token = llm_client.http_manager.auth_token
+                    self.logger.info(
+                        "Hermes 验证前状态 - 配置 token 长度: %d, http_token 长度: %d",
+                        len(current_token) if current_token else 0,
+                        len(http_token) if http_token else 0,
+                    )
+                    result = await llm_client.ensure_user_info_loaded()
+                    self.logger.info("Hermes 配置验证结果: %s", result)
+                    return result
+                self.logger.warning("LLM 客户端不是 HermesChatClient 类型")
                 return False
 
         except Exception:
@@ -1502,6 +1515,7 @@ class IntelligentTerminal(App):
             return False
 
         else:
+            self.logger.warning("未知的后端类型: %s", backend)
             return False
 
     def _show_config_validation_notification(self) -> None:
@@ -1523,7 +1537,11 @@ class IntelligentTerminal(App):
             # 等待设置页面退出
             await self._wait_for_settings_screen_exit()
 
-            # 设置页面退出后，重新验证配置
+            # 设置页面退出后，同步客户端的 token 状态
+            # 这是为了处理自动登录更新了配置但客户端状态不一致的情况
+            await self._sync_client_token_state()
+
+            # 重新验证配置
             backend = self.config_manager.get_backend()
             is_valid = await self._validate_backend_configuration(backend)
 
@@ -1537,6 +1555,29 @@ class IntelligentTerminal(App):
 
         except Exception:
             self.logger.exception("显示设置页面时发生错误")
+
+    async def _sync_client_token_state(self) -> None:
+        """同步客户端的 token 状态与配置"""
+        if not isinstance(self._llm_client, HermesChatClient):
+            return
+
+        config_token = self.config_manager.get_eulerintelli_key()
+        client_token = self._llm_client.http_manager.auth_token
+
+        if config_token != client_token:
+            self.logger.info(
+                "检测到 token 状态不一致，同步中... (配置: %d字符, 客户端: %d字符)",
+                len(config_token) if config_token else 0,
+                len(client_token) if client_token else 0,
+            )
+            # 更新客户端的 token
+            self._llm_client.http_manager.auth_token = config_token
+            # 重置 HTTP 客户端，使用新的 token
+            if self._llm_client.http_manager.client is not None:
+                self._llm_client.http_manager.client = None
+            # 清除用户信息缓存，强制重新获取
+            self._llm_client._user_info = None
+            self.logger.info("客户端 token 状态已同步")
 
     async def _wait_for_settings_screen_exit(self) -> None:
         """等待设置页面退出"""
