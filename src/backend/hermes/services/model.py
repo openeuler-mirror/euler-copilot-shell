@@ -455,11 +455,32 @@ class HermesModelManager:
 
             headers = self.http_manager.build_headers()
             request_data = setting.to_api_dict()
+
+            # 记录请求数据以便调试
+            self.logger.debug("全局设置请求 URL: %s", setting_url)
+            self.logger.debug("全局设置请求数据: %s", json.dumps(request_data, ensure_ascii=False))
+
             response = await client.put(setting_url, headers=headers, json=request_data)
 
             duration = time.time() - start_time
 
             if response.status_code != HTTP_OK:
+                # 尝试获取响应内容以便调试
+                try:
+                    response_text = response.text
+                    self.logger.error("全局设置 API 响应内容: %s", response_text)
+                except Exception:
+                    self.logger.exception("无法读取全局设置 API 响应内容")
+                    response_text = "无法读取响应内容"
+
+                # 记录完整的请求信息以便调试
+                self.logger.error(
+                    "全局设置 API 调用失败 - URL: %s, 请求数据: %s, 响应状态: %d",
+                    setting_url,
+                    json.dumps(request_data, ensure_ascii=False),
+                    response.status_code,
+                )
+
                 log_api_request(
                     self.logger,
                     "PUT",
