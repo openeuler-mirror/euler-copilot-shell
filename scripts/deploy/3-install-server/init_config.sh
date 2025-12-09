@@ -74,11 +74,12 @@ update_password() {
     return 1
   fi
 
-  sed -i "s/secret_key = '.*'/secret_key = '$MINIO_ROOT_PASSWORD'/" "$config_toml_file" || {
+  # 支持单引号和双引号两种格式
+  sed -i "s/secret_key = ['\"][^'\"]*['\"]/secret_key = '$MINIO_ROOT_PASSWORD'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 minio secret_key 失败${COLOR_RESET}"
     return 1
   }
-  sed -i "/\[postgres\]/,/^\[/ s/password = '.*'/password = '$PGSQL_PASSWORD'/" "$config_toml_file" || {
+  sed -i "/\[postgres\]/,/^\[/ s/password = ['\"][^'\"]*['\"]/password = '$PGSQL_PASSWORD'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 postgres password 失败${COLOR_RESET}"
     return 1
   }
@@ -89,19 +90,19 @@ update_password() {
   key3=$(generate_random_password 20)
   key4=$(generate_random_password 20)
 
-  sed -i "s/half_key1 = '.*'/half_key1 = '$key1'/" "$config_toml_file" || {
+  sed -i "s/half_key1 = ['\"][^'\"]*['\"]/half_key1 = '$key1'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 half_key1 失败${COLOR_RESET}"
     return 1
   }
-  sed -i "s/half_key2 = '.*'/half_key2 = '$key2'/" "$config_toml_file" || {
+  sed -i "s/half_key2 = ['\"][^'\"]*['\"]/half_key2 = '$key2'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 half_key2 失败${COLOR_RESET}"
     return 1
   }
-  sed -i "s/half_key3 = '.*'/half_key3 = '$key3'/" "$config_toml_file" || {
+  sed -i "s/half_key3 = ['\"][^'\"]*['\"]/half_key3 = '$key3'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 half_key3 失败${COLOR_RESET}"
     return 1
   }
-  sed -i "s/jwt_key = '.*'/jwt_key = '$key4'/" "$config_toml_file" || {
+  sed -i "s/jwt_key = ['\"][^'\"]*['\"]/jwt_key = '$key4'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 jwt_key 失败${COLOR_RESET}"
     return 1
   }
@@ -151,84 +152,141 @@ enable_services() {
 configure_postgresql() {
   echo -e "${COLOR_INFO}[Info] 开始配置 PostgreSQL...${COLOR_RESET}"
   local pg_service="postgresql"
-  # 1. 检查并处理 PostgreSQL 服务状态
-  echo -e "${COLOR_INFO}[Info] 检查 PostgreSQL 服务状态...${COLOR_RESET}"
-  if systemctl is-active --quiet "$pg_service"; then
-    echo -e "${COLOR_WARNING}[Warning] PostgreSQL 服务正在运行，正在停止服务...${COLOR_RESET}"
-    systemctl stop "$pg_service" || {
-      echo -e "${COLOR_ERROR}[Error] 无法停止 PostgreSQL 服务${COLOR_RESET}"
-      return 1
-    }
+  local pg_data_dir="/var/lib/pgsql/data"
+  local db_already_initialized=false
+
+  # 1. 检查数据库是否已初始化
+  if [ -d "$pg_data_dir" ] && [ -f "$pg_data_dir/PG_VERSION" ]; then
+    echo -e "${COLOR_INFO}[Info] 检测到已存在的 PostgreSQL 数据目录${COLOR_RESET}"
+    db_already_initialized=true
   fi
 
-  # 2. 初始化数据库
-  echo -e "${COLOR_INFO}[Info] 初始化 PostgreSQL 数据库...${COLOR_RESET}"
-  /usr/bin/postgresql-setup --initdb || {
-    echo -e "${COLOR_ERROR}[Error] 数据库初始化失败"
-    echo -e "请检查日志文件: /var/lib/pgsql/initdb_postgresql.log${COLOR_RESET}"
-    return 1
-  }
+  # 2. 检查并处理 PostgreSQL 服务状态
+  echo -e "${COLOR_INFO}[Info] 检查 PostgreSQL 服务状态...${COLOR_RESET}"
+  if systemctl is-active --quiet "$pg_service"; then
+    if [ "$db_already_initialized" = true ]; then
+      echo -e "${COLOR_INFO}[Info] PostgreSQL 服务正在运行，将复用现有数据库${COLOR_RESET}"
+    else
+      echo -e "${COLOR_WARNING}[Warning] PostgreSQL 服务正在运行，正在停止服务...${COLOR_RESET}"
+      systemctl stop "$pg_service" || {
+        echo -e "${COLOR_ERROR}[Error] 无法停止 PostgreSQL 服务${COLOR_RESET}"
+        return 1
+      }
+    fi
+  fi
 
-  # 3. 启动服务
+  # 3. 初始化数据库（仅在未初始化时执行）
+  if [ "$db_already_initialized" = false ]; then
+    echo -e "${COLOR_INFO}[Info] 初始化 PostgreSQL 数据库...${COLOR_RESET}"
+    /usr/bin/postgresql-setup --initdb || {
+      echo -e "${COLOR_ERROR}[Error] 数据库初始化失败"
+      echo -e "请检查日志文件: /var/lib/pgsql/initdb_postgresql.log${COLOR_RESET}"
+      return 1
+    }
+  else
+    echo -e "${COLOR_INFO}[Info] 跳过数据库初始化（已存在）${COLOR_RESET}"
+  fi
+
+  # 4. 启动服务
   echo -e "${COLOR_INFO}[Info] 启动 PostgreSQL 服务...${COLOR_RESET}"
   systemctl enable --now postgresql || {
     echo -e "${COLOR_ERROR}[Error] 服务启动失败${COLOR_RESET}"
     return 1
   }
 
-  # 4. 创建 euler_copilot 用户和数据库
-  echo -e "${COLOR_INFO}[Info] 创建 euler_copilot 用户和数据库...${COLOR_RESET}"
-  sudo -u postgres psql -c "CREATE USER euler_copilot WITH PASSWORD '$PGSQL_PASSWORD';" || {
-    echo -e "${COLOR_ERROR}[Error] 创建用户失败${COLOR_RESET}"
-    return 1
+  # 5. 确保 postgres 用户可以本地连接（使用 peer 认证）
+  local pg_hba_conf="/var/lib/pgsql/data/pg_hba.conf"
+  if [ ! -f "$pg_hba_conf" ]; then
+    pg_hba_conf="/var/lib/postgresql/data/pg_hba.conf"
+  fi
+
+  if [ -f "$pg_hba_conf" ]; then
+    # 临时确保本地连接使用 peer 认证（重新部署时可能已被改为 md5）
+    if grep -qE "^local\s+all\s+all\s+md5" "$pg_hba_conf"; then
+      echo -e "${COLOR_INFO}[Info] 临时恢复本地 peer 认证以配置数据库...${COLOR_RESET}"
+      sed -i -E 's/^(local\s+all\s+all\s+)md5/\1peer/' "$pg_hba_conf"
+      systemctl reload postgresql
+      sleep 2
+    fi
+  fi
+
+  # 6. 创建或更新 euler_copilot 用户和数据库
+  echo -e "${COLOR_INFO}[Info] 配置 euler_copilot 用户和数据库...${COLOR_RESET}"
+
+  # 定义 psql 执行函数
+  # 脚本以 root 运行，使用 su 切换到 postgres 用户
+  run_psql() {
+    su - postgres -c "psql $*"
   }
-  sudo -u postgres psql -c "CREATE DATABASE euler_copilot OWNER euler_copilot;" || {
-    echo -e "${COLOR_ERROR}[Error] 创建数据库失败${COLOR_RESET}"
-    return 1
-  }
-  sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE euler_copilot TO euler_copilot;" || {
+
+  # 检查用户是否存在
+  if run_psql "-tAc \"SELECT 1 FROM pg_roles WHERE rolname='euler_copilot'\"" | grep -q 1; then
+    echo -e "${COLOR_INFO}[Info] 用户已存在，更新密码...${COLOR_RESET}"
+    run_psql "-c \"ALTER USER euler_copilot WITH PASSWORD '$PGSQL_PASSWORD';\"" || {
+      echo -e "${COLOR_ERROR}[Error] 更新用户密码失败${COLOR_RESET}"
+      return 1
+    }
+  else
+    echo -e "${COLOR_INFO}[Info] 创建用户...${COLOR_RESET}"
+    run_psql "-c \"CREATE USER euler_copilot WITH PASSWORD '$PGSQL_PASSWORD';\"" || {
+      echo -e "${COLOR_ERROR}[Error] 创建用户失败${COLOR_RESET}"
+      return 1
+    }
+  fi
+
+  # 检查数据库是否存在
+  if run_psql "-tAc \"SELECT 1 FROM pg_database WHERE datname='euler_copilot'\"" | grep -q 1; then
+    echo -e "${COLOR_INFO}[Info] 数据库已存在，跳过创建${COLOR_RESET}"
+  else
+    echo -e "${COLOR_INFO}[Info] 创建数据库...${COLOR_RESET}"
+    run_psql "-c \"CREATE DATABASE euler_copilot OWNER euler_copilot;\"" || {
+      echo -e "${COLOR_ERROR}[Error] 创建数据库失败${COLOR_RESET}"
+      return 1
+    }
+  fi
+
+  run_psql "-c \"GRANT ALL PRIVILEGES ON DATABASE euler_copilot TO euler_copilot;\"" || {
     echo -e "${COLOR_ERROR}[Error] 授权失败${COLOR_RESET}"
     return 1
   }
 
-  # 5. 启用扩展（在 euler_copilot 数据库中）
+  # 7. 在 euler_copilot 数据库中启用扩展
   echo -e "${COLOR_INFO}[Info] 启用 PostgreSQL 扩展...${COLOR_RESET}"
-  sudo -u postgres psql -d euler_copilot -c "CREATE EXTENSION IF NOT EXISTS zhparser;" || {
+  run_psql "-d euler_copilot -c \"CREATE EXTENSION IF NOT EXISTS zhparser;\"" || {
     echo -e "${COLOR_ERROR}[Error] 无法启用 zhparser 扩展${COLOR_RESET}"
     return 1
   }
 
-  sudo -u postgres psql -d euler_copilot -c "CREATE EXTENSION IF NOT EXISTS vector;" || {
+  run_psql "-d euler_copilot -c \"CREATE EXTENSION IF NOT EXISTS vector;\"" || {
     echo -e "${COLOR_ERROR}[Error] 无法启用 vector 扩展${COLOR_RESET}"
     return 1
   }
 
   # CREATE TEXT SEARCH CONFIGURATION 不支持 IF NOT EXISTS，需要先检查再创建
-  sudo -u postgres psql -d euler_copilot -c "DO \$\$
+  run_psql "-d euler_copilot" <<'EOSQL' || {
+DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = 'zhparser') THEN
         CREATE TEXT SEARCH CONFIGURATION zhparser (PARSER = zhparser);
         ALTER TEXT SEARCH CONFIGURATION zhparser ADD MAPPING FOR n,v,a,i,e,l WITH simple;
     END IF;
 END
-\$\$;" || {
+$$;
+EOSQL
     echo -e "${COLOR_ERROR}[Error] 无法创建全文搜索配置${COLOR_RESET}"
     return 1
   }
 
-  # 6. 查找并修改pg_hba.conf
+  # 8. 配置认证方式（将 peer/ident 改为 md5）
   echo -e "${COLOR_INFO}[Info] 配置认证方式...${COLOR_RESET}"
-  local pg_hba_conf
-  if [ -f "/var/lib/pgsql/data/pg_hba.conf" ]; then
-    pg_hba_conf="/var/lib/pgsql/data/pg_hba.conf"
-  elif [ -f "/var/lib/postgresql/data/pg_hba.conf" ]; then
-    pg_hba_conf="/var/lib/postgresql/data/pg_hba.conf"
-  else
-    # 使用 pg_config 获取数据目录
-    local pg_data_dir
-    pg_data_dir=$(sudo -u postgres psql -t -c "SHOW data_directory;" 2>/dev/null | tr -d ' ')
-    if [ -n "$pg_data_dir" ] && [ -f "${pg_data_dir}/pg_hba.conf" ]; then
-      pg_hba_conf="${pg_data_dir}/pg_hba.conf"
+
+  # pg_hba_conf 已在步骤 5 中设置
+  if [ -z "$pg_hba_conf" ] || [ ! -f "$pg_hba_conf" ]; then
+    # 重新查找
+    if [ -f "/var/lib/pgsql/data/pg_hba.conf" ]; then
+      pg_hba_conf="/var/lib/pgsql/data/pg_hba.conf"
+    elif [ -f "/var/lib/postgresql/data/pg_hba.conf" ]; then
+      pg_hba_conf="/var/lib/postgresql/data/pg_hba.conf"
     fi
   fi
 
@@ -244,7 +302,8 @@ END
   sed -i -E 's/(local\s+all\s+all\s+)peer/\1md5/' "$pg_hba_conf"
   sed -i -E 's/(host\s+all\s+all\s+127\.0\.0\.1\/32\s+)ident/\1md5/' "$pg_hba_conf"
   sed -i -E 's/(host\s+all\s+all\s+::1\/128\s+)ident/\1md5/' "$pg_hba_conf"
-  # 7. 重启服务
+
+  # 9. 重启服务
   echo -e "${COLOR_INFO}[Info] 重启 PostgreSQL 服务...${COLOR_RESET}"
   systemctl daemon-reload
   systemctl restart postgresql || {
