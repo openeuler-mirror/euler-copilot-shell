@@ -460,6 +460,14 @@ class HermesModelManager:
             duration = time.time() - start_time
 
             if response.status_code != HTTP_OK:
+                # 尝试获取响应内容以便调试
+                try:
+                    response_text = response.text
+                    self.logger.error("全局设置 API 响应内容: %s", response_text)
+                except Exception:
+                    self.logger.exception("无法读取全局设置 API 响应内容")
+                    response_text = "无法读取响应内容"
+
                 log_api_request(
                     self.logger,
                     "PUT",

@@ -18,7 +18,7 @@ import toml
 
 from backend.hermes import HermesChatClient, HermesModelManager
 from backend.models import LLMConfig as HermesLLMConfig
-from backend.models import LLMGlobalSetting, LLMProvider
+from backend.models import LLMGlobalSetting, LLMProvider, LLMType
 from config.manager import ConfigManager
 from i18n.manager import _
 from log.manager import get_logger
@@ -1101,6 +1101,7 @@ class DeploymentService:
             model_name=config.llm.model,
             max_tokens=config.llm.max_tokens,
             llm_description=_("部署时配置的 Chat 模型（支持 Function Call）"),
+            llm_type=[LLMType.CHAT, LLMType.FUNCTION],
             extra_data={"temperature": config.llm.temperature},
         )
 
@@ -1126,6 +1127,7 @@ class DeploymentService:
             api_key=config.embedding.api_key,
             model_name=config.embedding.model,
             llm_description=_("部署时配置的 Embedding 模型"),
+            llm_type=[LLMType.EMBEDDING],
         )
 
         await model_manager.create_or_update_model(embedding_config)
