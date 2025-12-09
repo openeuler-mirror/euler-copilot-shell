@@ -167,11 +167,18 @@ class McpConfigLoader:
 class AgentManager:
     """智能体管理器"""
 
+    # sysagent 配置文件路径
+    SYSAGENT_CONFIG_PATH = Path("/etc/sysagent/config.toml")
+    # 默认数据目录（当配置文件不存在或读取失败时使用）
+    DEFAULT_DATA_DIR = Path("/var/lib/sysagent")
+
     def __init__(self) -> None:
         """初始化智能体管理器"""
         self.config_manager = ConfigManager()
 
-        self.semantics_dir = Path("/opt/copilot/semantics")
+        # 从 sysagent 配置读取数据目录
+        data_dir = self._get_data_dir_from_sysagent_config()
+        self.semantics_dir = data_dir / "semantics"
         self.mcp_template_dir = self.semantics_dir / "mcp" / "template"
         self.app_dir = self.semantics_dir / "app"
 
@@ -571,6 +578,33 @@ class AgentManager:
             if key in data:
                 return data[key]
         return None
+
+    def _get_data_dir_from_sysagent_config(self) -> Path:
+        """
+        从 sysagent 配置文件读取数据目录
+
+        Returns:
+            Path: 数据目录路径
+
+        """
+        try:
+            if self.SYSAGENT_CONFIG_PATH.exists():
+                with self.SYSAGENT_CONFIG_PATH.open("rb") as f:
+                    config = tomllib.load(f)
+                data_dir = config.get("deploy", {}).get("data_dir")
+                if data_dir:
+                    logger.debug("从 sysagent 配置读取数据目录: %s", data_dir)
+                    return Path(data_dir)
+            logger.warning(
+                "sysagent 配置文件不存在或未配置 data_dir，使用默认路径: %s",
+                self.DEFAULT_DATA_DIR,
+            )
+        except Exception:
+            logger.exception(
+                "读取 sysagent 配置失败，使用默认路径: %s",
+                self.DEFAULT_DATA_DIR,
+            )
+        return self.DEFAULT_DATA_DIR
 
     async def _write_app_metadata_to_filesystem(
         self,
