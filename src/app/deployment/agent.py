@@ -319,7 +319,7 @@ class AgentManager:
         将 MCP 配置写入文件系统
 
         Returns:
-            dict[str, str]: MCP 路径名 -> 服务 ID (目录名) 的映射
+            dict[str, str]: mcp center 目录名 -> MCP ID 的映射
 
         """
         self._report_progress(
@@ -337,17 +337,19 @@ class AgentManager:
             return {}
 
         mcp_service_mapping: dict[str, str] = {}
+        total_written = 0
 
         for dir_name, config in configs:
             try:
-                service_id = await self._write_single_mcp_config(
+                mcp_id = await self._write_single_mcp_config(
                     dir_name,
                     config,
                     state,
                     callback,
                 )
-                if service_id:
-                    mcp_service_mapping[dir_name] = service_id
+                if mcp_id:
+                    mcp_service_mapping[dir_name] = mcp_id
+                    total_written += 1
 
             except Exception:
                 self._report_progress(
@@ -361,7 +363,7 @@ class AgentManager:
         self._report_progress(
             state,
             _("[green]MCP 配置写入完成，成功 {count} 个[/green]").format(
-                count=len(mcp_service_mapping),
+                count=total_written,
             ),
             callback,
         )
@@ -374,34 +376,51 @@ class AgentManager:
         state: DeploymentState,
         callback: Callable[[DeploymentState], None] | None,
     ) -> str | None:
-        """写入单个 MCP 配置到文件系统"""
+        """
+        写入单个 MCP 配置到文件系统
+
+        Args:
+            dir_name: mcp center 中的目录名
+            config: 从该目录加载的 MCP 配置
+            state: 部署状态对象
+            callback: 进度回调函数
+
+        Returns:
+            str | None: 成功写入的 MCP ID，失败返回 None
+
+        """
         self._report_progress(
             state,
             _("  [blue]写入 {name}...[/blue]").format(name=config.name),
             callback,
         )
 
+        raw_servers = config.mcp_servers or {}
+
+        if raw_servers and all(isinstance(cfg, dict) for cfg in raw_servers.values()):
+            server_entries = raw_servers
+        else:
+            server_entries = {dir_name: raw_servers if isinstance(raw_servers, dict) else {}}
+
+        # 每个 mcp center 子目录只包含一个 MCP 配置
+        if len(server_entries) != 1:
+            logger.warning(
+                "MCP 配置 %s 包含 %d 个服务，预期为 1 个",
+                config.name,
+                len(server_entries),
+            )
+
+        mcp_id = next(iter(server_entries.keys()))
+        server_config = server_entries[mcp_id]
+
         try:
-            target_dir = self.mcp_template_dir / dir_name
+            target_dir = self.mcp_template_dir / mcp_id
             target_dir.mkdir(parents=True, exist_ok=True)
 
-            raw_servers = config.mcp_servers or {}
-
-            if raw_servers and all(isinstance(cfg, dict) for cfg in raw_servers.values()):
-                server_entries = raw_servers
-            else:
-                server_entries = {dir_name: raw_servers if isinstance(raw_servers, dict) else {}}
-
-            normalized_servers = {
-                server_name: self._normalize_mcp_config(server_config)
-                for server_name, server_config in server_entries.items()
-            }
-
-            if not normalized_servers:
-                normalized_servers[dir_name] = self._normalize_mcp_config({})
+            normalized_config = self._normalize_mcp_config(server_config)
 
             config_data = {
-                "mcpServers": normalized_servers,
+                "mcpServers": {mcp_id: normalized_config},
                 "name": config.name,
                 "overview": config.overview,
                 "description": config.description,
@@ -424,14 +443,20 @@ class AgentManager:
         else:
             self._report_progress(
                 state,
-                _("  [green]{name} 写入成功 -> {path}[/green]").format(
+                _("  [green]{name} 写入成功 (MCP ID: {mcp_id}) -> {path}[/green]").format(
                     name=config.name,
+                    mcp_id=mcp_id,
                     path=target_dir,
                 ),
                 callback,
             )
-            logger.info("MCP 配置写入成功: %s -> %s", config.name, target_dir)
-            return dir_name
+            logger.info(
+                "MCP 配置写入成功: %s (ID: %s) -> %s",
+                config.name,
+                mcp_id,
+                target_dir,
+            )
+            return mcp_id
 
     def _normalize_mcp_config(self, raw_config: dict[str, Any]) -> dict[str, Any]:
         defaults: dict[str, Any] = {
@@ -615,8 +640,13 @@ class AgentManager:
         """
         从配置文件读取应用信息并写入智能体元数据到文件系统
 
+        Args:
+            mcp_service_mapping: mcp center 目录名 -> MCP ID 的映射
+            state: 部署状态对象
+            callback: 进度回调函数
+
         Returns:
-            str | None: 默认智能体的 UUID，如果失败则返回 None
+            str | None: 默认智能体的 UUID，失败返回 None
 
         """
         self._report_progress(
@@ -646,7 +676,7 @@ class AgentManager:
                 )
                 if app_id:
                     created_agents.append((app_config.name, app_id))
-                    if i == 0:  # 第一个作为默认
+                    if i == 0:
                         default_app_id = app_id
 
             except Exception:
@@ -680,7 +710,19 @@ class AgentManager:
         state: DeploymentState,
         callback: Callable[[DeploymentState], None] | None,
     ) -> str | None:
-        """写入单个智能体元数据到文件系统"""
+        """
+        写入单个智能体元数据到文件系统
+
+        Args:
+            app_config: 应用配置
+            mcp_service_mapping: mcp center 目录名 -> MCP ID 的映射
+            state: 部署状态对象
+            callback: 进度回调函数
+
+        Returns:
+            str | None: 创建的智能体 UUID，失败返回 None
+
+        """
         self._report_progress(
             state,
             _("[magenta]创建智能体元数据: {name}[/magenta]").format(
@@ -801,7 +843,17 @@ class AgentManager:
         mcp_paths: list[str],
         mcp_service_mapping: dict[str, str],
     ) -> tuple[list[str], list[str]]:
-        """解析 MCP 路径为服务 ID"""
+        """
+        解析 MCP 路径为服务 ID
+
+        Args:
+            mcp_paths: TOML 配置中的 mcpPath 列表
+            mcp_service_mapping: mcp center 目录名 -> MCP ID 的映射
+
+        Returns:
+            tuple[list[str], list[str]]: (MCP ID 列表, 未找到的路径列表)
+
+        """
         mcp_service_ids: list[str] = []
         missing_services: list[str] = []
 
