@@ -35,7 +35,7 @@ from textual.widgets import (
 from app.tui_header import OIHeader
 from backend.hermes import HermesChatClient
 from backend.models import LLMConfig as HermesLLMConfig
-from backend.models import LLMProvider, LLMType, ModelInfo
+from backend.models import LLMGlobalSetting, LLMProvider, LLMType, ModelInfo
 from config.manager import ConfigManager
 from i18n.manager import _
 from log.manager import get_logger
@@ -642,6 +642,177 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
             return True
 
 
+class DefaultModelScreen(ModalScreen[LLMGlobalSetting | None]):
+    """默认模型设置屏幕"""
+
+    BINDINGS: ClassVar[list[Binding]] = [
+        Binding("escape", "cancel", "取消"),
+    ]
+
+    CSS = """
+    DefaultModelScreen {
+        align: center middle;
+    }
+
+    .default-container {
+        width: 80;
+        height: auto;
+        max-height: 30;
+        background: $surface;
+        border: solid $primary;
+        padding: 1 2;
+    }
+
+    .default-title {
+        text-align: center;
+        text-style: bold;
+        color: $primary;
+        padding: 1;
+        margin-bottom: 1;
+        height: auto;
+    }
+
+    .default-form-row {
+        height: auto;
+        min-height: 3;
+        margin-bottom: 1;
+    }
+
+    .default-label {
+        width: 20;
+        text-align: right;
+        content-align: right middle;
+        padding-right: 1;
+        height: auto;
+    }
+
+    .default-select {
+        width: 1fr;
+        height: auto;
+    }
+
+    .default-hint {
+        color: $text-muted;
+        text-style: italic;
+        padding: 1;
+        height: auto;
+    }
+
+    .default-button-row {
+        height: auto;
+        min-height: 3;
+        align: center middle;
+        margin-top: 1;
+        padding: 1 0;
+    }
+
+    .default-button-row > Button {
+        margin: 0 1;
+        min-width: 12;
+    }
+    """
+
+    def __init__(
+        self,
+        models: list[ModelInfo],
+        current_function_llm: str | None = None,
+        current_embedding_llm: str | None = None,
+    ) -> None:
+        """初始化默认模型设置屏幕"""
+        super().__init__()
+        self._models = models
+        self._current_function_llm = current_function_llm
+        self._current_embedding_llm = current_embedding_llm
+
+    def compose(self) -> ComposeResult:
+        """组合界面组件"""
+        # 筛选支持 Function 的模型
+        function_models = [
+            m for m in self._models if LLMType.FUNCTION in m.llm_type or LLMType.CHAT in m.llm_type
+        ]
+        # 筛选支持 Embedding 的模型
+        embedding_models = [m for m in self._models if LLMType.EMBEDDING in m.llm_type]
+
+        # 构建选择列表
+        function_options: list[tuple[str, str]] = [(_("（不设置）"), "")]
+        for m in function_models:
+            llm_id = m.llm_id or m.model_name
+            function_options.append((llm_id, llm_id))
+
+        embedding_options: list[tuple[str, str]] = [(_("（不设置）"), "")]
+        for m in embedding_models:
+            llm_id = m.llm_id or m.model_name
+            embedding_options.append((llm_id, llm_id))
+
+        # 确定当前选中值
+        function_value = self._current_function_llm or ""
+        embedding_value = self._current_embedding_llm or ""
+
+        with Container(classes="default-container"):
+            yield OIHeader()
+            yield Static(_("设置默认模型"), classes="default-title")
+
+            with Horizontal(classes="default-form-row"):
+                yield Label(_("Function 模型:"), classes="default-label")
+                yield Select(
+                    function_options,
+                    value=function_value,
+                    id="function_llm",
+                    classes="default-select",
+                    allow_blank=True,
+                )
+
+            with Horizontal(classes="default-form-row"):
+                yield Label(_("Embedding 模型:"), classes="default-label")
+                yield Select(
+                    embedding_options,
+                    value=embedding_value,
+                    id="embedding_llm",
+                    classes="default-select",
+                    allow_blank=True,
+                )
+
+            yield Static(
+                _("Function 模型用于智能体的函数调用，Embedding 模型用于向量嵌入。"),
+                classes="default-hint",
+            )
+
+            with Horizontal(classes="default-button-row"):
+                yield Button(_("保存"), id="save-default-btn", variant="primary")
+                yield Button(_("取消"), id="cancel-default-btn")
+
+    @on(Button.Pressed, "#save-default-btn")
+    def on_save_pressed(self) -> None:
+        """处理保存按钮"""
+        try:
+            function_llm_value = self.query_one("#function_llm", Select).value
+            embedding_llm_value = self.query_one("#embedding_llm", Select).value
+
+            # 处理空值和 NoSelection 类型
+            function_llm: str | None = None
+            if isinstance(function_llm_value, str) and function_llm_value:
+                function_llm = function_llm_value
+
+            embedding_llm: str | None = None
+            if isinstance(embedding_llm_value, str) and embedding_llm_value:
+                embedding_llm = embedding_llm_value
+
+            setting = LLMGlobalSetting(
+                function_llm=function_llm,
+                embedding_llm=embedding_llm,
+            )
+            self.dismiss(setting)
+
+        except Exception as e:
+            self.notify(_("获取配置失败: {error}").format(error=str(e)), severity="error")
+            logger.exception("获取默认模型配置失败")
+
+    @on(Button.Pressed, "#cancel-default-btn")
+    def action_cancel(self) -> None:
+        """处理取消按钮"""
+        self.dismiss(None)
+
+
 class LLMConfigScreen(ModalScreen[bool]):
     """
     LLM 配置管理屏幕
@@ -793,6 +964,7 @@ class LLMConfigScreen(ModalScreen[bool]):
 
             with Horizontal(classes="button-row"):
                 yield Button(_("新建模型"), id="new-btn", variant="primary")
+                yield Button(_("设置默认"), id="default-btn")
                 yield Button(_("刷新列表"), id="refresh-btn")
                 yield Button(_("退出"), id="quit-btn")
 
@@ -911,6 +1083,38 @@ class LLMConfigScreen(ModalScreen[bool]):
         except LookupError:
             logger.debug("无法查询加载状态标签")
         self._load_models()
+
+    @on(Button.Pressed, "#default-btn")
+    def on_default_btn_pressed(self) -> None:
+        """打开设置默认模型界面"""
+        if not self._models:
+            self.notify(_("暂无可用模型"), severity="warning")
+            return
+
+        # TODO: 未来可从后端获取当前默认设置
+        self.app.push_screen(
+            DefaultModelScreen(self._models),
+            self._handle_default_setting_result,
+        )
+
+    def _handle_default_setting_result(self, result: LLMGlobalSetting | None) -> None:
+        """处理默认模型设置结果"""
+        if result is None:
+            return
+        self._save_default_setting(result)
+
+    @work(exclusive=True)
+    async def _save_default_setting(self, setting: LLMGlobalSetting) -> None:
+        """保存默认模型设置"""
+        if not self._client:
+            return
+
+        try:
+            await self._client.model_manager.update_global_setting(setting)
+            self.notify(_("默认模型设置已保存"), severity="information")
+        except Exception as e:
+            logger.exception("保存默认模型设置失败")
+            self.notify(_("保存默认模型设置失败: {error}").format(error=str(e)), severity="error")
 
     @on(Button.Pressed, "#quit-btn")
     def action_quit(self) -> None:

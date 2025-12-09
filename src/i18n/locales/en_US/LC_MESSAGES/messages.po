@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: oi-cli\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
-"POT-Creation-Date: 2025-12-08 10:01+0800\n"
+"POT-Creation-Date: 2025-12-09 16:32+0800\n"
 "PO-Revision-Date: 2025-10-20 19:28+0800\n"
 "Last-Translator: openEuler Intelligence Team\n"
 "Language-Team: English\n"
@@ -406,16 +406,16 @@ msgstr "✓ Global model settings updated"
 msgid "部署时配置的 Chat 模型（支持 Function Call）"
 msgstr "Chat model configured during deployment (supports Function Call)"
 
-#: src/app/deployment/service.py:1108
+#: src/app/deployment/service.py:1109
 #, python-brace-format
 msgid "✓ 已注册 LLM 模型: {model}"
 msgstr "✓ LLM model registered: {model}"
 
-#: src/app/deployment/service.py:1128
+#: src/app/deployment/service.py:1129
 msgid "部署时配置的 Embedding 模型"
 msgstr "Embedding model configured during deployment"
 
-#: src/app/deployment/service.py:1132
+#: src/app/deployment/service.py:1134
 #, python-brace-format
 msgid "✓ 已注册 Embedding 模型: {model}"
 msgstr "✓ Embedding model registered: {model}"
@@ -455,7 +455,7 @@ msgstr "Start deployment"
 
 #: src/app/deployment/ui.py:149 src/app/settings.py:65
 #: src/app/dialogs/user.py:180 src/app/dialogs/common.py:27
-#: src/tool/oi_llm_config.py:538
+#: src/tool/oi_llm_config.py:538 src/tool/oi_llm_config.py:782
 msgid "取消"
 msgstr "Cancel"
 
@@ -491,7 +491,7 @@ msgid "验证状态:"
 msgstr "Validation status:"
 
 #: src/app/deployment/ui.py:187 src/app/deployment/ui.py:253
-#: src/app/deployment/components/modes.py:204
+#: src/app/deployment/components/modes.py:185
 msgid "未验证"
 msgstr "Not validated"
 
@@ -524,7 +524,7 @@ msgstr "For example: bge-m3"
 msgid "配置验证失败"
 msgstr "Configuration validation failed"
 
-#: src/app/deployment/ui.py:412 src/app/deployment/components/modes.py:390
+#: src/app/deployment/ui.py:412 src/app/deployment/components/modes.py:289
 #, python-brace-format
 msgid "[green]✓ {message}[/green]"
 msgstr "[green]✓ {message}[/green]"
@@ -543,13 +543,13 @@ msgstr ""
 "calling."
 
 #: src/app/deployment/ui.py:422 src/app/deployment/ui.py:456
-#: src/app/deployment/components/modes.py:394
+#: src/app/deployment/components/modes.py:293
 #, python-brace-format
 msgid "[red]✗ {message}[/red]"
 msgstr "[red]✗ {message}[/red]"
 
 #: src/app/deployment/ui.py:426 src/app/deployment/ui.py:460
-#: src/app/deployment/components/modes.py:399
+#: src/app/deployment/components/modes.py:298
 #, python-brace-format
 msgid "[red]✗ 验证异常: {error}[/red]"
 msgstr "[red]✗ Validation exception: {error}[/red]"
@@ -672,24 +672,24 @@ msgstr "Error"
 msgid "确定"
 msgstr "Confirm"
 
-#: src/app/deployment/components/modes.py:58
-#: src/app/deployment/components/modes.py:92
-#: src/app/deployment/components/modes.py:158
-#: src/app/deployment/components/modes.py:230
+#: src/app/deployment/components/modes.py:55
+#: src/app/deployment/components/modes.py:89
+#: src/app/deployment/components/modes.py:149
+#: src/app/deployment/components/modes.py:199
 #: src/app/deployment/components/env_check.py:105
-#: src/tool/oi_select_agent.py:29 src/tool/oi_llm_config.py:797
+#: src/tool/oi_select_agent.py:29 src/tool/oi_llm_config.py:969
 msgid "退出"
 msgstr "Exit"
 
-#: src/app/deployment/components/modes.py:68
+#: src/app/deployment/components/modes.py:65
 msgid "openEuler Intelligence 初始化"
 msgstr "openEuler Intelligence initialization"
 
-#: src/app/deployment/components/modes.py:70
+#: src/app/deployment/components/modes.py:67
 msgid "请选择您的初始化方式："
 msgstr "Please select your initialization method:"
 
-#: src/app/deployment/components/modes.py:77
+#: src/app/deployment/components/modes.py:74
 msgid ""
 "连接现有服务\n"
 "\n"
@@ -699,7 +699,7 @@ msgstr ""
 "\n"
 "Enter the URL and Token of an existing service to connect"
 
-#: src/app/deployment/components/modes.py:85
+#: src/app/deployment/components/modes.py:82
 msgid ""
 "部署新服务\n"
 "\n"
@@ -709,157 +709,70 @@ msgstr ""
 "\n"
 "Deploy a new service environment and configuration on this machine"
 
-#: src/app/deployment/components/modes.py:157
-#: src/app/deployment/components/modes.py:229
+#: src/app/deployment/components/modes.py:148
+#: src/app/deployment/components/modes.py:198
 #: src/app/deployment/components/env_check.py:104
 msgid "返回"
 msgstr "Back"
 
-#: src/app/deployment/components/modes.py:174
+#: src/app/deployment/components/modes.py:162
 msgid "连接现有 openEuler Intelligence 服务"
 msgstr "Connect to existing openEuler Intelligence service"
 
-#: src/app/deployment/components/modes.py:176
+#: src/app/deployment/components/modes.py:164
 msgid "请输入您的 openEuler Intelligence 服务连接信息："
 msgstr ""
 "Please enter your openEuler Intelligence service connection information:"
 
-#: src/app/deployment/components/modes.py:181
+#: src/app/deployment/components/modes.py:169
 msgid "服务 URL:"
 msgstr "Service URL:"
 
-#: src/app/deployment/components/modes.py:183
+#: src/app/deployment/components/modes.py:171
 msgid "例如：http://your-server:8002"
 msgstr "For example: http://your-server:8002"
 
-#: src/app/deployment/components/modes.py:189
+#: src/app/deployment/components/modes.py:177
 msgid "访问令牌:"
 msgstr "Access token:"
 
-#: src/app/deployment/components/modes.py:191
+#: src/app/deployment/components/modes.py:179
 msgid "可选，您的访问令牌"
 msgstr "Optional, your access token"
 
+#: src/app/deployment/components/modes.py:188
+msgid ""
+"提示：\n"
+"• 服务 URL 通常以 http:// 或 https:// 开头\n"
+"• 访问令牌为可选项，如果服务无需认证可留空\n"
+"• 系统会自动验证连接并保存配置"
+msgstr ""
+"Tips:\n"
+"• Service URL usually starts with http:// or https://\n"
+"• Access token is optional, can be left empty if service requires no "
+"authentication\n"
+"• System will automatically validate connection and save configuration"
+
 #: src/app/deployment/components/modes.py:197
-msgid "获取"
-msgstr "Get"
-
-#: src/app/deployment/components/modes.py:209
-msgid ""
-"提示：\n"
-"• 服务 URL 通常以 http:// 或 https:// 开头\n"
-"• 访问令牌为可选项，如果服务无需认证可留空\n"
-"• 输入服务 URL 后，可点击 '获取' 按钮通过浏览器获取访问令牌\n"
-"• 也可以从 openEuler Intelligence Web 界面手动获取并填入\n"
-"• 系统会自动验证连接并保存配置"
-msgstr ""
-"Tips:\n"
-"• Service URL usually starts with http:// or https://\n"
-"• Access token is optional, can be left empty if service requires no "
-"authentication\n"
-"• After entering service URL, click 'Get' button to obtain access token "
-"through browser\n"
-"• You can also manually obtain from openEuler Intelligence Web interface and "
-"fill in\n"
-"• System will automatically validate connection and save configuration"
-
-#: src/app/deployment/components/modes.py:218
-msgid ""
-"提示：\n"
-"• 服务 URL 通常以 http:// 或 https:// 开头\n"
-"• 访问令牌为可选项，如果服务无需认证可留空\n"
-"• [yellow]当前环境不支持浏览器，请从 Web 界面手动获取访问令牌[/yellow]\n"
-"• 系统会自动验证连接并保存配置"
-msgstr ""
-"Tips:\n"
-"• Service URL usually starts with http:// or https://\n"
-"• Access token is optional, can be left empty if service requires no "
-"authentication\n"
-"• [yellow]Browser is not available in current environment, please manually "
-"obtain access token from web interface[/yellow]\n"
-"• System will automatically validate connection and save configuration"
-
-#: src/app/deployment/components/modes.py:228
 msgid "连接并保存"
 msgstr "Connect and save"
 
-#: src/app/deployment/components/modes.py:256
-msgid "当前环境不支持打开浏览器，请手动从 Web 界面获取访问令牌"
-msgstr ""
-"Browser is not available in current environment, please manually obtain "
-"access token from web interface"
-
-#: src/app/deployment/components/modes.py:264
-msgid "请先输入服务 URL"
-msgstr "Please enter service URL first"
-
-#: src/app/deployment/components/modes.py:273
-msgid "[yellow]正在获取授权 URL...[/yellow]"
-msgstr "[yellow]Obtaining authorization URL...[/yellow]"
-
-#: src/app/deployment/components/modes.py:278
-msgid "[red]✗ 获取授权 URL 失败[/red]"
-msgstr "[red]✗ Failed to obtain authorization URL[/red]"
-
-#: src/app/deployment/components/modes.py:287
-msgid "[yellow]正在打开浏览器登录...[/yellow]"
-msgstr "[yellow]Opening browser for login...[/yellow]"
-
-#: src/app/deployment/components/modes.py:289
-msgid "已打开浏览器，请完成登录"
-msgstr "Browser opened, please complete login"
-
-#: src/app/deployment/components/modes.py:296
-#, python-brace-format
-msgid "获取 API Key 失败: {error}"
-msgstr "Failed to obtain API Key: {error}"
-
-#: src/app/deployment/components/modes.py:307
+#: src/app/deployment/components/modes.py:219
 msgid "请等待连接验证完成"
 msgstr "Please wait for connection validation to complete"
 
-#: src/app/deployment/components/modes.py:319
+#: src/app/deployment/components/modes.py:231
 msgid "配置已保存，初始化完成！"
 msgstr "Configuration saved, initialization completed!"
 
-#: src/app/deployment/components/modes.py:323
+#: src/app/deployment/components/modes.py:235
 #, python-brace-format
 msgid "保存配置时发生错误: {error}"
 msgstr "Error occurred while saving configuration: {error}"
 
-#: src/app/deployment/components/modes.py:377
+#: src/app/deployment/components/modes.py:276
 msgid "[yellow]验证连接中...[/yellow]"
 msgstr "[yellow]Validating connection...[/yellow]"
-
-#: src/app/deployment/components/modes.py:415
-msgid "[yellow]等待登录完成...[/yellow]"
-msgstr "[yellow]Waiting for login to complete...[/yellow]"
-
-#: src/app/deployment/components/modes.py:431
-msgid "[green]✓ 登录成功，已获取 API Key[/green]"
-msgstr "[green]✓ Login successful, API Key obtained[/green]"
-
-#: src/app/deployment/components/modes.py:437
-msgid "[red]✗ 登录失败：未收到 session ID[/red]"
-msgstr "[red]✗ Login failed: session ID not received[/red]"
-
-#: src/app/deployment/components/modes.py:442
-#, python-brace-format
-msgid "[red]✗ 登录失败: {error}[/red]"
-msgstr "[red]✗ Login failed: {error}[/red]"
-
-#: src/app/deployment/components/modes.py:446
-msgid "[red]✗ 登录失败：未知结果[/red]"
-msgstr "[red]✗ Login failed: unknown result[/red]"
-
-#: src/app/deployment/components/modes.py:451
-msgid "[yellow]登录已取消[/yellow]"
-msgstr "[yellow]Login cancelled[/yellow]"
-
-#: src/app/deployment/components/modes.py:455
-#, python-brace-format
-msgid "[red]✗ 登录异常: {error}[/red]"
-msgstr "[red]✗ Login exception: {error}[/red]"
 
 #: src/app/deployment/components/env_check.py:92
 msgid "环境检查"
@@ -1269,7 +1182,7 @@ msgid "设置"
 msgstr "Settings"
 
 #: src/app/settings.py:64 src/app/dialogs/user.py:179
-#: src/tool/oi_llm_config.py:535
+#: src/tool/oi_llm_config.py:535 src/tool/oi_llm_config.py:781
 msgid "保存"
 msgstr "Save"
 
@@ -1476,7 +1389,7 @@ msgstr "Failed to load models"
 msgid "加载中..."
 msgstr "Loading..."
 
-#: src/app/dialogs/user.py:219
+#: src/app/dialogs/user.py:219 src/tool/oi_llm_config.py:1091
 msgid "暂无可用模型"
 msgstr "No models available"
 
@@ -1646,19 +1559,15 @@ msgstr "View and manage application logs"
 msgid "Number of log lines to display (default: 1000)"
 msgstr "Number of log lines to display (default: 1000)"
 
-#: src/main.py:82 src/main.py:83
-msgid "Login via browser to obtain API key"
-msgstr "Login via browser to obtain API key"
-
-#: src/main.py:90
+#: src/main.py:82
 msgid "Configure default settings"
 msgstr "Configure default settings"
 
-#: src/main.py:91
+#: src/main.py:83
 msgid "Configure default settings for openEuler Intelligence"
 msgstr "Configure default settings for openEuler Intelligence"
 
-#: src/main.py:98
+#: src/main.py:90
 msgid ""
 "Change openEuler Intelligence LLM settings (requires valid local backend "
 "service)\n"
@@ -1668,75 +1577,76 @@ msgstr ""
 "service)\n"
 " * Configuration editing requires administrator privileges"
 
-#: src/main.py:105
+#: src/main.py:97
 msgid "Select default agent"
 msgstr "Select default agent"
 
-#: src/main.py:113
+#: src/main.py:105
 #, python-brace-format
 msgid "Set display language (available: {locales})"
 msgstr "Set display language (available: {locales})"
 
-#: src/main.py:119
+#: src/main.py:111
 msgid "Set log level (available: DEBUG, INFO, WARNING, ERROR)"
 msgstr "Set log level (available: DEBUG, INFO, WARNING, ERROR)"
 
-#: src/main.py:148
+#: src/main.py:140
 #, python-brace-format
 msgid "Failed to retrieve logs: {error}\n"
 msgstr "Failed to retrieve logs: {error}\n"
 
-#: src/main.py:155
+#: src/main.py:147
 #, python-brace-format
 msgid "Invalid log level: {level}\n"
 msgstr "Invalid log level: {level}\n"
 
-#: src/main.py:164
+#: src/main.py:156
 #, python-format
 msgid "Log level has been set to: %s"
 msgstr "Log level has been set to: %s"
 
-#: src/main.py:165
+#: src/main.py:157
 msgid "This is a DEBUG level test message"
 msgstr "This is a DEBUG level test message"
 
-#: src/main.py:166
+#: src/main.py:158
 msgid "This is an INFO level test message"
 msgstr "This is an INFO level test message"
 
-#: src/main.py:167
+#: src/main.py:159
 msgid "This is a WARNING level test message"
 msgstr "This is a WARNING level test message"
 
-#: src/main.py:168
+#: src/main.py:160
 msgid "This is an ERROR level test message"
 msgstr "This is an ERROR level test message"
 
-#: src/main.py:170
+#: src/main.py:162
 #, python-brace-format
 msgid "✓ Log level successfully set to: {level}\n"
 msgstr "✓ Log level successfully set to: {level}\n"
 
-#: src/main.py:171
+#: src/main.py:163
 msgid "✓ Logging system initialized\n"
 msgstr "✓ Logging system initialized\n"
 
-#: src/main.py:192
+#: src/main.py:184
 #, python-brace-format
 msgid "✓ Language set to: {locale}\n"
 msgstr "✓ Language set to: {locale}\n"
 
-#: src/main.py:194
+#: src/main.py:186
 #, python-brace-format
 msgid "✗ Unsupported language: {locale}\n"
 msgstr "✗ Unsupported language: {locale}\n"
 
-#: src/main.py:216
+#: src/main.py:208
 msgid ""
 "No option specified. Use 'oi set-default --help' for available options.\n"
-msgstr "No option specified. Use 'oi set-default --help' for available options.\n"
+msgstr ""
+"No option specified. Use 'oi set-default --help' for available options.\n"
 
-#: src/main.py:275
+#: src/main.py:263
 msgid "Fatal error in Intelligent Shell application"
 msgstr "Fatal error in Intelligent Shell application"
 
@@ -1778,7 +1688,7 @@ msgstr ""
 msgid "错误: {error}\n"
 msgstr "Error: {error}\n"
 
-#: src/tool/oi_llm_config.py:398 src/tool/oi_llm_config.py:795
+#: src/tool/oi_llm_config.py:398 src/tool/oi_llm_config.py:966
 msgid "新建模型"
 msgstr "New model"
 
@@ -1882,115 +1792,154 @@ msgstr "JSON format error: {error}"
 msgid "收集配置失败: {error}"
 msgstr "Failed to collect configuration: {error}"
 
-#: src/tool/oi_llm_config.py:782
+#: src/tool/oi_llm_config.py:737 src/tool/oi_llm_config.py:742
+msgid "（不设置）"
+msgstr "(Not set)"
+
+#: src/tool/oi_llm_config.py:753
+msgid "设置默认模型"
+msgstr "Set Default Models"
+
+#: src/tool/oi_llm_config.py:756
+msgid "Function 模型:"
+msgstr "Function Model:"
+
+#: src/tool/oi_llm_config.py:766
+msgid "Embedding 模型:"
+msgstr "Embedding Model:"
+
+#: src/tool/oi_llm_config.py:776
+msgid "Function 模型用于智能体的函数调用，Embedding 模型用于向量嵌入。"
+msgstr "Function model is used for agent function calls, Embedding model is used for vector embeddings."
+
+#: src/tool/oi_llm_config.py:807
+#, python-brace-format
+msgid "获取配置失败: {error}"
+msgstr "Failed to get configuration: {error}"
+
+#: src/tool/oi_llm_config.py:953
 msgid "大模型配置管理"
 msgstr "LLM Configuration Management"
 
-#: src/tool/oi_llm_config.py:785
+#: src/tool/oi_llm_config.py:956
 msgid "正在加载模型列表..."
 msgstr "Loading model list..."
 
-#: src/tool/oi_llm_config.py:789
-msgid "快捷键: [N] 新建  [Enter] 编辑  [D] 删除  [R] 刷新  [Esc] 退出"
+#: src/tool/oi_llm_config.py:960
+msgid ""
+"快捷键: \\[N] 新建  \\[Enter] 编辑  \\[D] 删除  \\[R] 刷新  \\[Esc] 退出"
 msgstr "Shortcuts: [N] New  [Enter] Edit  [D] Delete  [R] Refresh  [Esc] Exit"
 
-#: src/tool/oi_llm_config.py:796
+#: src/tool/oi_llm_config.py:967
+msgid "设置默认"
+msgstr "Set Default"
+
+#: src/tool/oi_llm_config.py:968
 msgid "刷新列表"
 msgstr "Refresh list"
 
-#: src/tool/oi_llm_config.py:813
+#: src/tool/oi_llm_config.py:985
 msgid "未配置后端服务地址"
 msgstr "Backend service address not configured"
 
-#: src/tool/oi_llm_config.py:820
+#: src/tool/oi_llm_config.py:992
 msgid "登录失败，无法获取用户信息"
 msgstr "Login failed, unable to get user information"
 
-#: src/tool/oi_llm_config.py:824
+#: src/tool/oi_llm_config.py:996
 msgid "当前用户不是管理员，无法管理模型"
 msgstr "Current user is not an administrator, unable to manage models"
 
-#: src/tool/oi_llm_config.py:831
+#: src/tool/oi_llm_config.py:1003
 #, python-brace-format
 msgid "初始化失败: {error}"
 msgstr "Initialization failed: {error}"
 
-#: src/tool/oi_llm_config.py:844
+#: src/tool/oi_llm_config.py:1016
 #, python-brace-format
 msgid "加载模型列表失败: {error}"
 msgstr "Failed to load model list: {error}"
 
-#: src/tool/oi_llm_config.py:876
+#: src/tool/oi_llm_config.py:1048
 msgid "暂无模型，点击「新建模型」添加"
 msgstr "No models yet, click \"New model\" to add"
 
-#: src/tool/oi_llm_config.py:890
+#: src/tool/oi_llm_config.py:1062
 #, python-brace-format
 msgid "共 {count} 个模型"
 msgstr "{count} model(s) in total"
 
-#: src/tool/oi_llm_config.py:907
+#: src/tool/oi_llm_config.py:1079
 msgid "正在刷新..."
 msgstr "Refreshing..."
 
-#: src/tool/oi_llm_config.py:930 src/tool/oi_llm_config.py:995
+#: src/tool/oi_llm_config.py:1114
+msgid "默认模型设置已保存"
+msgstr "Default model settings saved"
+
+#: src/tool/oi_llm_config.py:1117
+#, python-brace-format
+msgid "保存默认模型设置失败: {error}"
+msgstr "Failed to save default model settings: {error}"
+
+#: src/tool/oi_llm_config.py:1134 src/tool/oi_llm_config.py:1199
 msgid "请先选择一个模型"
 msgstr "Please select a model first"
 
-#: src/tool/oi_llm_config.py:942
+#: src/tool/oi_llm_config.py:1146
 #, python-brace-format
 msgid "编辑模型失败: {error}"
 msgstr "Failed to edit model: {error}"
 
-#: src/tool/oi_llm_config.py:957
+#: src/tool/oi_llm_config.py:1161
 #, python-brace-format
 msgid "获取模型配置失败: {error}"
 msgstr "Failed to get model configuration: {error}"
 
-#: src/tool/oi_llm_config.py:983
+#: src/tool/oi_llm_config.py:1187
 msgid "模型保存成功"
 msgstr "Model saved successfully"
 
-#: src/tool/oi_llm_config.py:988
+#: src/tool/oi_llm_config.py:1192
 #, python-brace-format
 msgid "保存模型失败: {error}"
 msgstr "Failed to save model: {error}"
 
-#: src/tool/oi_llm_config.py:1008 src/tool/oi_llm_config.py:1023
+#: src/tool/oi_llm_config.py:1212 src/tool/oi_llm_config.py:1227
 #, python-brace-format
 msgid "删除模型失败: {error}"
 msgstr "Failed to delete model: {error}"
 
-#: src/tool/oi_llm_config.py:1018
+#: src/tool/oi_llm_config.py:1222
 #, python-brace-format
 msgid "模型已删除: {id}"
 msgstr "Model deleted: {id}"
 
-#: src/tool/oi_llm_config.py:1069
+#: src/tool/oi_llm_config.py:1273
 msgid "需要管理员权限才能管理 LLM 配置"
 msgstr "Administrator privileges are required to manage LLM configuration"
 
-#: src/tool/oi_llm_config.py:1070
+#: src/tool/oi_llm_config.py:1274
 msgid "请使用 'sudo oi --llm-config' 运行"
 msgstr "Please run with 'sudo oi --llm-config'"
 
-#: src/tool/oi_llm_config.py:1087
+#: src/tool/oi_llm_config.py:1291
 msgid "错误：无法启动 LLM 配置工具"
 msgstr "Error: Unable to start LLM configuration tool"
 
-#: src/tool/oi_llm_config.py:1098
+#: src/tool/oi_llm_config.py:1302
 msgid "✓ LLM 配置管理完成"
 msgstr "✓ LLM configuration management completed"
 
-#: src/tool/oi_llm_config.py:1100
+#: src/tool/oi_llm_config.py:1304
 msgid "LLM 配置管理已退出"
 msgstr "LLM configuration management has exited"
 
-#: src/tool/oi_llm_config.py:1103
+#: src/tool/oi_llm_config.py:1307
 msgid "配置已取消"
 msgstr "Configuration cancelled"
 
-#: src/tool/oi_llm_config.py:1107
+#: src/tool/oi_llm_config.py:1311
 #, python-brace-format
 msgid "错误：{error}"
 msgstr "Error: {error}"
@@ -1999,201 +1948,201 @@ msgstr "Error: {error}"
 msgid "openEuler Intelligence 部署助手"
 msgstr "openEuler Intelligence Deployment Assistant"
 
-#: src/tool/validators.py:165 src/tool/validators.py:614
-#: src/tool/validators.py:677
+#: src/tool/validators.py:135 src/tool/validators.py:584
+#: src/tool/validators.py:647
 #, python-brace-format
 msgid "连接超时 - 无法在 {timeout} 秒内连接到 {endpoint}"
 msgstr ""
 "Connection timeout - Unable to connect to {endpoint} within {timeout} seconds"
 
-#: src/tool/validators.py:170
+#: src/tool/validators.py:140
 #, python-brace-format
 msgid "LLM 配置验证失败: {error}"
 msgstr "LLM configuration validation failed: {error}"
 
-#: src/tool/validators.py:174
+#: src/tool/validators.py:144
 msgid "LLM 配置验证成功"
 msgstr "LLM configuration validation successful"
 
-#: src/tool/validators.py:176
+#: src/tool/validators.py:146
 #, python-brace-format
 msgid " - 支持工具调用，类型: {func_type}"
 msgstr " - Tool calling supported, type: {func_type}"
 
-#: src/tool/validators.py:178
+#: src/tool/validators.py:148
 msgid " - 不支持工具调用"
 msgstr " - Tool calling not supported"
 
-#: src/tool/validators.py:231
+#: src/tool/validators.py:201
 msgid "无法连接到 Embedding 模型服务。"
 msgstr "Unable to connect to Embedding model service."
 
-#: src/tool/validators.py:271
+#: src/tool/validators.py:241
 msgid "基本对话测试失败"
 msgstr "Basic chat test failed"
 
-#: src/tool/validators.py:274
+#: src/tool/validators.py:244
 msgid "基本对话功能正常"
 msgstr "Basic chat functionality is working"
 
-#: src/tool/validators.py:276
+#: src/tool/validators.py:246
 msgid "对话响应为空"
 msgstr "Chat response is empty"
 
-#: src/tool/validators.py:348
+#: src/tool/validators.py:318
 msgid "不支持任何 function_call 格式"
 msgstr "No function_call format is supported"
 
-#: src/tool/validators.py:383
+#: src/tool/validators.py:353
 #, python-brace-format
 msgid "tools 格式测试失败: {error}"
 msgstr "tools format test failed: {error}"
 
-#: src/tool/validators.py:388
+#: src/tool/validators.py:358
 msgid "支持 tools 格式的 function_call"
 msgstr "tools format function_call is supported"
 
-#: src/tool/validators.py:390
+#: src/tool/validators.py:360
 msgid "不支持工具调用功能"
 msgstr "Tool calling functionality is not supported"
 
-#: src/tool/validators.py:431
+#: src/tool/validators.py:401
 #, python-brace-format
 msgid "structured_output 格式测试失败: {error}"
 msgstr "structured_output format test failed: {error}"
 
-#: src/tool/validators.py:439
+#: src/tool/validators.py:409
 msgid "structured_output 响应不是有效 JSON"
 msgstr "structured_output response is not valid JSON"
 
-#: src/tool/validators.py:441
+#: src/tool/validators.py:411
 msgid "支持 structured_output 格式"
 msgstr "structured_output format is supported"
 
-#: src/tool/validators.py:443
+#: src/tool/validators.py:413
 msgid "structured_output 响应为空"
 msgstr "structured_output response is empty"
 
-#: src/tool/validators.py:469
+#: src/tool/validators.py:439
 #, python-brace-format
 msgid "json_mode 格式测试失败: {error}"
 msgstr "json_mode format test failed: {error}"
 
-#: src/tool/validators.py:477
+#: src/tool/validators.py:447
 msgid "json_mode 响应不是有效 JSON"
 msgstr "json_mode response is not valid JSON"
 
-#: src/tool/validators.py:479
+#: src/tool/validators.py:449
 msgid "支持 json_mode 格式"
 msgstr "json_mode format is supported"
 
-#: src/tool/validators.py:481
+#: src/tool/validators.py:451
 msgid "json_mode 响应为空"
 msgstr "json_mode response is empty"
 
-#: src/tool/validators.py:529
+#: src/tool/validators.py:499
 msgid "支持 vLLM 结构化输出（部分支持）"
 msgstr "vLLM structured output is supported (partial support)"
 
-#: src/tool/validators.py:534
+#: src/tool/validators.py:504
 #, python-brace-format
 msgid "不支持 vLLM guided_json 格式: {error}"
 msgstr "vLLM guided_json format is not supported: {error}"
 
-#: src/tool/validators.py:538
+#: src/tool/validators.py:508
 msgid "vLLM guided_json 响应无效"
 msgstr "vLLM guided_json response is invalid"
 
-#: src/tool/validators.py:585
+#: src/tool/validators.py:555
 msgid "支持 Ollama function_call 格式"
 msgstr "Ollama function_call format is supported"
 
-#: src/tool/validators.py:588
+#: src/tool/validators.py:558
 #, python-brace-format
 msgid "不支持 Ollama function_call 格式: {error}"
 msgstr "Ollama function_call format is not supported: {error}"
 
-#: src/tool/validators.py:591
+#: src/tool/validators.py:561
 msgid "Ollama function_call 响应无效"
 msgstr "Ollama function_call response is invalid"
 
-#: src/tool/validators.py:619
+#: src/tool/validators.py:589
 #, python-brace-format
 msgid "OpenAI Embedding 配置验证失败: {error}"
 msgstr "OpenAI Embedding configuration validation failed: {error}"
 
-#: src/tool/validators.py:628
+#: src/tool/validators.py:598
 #, python-brace-format
 msgid "OpenAI Embedding 配置验证成功 - 维度: {dimension}"
 msgstr ""
 "OpenAI Embedding configuration validation successful - Dimension: {dimension}"
 
-#: src/tool/validators.py:636
+#: src/tool/validators.py:606
 msgid "OpenAI Embedding 响应为空"
 msgstr "OpenAI Embedding response is empty"
 
-#: src/tool/validators.py:664
+#: src/tool/validators.py:634
 #, python-brace-format
 msgid "MindIE Embedding 配置验证成功 - 维度: {dimension}"
 msgstr ""
 "MindIE Embedding configuration validation successful - Dimension: {dimension}"
 
-#: src/tool/validators.py:674
+#: src/tool/validators.py:644
 msgid "MindIE Embedding 响应格式不正确"
 msgstr "MindIE Embedding response format is incorrect"
 
-#: src/tool/validators.py:682
+#: src/tool/validators.py:652
 #, python-brace-format
 msgid "MindIE Embedding 配置验证失败: {error}"
 msgstr "MindIE Embedding configuration validation failed: {error}"
 
-#: src/tool/validators.py:704
+#: src/tool/validators.py:674
 msgid "服务 URL 必须以 http:// 或 https:// 开头"
 msgstr "Service URL must start with http:// or https://"
 
-#: src/tool/validators.py:715
+#: src/tool/validators.py:685
 msgid "访问令牌格式无效"
 msgstr "Access token format is invalid"
 
-#: src/tool/validators.py:740
+#: src/tool/validators.py:710
 msgid "服务返回的数据格式不正确"
 msgstr "Service returned data in incorrect format"
 
-#: src/tool/validators.py:746
+#: src/tool/validators.py:716
 msgid "连接成功"
 msgstr "Connection successful"
 
-#: src/tool/validators.py:748
+#: src/tool/validators.py:718
 #, python-brace-format
 msgid "服务返回错误代码: {code}"
 msgstr "Service returned error code: {code}"
 
-#: src/tool/validators.py:751
+#: src/tool/validators.py:721
 msgid "无法连接到服务，请检查 URL 和网络连接"
 msgstr "Unable to connect to service, please check URL and network connection"
 
-#: src/tool/validators.py:753
+#: src/tool/validators.py:723
 msgid "连接超时，请检查网络连接或服务状态"
 msgstr "Connection timeout, please check network connection or service status"
 
-#: src/tool/validators.py:756
+#: src/tool/validators.py:726
 #, python-brace-format
 msgid "连接验证失败: {error}"
 msgstr "Connection validation failed: {error}"
 
-#: src/tool/validators.py:762
+#: src/tool/validators.py:732
 msgid "访问令牌无效或已过期"
 msgstr "Access token is invalid or expired"
 
-#: src/tool/validators.py:763
+#: src/tool/validators.py:733
 msgid "访问权限不足"
 msgstr "Insufficient access permissions"
 
-#: src/tool/validators.py:764
+#: src/tool/validators.py:734
 msgid "API 接口不存在，请检查服务版本"
 msgstr "API interface does not exist, please check service version"
 
-#: src/tool/validators.py:767
+#: src/tool/validators.py:737
 #, python-brace-format
 msgid "服务响应异常，状态码: {status_code}"
 msgstr "Service response error, status code: {status_code}"
@@ -2247,108 +2196,3 @@ msgstr ""
 #: src/tool/command_processor.py:206
 msgid "读取 stderr 失败"
 msgstr "Failed to read stderr"
-
-#: src/tool/oi_login.py:67
-#, python-brace-format
-msgid "✗ Failed to get authorization URL: {error}\n"
-msgstr "✗ Failed to get authorization URL: {error}\n"
-
-#: src/tool/oi_login.py:136
-msgid "✗ Error: Browser is not available in current environment\n"
-msgstr "✗ Error: Browser is not available in current environment\n"
-
-#: src/tool/oi_login.py:137
-msgid "This feature requires a graphical environment with browser support.\n"
-msgstr "This feature requires a graphical environment with browser support.\n"
-
-#: src/tool/oi_login.py:138
-msgid "If you are using SSH, please run this command on the server directly\n"
-msgstr "If you are using SSH, please run this command on the server directly\n"
-
-#: src/tool/oi_login.py:139
-msgid "or use X11 forwarding / VNC to enable graphical access.\n"
-msgstr "or use X11 forwarding / VNC to enable graphical access.\n"
-
-#: src/tool/oi_login.py:151
-msgid ""
-"\n"
-"\n"
-"✗ Login cancelled by user\n"
-msgstr ""
-"\n"
-"\n"
-"✗ Login cancelled by user\n"
-
-#: src/tool/oi_login.py:155
-#, python-brace-format
-msgid ""
-"\n"
-"✗ An error occurred during login: {error}\n"
-msgstr ""
-"\n"
-"✗ An error occurred during login: {error}\n"
-
-#: src/tool/oi_login.py:169
-msgid "✗ Error: openEuler Intelligence URL not configured\n"
-msgstr "✗ Error: openEuler Intelligence URL not configured\n"
-
-#: src/tool/oi_login.py:170
-msgid "Please run deployment initialization first: oi --init\n"
-msgstr "Please run deployment initialization first: oi --init\n"
-
-#: src/tool/oi_login.py:181
-msgid "Getting authorization URL from server...\n"
-msgstr "Getting authorization URL from server...\n"
-
-#: src/tool/oi_login.py:185
-msgid "✗ Failed to get authorization URL\n"
-msgstr "✗ Failed to get authorization URL\n"
-
-#: src/tool/oi_login.py:194
-msgid "Opening browser for login...\n"
-msgstr "Opening browser for login...\n"
-
-#: src/tool/oi_login.py:195
-msgid "If the browser doesn't open automatically, please visit:\n"
-msgstr "If the browser doesn't open automatically, please visit:\n"
-
-#: src/tool/oi_login.py:202
-msgid "Waiting for login to complete...\n"
-msgstr "Waiting for login to complete...\n"
-
-#: src/tool/oi_login.py:215
-msgid ""
-"\n"
-"✓ Login successful!\n"
-msgstr ""
-"\n"
-"✓ Login successful!\n"
-
-#: src/tool/oi_login.py:216
-msgid "✓ API Key has been saved to configuration\n"
-msgstr "✓ API Key has been saved to configuration\n"
-
-#: src/tool/oi_login.py:219
-msgid ""
-"\n"
-"✗ Login failed: No session ID received\n"
-msgstr ""
-"\n"
-"✗ Login failed: No session ID received\n"
-
-#: src/tool/oi_login.py:223
-#, python-brace-format
-msgid ""
-"\n"
-"✗ Login failed: {error}\n"
-msgstr ""
-"\n"
-"✗ Login failed: {error}\n"
-
-#: src/tool/oi_login.py:226
-msgid ""
-"\n"
-"✗ Login failed: Unknown result\n"
-msgstr ""
-"\n"
-"✗ Login failed: Unknown result\n"
