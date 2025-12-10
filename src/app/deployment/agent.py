@@ -117,21 +117,28 @@ class McpConfigLoader:
             logger.error(msg)
             raise ConfigError(msg)
 
+        logger.info("开始扫描 MCP 配置目录: %s", self.config_dir)
         for subdir in self.config_dir.iterdir():
             if subdir.is_dir():
+                logger.debug("检查子目录: %s", subdir.name)
                 config_file = subdir / "config.json"
                 if config_file.exists():
+                    logger.debug("找到配置文件: %s", config_file)
                     try:
                         config = self._load_config(config_file, subdir.name)
                         configs.append((subdir.name, config))
-                        logger.debug("成功加载 MCP 配置: %s", subdir.name)
+                        logger.debug("成功加载 MCP 配置: %s (名称: %s)", subdir.name, config.name)
                     except Exception:
                         logger.exception("加载 MCP 配置失败: %s", config_file)
                         continue
+                else:
+                    logger.debug("子目录 %s 中没有 config.json", subdir.name)
 
         if not configs:
             msg = f"未找到有效的 MCP 配置文件在: {self.config_dir}"
             logger.warning(msg)
+        else:
+            logger.info("共加载了 %d 个 MCP 配置", len(configs))
 
         return configs
 
@@ -341,7 +348,9 @@ class AgentManager:
         mcp_service_mapping: dict[str, str] = {}
         total_written = 0
 
+        logger.info("开始写入 %d 个 MCP 配置", len(configs))
         for dir_name, config in configs:
+            logger.debug("正在处理配置目录: %s, 配置名称: %s", dir_name, config.name)
             try:
                 mcp_id = await self._write_single_mcp_config(
                     dir_name,
@@ -352,6 +361,9 @@ class AgentManager:
                 if mcp_id:
                     mcp_service_mapping[dir_name] = mcp_id
                     total_written += 1
+                    logger.debug("配置 %s 写入成功，MCP ID: %s", dir_name, mcp_id)
+                else:
+                    logger.warning("配置 %s 写入失败，未返回 MCP ID", dir_name)
 
             except Exception:
                 self._report_progress(
@@ -359,7 +371,7 @@ class AgentManager:
                     _("  [red]处理 {name} 失败[/red]").format(name=config.name),
                     callback,
                 )
-                logger.exception("处理 MCP 配置失败: %s", config.name)
+                logger.exception("处理 MCP 配置失败: %s (目录: %s)", config.name, dir_name)
                 continue
 
         self._report_progress(
@@ -397,12 +409,16 @@ class AgentManager:
             callback,
         )
 
+        logger.debug("处理 MCP 配置: dir_name=%s, config.name=%s", dir_name, config.name)
         raw_servers = config.mcp_servers or {}
+        logger.debug("原始服务器配置: %s", raw_servers)
 
         if raw_servers and all(isinstance(cfg, dict) for cfg in raw_servers.values()):
             server_entries = raw_servers
         else:
             server_entries = {dir_name: raw_servers if isinstance(raw_servers, dict) else {}}
+
+        logger.debug("解析后的服务器条目: %s", list(server_entries.keys()))
 
         # 每个 mcp center 子目录只包含一个 MCP 配置
         if len(server_entries) != 1:
@@ -414,9 +430,11 @@ class AgentManager:
 
         mcp_id = next(iter(server_entries.keys()))
         server_config = server_entries[mcp_id]
+        logger.info("提取的 MCP ID: %s", mcp_id)
 
         try:
             target_dir = self.mcp_template_dir / mcp_id
+            logger.info("目标目录: %s", target_dir)
             target_dir.mkdir(parents=True, exist_ok=True)
 
             normalized_config = self._normalize_mcp_config(server_config)
@@ -431,8 +449,11 @@ class AgentManager:
             }
 
             config_file = target_dir / "config.json"
+            logger.info("写入配置文件: %s", config_file)
             with config_file.open("w", encoding="utf-8") as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=4)
+
+            logger.info("配置文件写入成功: %s", config_file)
 
         except Exception:
             self._report_progress(
