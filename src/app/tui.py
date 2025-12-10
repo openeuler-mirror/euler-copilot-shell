@@ -1282,8 +1282,8 @@ class IntelligentTerminal(App):
             if isinstance(llm_client, HermesChatClient):
                 llm_client.set_current_agent(app_id)
 
-                # 如果智能体发生变更，强制重置 conversation
-                if agent_changed:
+                # 如果智能体发生变更且当前已有会话，强制重置 conversation
+                if agent_changed and self._get_current_conversation_id():
                     llm_client.reset_conversation()
                     self.logger.info("智能体已变更，已重置会话")
 
