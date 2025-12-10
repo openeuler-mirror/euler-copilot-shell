@@ -218,6 +218,11 @@ class HermesChatClient(LLMClientBase):
         if self._conversation_manager is not None:
             self._conversation_manager.reset_conversation()
 
+    def clear_user_info_cache(self) -> None:
+        """清除用户信息缓存，强制下次重新获取"""
+        self._user_info = None
+        self.logger.debug("用户信息缓存已清除")
+
     async def get_llm_response(self, prompt: str) -> AsyncGenerator[str, None]:
         """
         生成命令建议

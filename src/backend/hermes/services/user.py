@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import getpass
 import json
-import os
 import time
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
