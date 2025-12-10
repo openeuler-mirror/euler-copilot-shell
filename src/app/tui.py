@@ -442,8 +442,7 @@ class IntelligentTerminal(App):
             self._llm_client = BackendFactory.create_client(self.config_manager)
 
             # 初始化时设置智能体状态
-            if (self.current_agent and self.current_agent[0] and
-                isinstance(self._llm_client, HermesChatClient)):
+            if self.current_agent and self.current_agent[0] and isinstance(self._llm_client, HermesChatClient):
                 self._llm_client.set_current_agent(self.current_agent[0])
 
         # 为 Hermes 客户端设置 MCP 事件处理器以支持 MCP 交互
@@ -872,9 +871,7 @@ class IntelligentTerminal(App):
 
         # 处理第一段内容，创建适当的输出组件
         if is_first_content:
-            new_line: OutputLine | MarkdownOutput = (
-                MarkdownOutput(content) if is_llm_output else OutputLine(content)
-            )
+            new_line: OutputLine | MarkdownOutput = MarkdownOutput(content) if is_llm_output else OutputLine(content)
             output_container.mount(new_line)
             return new_line
 
@@ -1274,12 +1271,32 @@ class IntelligentTerminal(App):
 
         def on_agent_selected(selected_agent: tuple[str, str]) -> None:
             """智能体选择回调"""
-            self.current_agent = selected_agent
+            # 检测智能体是否发生变更
+            previous_agent_id = self.current_agent[0]
             app_id, _name = selected_agent
+            agent_changed = previous_agent_id != app_id
+
+            self.current_agent = selected_agent
 
             # 设置智能体到客户端
             if isinstance(llm_client, HermesChatClient):
                 llm_client.set_current_agent(app_id)
+
+                # 如果智能体发生变更，强制重置 conversation
+                if agent_changed:
+                    llm_client.reset_conversation()
+                    self.logger.info("智能体已变更，已重置会话")
+
+                    # 在界面上显示提示信息
+                    try:
+                        output_container = self.query_one("#output-container")
+                        output_container.mount(
+                            MarkdownOutput(_("> Agent changed, conversation has been reset")),
+                        )
+                        # 滚动到底部显示提示
+                        output_container.scroll_end(animate=False)
+                    except Exception:
+                        self.logger.exception("显示智能体变更提示失败")
 
         dialog = AgentSelectionDialog(agent_list, on_agent_selected, self.current_agent)
         self.push_screen(dialog)
@@ -1576,7 +1593,7 @@ class IntelligentTerminal(App):
             if self._llm_client.http_manager.client is not None:
                 self._llm_client.http_manager.client = None
             # 清除用户信息缓存，强制重新获取
-            self._llm_client._user_info = None
+            self._llm_client.clear_user_info_cache()
             self.logger.info("客户端 token 状态已同步")
 
     async def _wait_for_settings_screen_exit(self) -> None:
