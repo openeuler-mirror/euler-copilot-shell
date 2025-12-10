@@ -1291,8 +1291,11 @@ class IntelligentTerminal(App):
                     try:
                         output_container = self.query_one("#output-container")
                         output_container.mount(
-                            MarkdownOutput(_("> Agent changed, conversation has been reset")),
+                            MarkdownOutput(_("Agent changed, conversation has been reset")).add_class(
+                                "mcp-progress-block",
+                            ),
                         )
+                        output_container.mount(OutputLine(""))  # 添加空行分隔
                         # 滚动到底部显示提示
                         output_container.scroll_end(animate=False)
                     except Exception:

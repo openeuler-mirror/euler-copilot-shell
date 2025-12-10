@@ -1289,8 +1289,8 @@ msgid "智能问答"
 msgstr "智能问答"
 
 #: src/app/tui.py:1294
-msgid "> Agent changed, conversation has been reset"
-msgstr "> 智能体已变更，会话已重置"
+msgid "Agent changed, conversation has been reset"
+msgstr "智能体已变更，会话已重置"
 
 #: src/app/tui.py:1375
 msgid "💡 MCP response sent"

@@ -1328,8 +1328,8 @@ msgid "智能问答"
 msgstr "Smart Chat"
 
 #: src/app/tui.py:1294
-msgid "> Agent changed, conversation has been reset"
-msgstr "> Agent changed, conversation has been reset"
+msgid "Agent changed, conversation has been reset"
+msgstr "Agent changed, conversation has been reset"
 
 #: src/app/tui.py:1375
 msgid "💡 MCP response sent"
