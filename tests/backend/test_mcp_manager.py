@@ -447,3 +447,151 @@ class TestHermesMCPManager:
 
         with pytest.raises(HermesAPIError):
             await mcp_manager.get_mcp_services()
+
+    @pytest.mark.asyncio
+    async def test_activate_all_mcp_success(self) -> None:
+        """测试成功激活所有可用的 MCP 服务"""
+        http_manager = HermesHttpManager("https://api.example.com", "token")
+        mcp_manager = HermesMCPManager(http_manager)
+
+        # Mock get_mcp_services 返回的数据
+        services = [
+            MCPService(
+                mcp_service_id="rag-mcp",
+                name="RAG MCP",
+                description="RAG 服务",
+                author="admin",
+                is_active=False,
+                status="ready",
+            ),
+            MCPService(
+                mcp_service_id="search-mcp",
+                name="Search MCP",
+                description="搜索服务",
+                author="admin",
+                is_active=False,
+                status="ready",
+            ),
+            MCPService(
+                mcp_service_id="web-mcp",
+                name="Web MCP",
+                description="Web 服务",
+                author="admin",
+                is_active=True,  # 已激活，不应该再激活
+                status="ready",
+            ),
+            MCPService(
+                mcp_service_id="test-mcp",
+                name="Test MCP",
+                description="测试服务",
+                author="admin",
+                is_active=False,
+                status="error",  # 状态不是 ready，不应该激活
+            ),
+        ]
+
+        # Mock activate_mcp 响应
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = HTTP_OK
+        mock_response.json.return_value = {
+            "code": 200,
+            "message": "OK",
+            "result": {"serviceId": "mcp-service-123456"},
+        }
+
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        http_manager.get_client = AsyncMock(return_value=mock_client)
+
+        # Mock get_mcp_services
+        mcp_manager.get_mcp_services = AsyncMock(return_value=services)
+
+        # 调用方法
+        await mcp_manager.activate_all_mcp()
+
+        # 验证只激活了 2 个服务（rag-mcp 和 search-mcp）
+        assert mock_client.post.call_count == 2  # noqa: PLR2004
+
+    @pytest.mark.asyncio
+    async def test_activate_all_mcp_no_services_to_activate(self) -> None:
+        """测试没有需要激活的 MCP 服务"""
+        http_manager = HermesHttpManager("https://api.example.com", "token")
+        mcp_manager = HermesMCPManager(http_manager)
+
+        # 所有服务都已激活或状态不是 ready
+        services = [
+            MCPService(
+                mcp_service_id="web-mcp",
+                name="Web MCP",
+                description="Web 服务",
+                author="admin",
+                is_active=True,
+                status="ready",
+            ),
+            MCPService(
+                mcp_service_id="test-mcp",
+                name="Test MCP",
+                description="测试服务",
+                author="admin",
+                is_active=False,
+                status="error",
+            ),
+        ]
+
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_client.post = AsyncMock()
+
+        http_manager.get_client = AsyncMock(return_value=mock_client)
+        mcp_manager.get_mcp_services = AsyncMock(return_value=services)
+
+        # 调用方法
+        await mcp_manager.activate_all_mcp()
+
+        # 验证没有调用 post
+        mock_client.post.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_activate_all_mcp_activation_failure(self) -> None:
+        """测试激活过程中某个服务失败"""
+        http_manager = HermesHttpManager("https://api.example.com", "token")
+        mcp_manager = HermesMCPManager(http_manager)
+
+        services = [
+            MCPService(
+                mcp_service_id="rag-mcp",
+                name="RAG MCP",
+                description="RAG 服务",
+                author="admin",
+                is_active=False,
+                status="ready",
+            ),
+            MCPService(
+                mcp_service_id="search-mcp",
+                name="Search MCP",
+                description="搜索服务",
+                author="admin",
+                is_active=False,
+                status="ready",
+            ),
+        ]
+
+        http_manager.get_client = AsyncMock()
+        mcp_manager.get_mcp_services = AsyncMock(return_value=services)
+
+        # Mock activate_mcp 在第一个服务时成功，第二个时失败
+        activate_mcp_mock = AsyncMock()
+        activate_mcp_mock.side_effect = [
+            "mcp-service-1",
+            HermesAPIError(500, "Activation failed"),
+        ]
+        mcp_manager.activate_mcp = activate_mcp_mock
+
+        # 验证抛出异常
+        with pytest.raises(HermesAPIError):
+            await mcp_manager.activate_all_mcp()
+
+        # 验证尝试激活了 2 个服务，但第二个失败
+        assert activate_mcp_mock.call_count == 2  # noqa: PLR2004
+

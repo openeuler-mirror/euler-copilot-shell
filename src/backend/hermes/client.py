@@ -198,6 +198,18 @@ class HermesChatClient(LLMClientBase):
             return False
         return self._user_info.get("isAdmin", False)
 
+    async def activate_all_mcp_services(self) -> None:
+        """
+        激活当前用户的所有 MCP 服务
+
+        调用 MCP 管理器的激活方法，确保所有 MCP 服务处于激活状态。
+
+        Raises:
+            HermesAPIError: 当激活过程出现错误时
+
+        """
+        await self.mcp_manager.activate_all_mcp()
+
     async def update_user_info(self, *, auto_execute: bool) -> bool:
         """
         更新用户信息

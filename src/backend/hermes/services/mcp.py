@@ -56,6 +56,71 @@ class HermesMCPManager:
         self.logger = get_logger(__name__)
         self.http_manager = http_manager
 
+    async def activate_all_mcp(self) -> None:
+        """
+        激活所有可用的 MCP 服务
+
+        获取所有 MCP 服务列表，筛选 is_active=False 且 status="ready" 的服务，
+        并分别调用 activate_mcp 方法将它们全部激活。
+
+        Raises:
+            HermesAPIError: 当获取服务列表或激活服务失败时抛出
+
+        """
+        start_time = time.time()
+        self.logger.info("开始激活所有可用的 MCP 服务")
+
+        try:
+            # 获取所有 MCP 服务
+            all_services = await self.get_mcp_services()
+            self.logger.info("获取到 %d 个 MCP 服务", len(all_services))
+
+            # 筛选需要激活的服务（未激活且状态为 ready）
+            services_to_activate = [
+                service for service in all_services if not service.is_active and service.status == "ready"
+            ]
+
+            self.logger.info("筛选出 %d 个需要激活的 MCP 服务", len(services_to_activate))
+
+            if not services_to_activate:
+                self.logger.info("没有需要激活的 MCP 服务")
+                return
+
+            # 逐个激活服务
+            activated_count = 0
+            for service in services_to_activate:
+                try:
+                    service_id = await self.activate_mcp(
+                        service.mcp_service_id,
+                        active=True,
+                    )
+                    activated_count += 1
+                    self.logger.info(
+                        "成功激活 MCP 服务 - %s (serviceId: %s)",
+                        service.name,
+                        service_id,
+                    )
+                except HermesAPIError:
+                    self.logger.exception(
+                        "激活 MCP 服务失败 - %s (%s)",
+                        service.name,
+                        service.mcp_service_id,
+                    )
+                    raise
+
+            total_duration = time.time() - start_time
+            self.logger.info(
+                "激活所有可用 MCP 服务完成 - 激活数: %d, 耗时: %.3fs",
+                activated_count,
+                total_duration,
+            )
+
+        except HermesAPIError:
+            raise
+        except Exception as e:
+            log_exception(self.logger, "激活所有 MCP 服务异常", e)
+            raise HermesAPIError(500, f"Activate all MCP error: {e!s}") from e
+
     async def activate_mcp(self, mcp_id: str, *, active: bool, mcp_env: dict[str, Any] | None = None) -> str:
         """
         激活或停用 MCP 服务
@@ -239,7 +304,7 @@ class HermesMCPManager:
                 error=str(e),
             )
             raise HermesAPIError(500, f"Network error: {e!s}") from e
-        except (json.JSONDecodeError, KeyError, ValueError) as e:
+        except (json.JSONDecodeError, KeyError, ValueError, AttributeError, TypeError) as e:
             duration = time.time() - start_time
             log_exception(self.logger, "MCP 列表响应解析异常", e)
             log_api_request(

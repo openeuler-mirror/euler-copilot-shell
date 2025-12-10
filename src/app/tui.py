@@ -1868,6 +1868,8 @@ class IntelligentTerminal(App):
                     )
                     result = await llm_client.ensure_user_info_loaded()
                     self.logger.info("Hermes 配置验证结果: %s", result)
+                    if result:
+                        await llm_client.activate_all_mcp_services()
                     return result
                 self.logger.warning("LLM 客户端不是 HermesChatClient 类型")
                 return False
