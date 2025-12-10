@@ -245,7 +245,7 @@ class HermesMCPManager:
                 self.logger.info("请求第 %d 页 MCP 服务列表", current_page)
 
                 # 添加分页参数
-                params = {"page": current_page}
+                params = {"page": current_page, "keyword": None}
                 response = await client.get(mcp_url, headers=headers, params=params)
 
                 page_duration = time.time() - page_start_time
