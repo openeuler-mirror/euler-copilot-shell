@@ -863,7 +863,7 @@ class LLMConfigScreen(ModalScreen[bool]):
     .model-item-content {
         width: 100%;
         height: 3;
-        padding: 0 1;
+        padding: 1;
     }
 
     .model-item-id {
@@ -956,17 +956,18 @@ class LLMConfigScreen(ModalScreen[bool]):
                 yield Static(_("正在加载模型列表..."), id="loading-status", classes="loading")
                 yield ListView(id="model-list", classes="model-list")
 
-            yield Static(
-                _("快捷键: \\[N] 新建  \\[Enter] 编辑  \\[D] 删除  \\[R] 刷新  \\[Esc] 退出"),
-                classes="help-text",
-            )
             yield Static("", id="status-bar", classes="status-bar")
+            yield Static(
+                _("快捷键: [N] 新建  [Enter] 编辑  [D] 删除  [R] 刷新  [Esc] 退出"),
+                classes="help-text",
+                markup=False,
+            )
 
             with Horizontal(classes="button-row"):
                 yield Button(_("新建模型"), id="new-btn", variant="primary")
-                yield Button(_("设置默认"), id="default-btn")
                 yield Button(_("刷新列表"), id="refresh-btn")
-                yield Button(_("退出"), id="quit-btn")
+                yield Button(_("退出"), id="quit-btn", variant="error")
+                yield Button(_("设置默认"), id="default-btn", variant="warning")
 
     async def on_mount(self) -> None:
         """界面挂载时初始化"""
