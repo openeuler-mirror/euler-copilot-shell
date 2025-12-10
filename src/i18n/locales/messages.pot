@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: oi-cli 2.0.0\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
-"POT-Creation-Date: 2025-12-10 10:47+0800\n"
+"POT-Creation-Date: 2025-12-10 11:58+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1216,88 +1216,92 @@ msgstr ""
 msgid "[Cancelled]"
 msgstr ""
 
-#: src/app/tui.py:631
+#: src/app/tui.py:630
 msgid ""
 "No response received, please check network connection or try again later"
 msgstr ""
 
-#: src/app/tui.py:744
+#: src/app/tui.py:743
 msgid "Request timeout, processing stopped"
 msgstr ""
 
-#: src/app/tui.py:751
+#: src/app/tui.py:750
 msgid "No response for a long time, processing stopped"
 msgstr ""
 
-#: src/app/tui.py:818 src/app/tui.py:1061
+#: src/app/tui.py:817 src/app/tui.py:1058
 msgid "Request timeout, please try again later"
 msgstr ""
 
-#: src/app/tui.py:1047
+#: src/app/tui.py:1044
 #, python-brace-format
 msgid "Server error: {message}"
 msgstr ""
 
-#: src/app/tui.py:1049
+#: src/app/tui.py:1046
 #, python-brace-format
 msgid "Request failed: {message}"
 msgstr ""
 
-#: src/app/tui.py:1053
+#: src/app/tui.py:1050
 msgid "Network connection interrupted, please check network and try again"
 msgstr ""
 
-#: src/app/tui.py:1065
+#: src/app/tui.py:1062
 msgid "Network connection error, please check network and try again"
 msgstr ""
 
-#: src/app/tui.py:1074 src/app/tui.py:1108
+#: src/app/tui.py:1071 src/app/tui.py:1105
 msgid "Server response error, please try again later"
 msgstr ""
 
-#: src/app/tui.py:1079
+#: src/app/tui.py:1076
 msgid "Data format error, please try again later"
 msgstr ""
 
-#: src/app/tui.py:1086
+#: src/app/tui.py:1083
 msgid "Authentication failed, please check configuration"
 msgstr ""
 
-#: src/app/tui.py:1110
+#: src/app/tui.py:1107
 #, python-brace-format
 msgid "Error processing command: {error}"
 msgstr ""
 
-#: src/app/tui.py:1235 src/app/tui.py:1261 src/app/tui.py:1439
-#: src/app/tui.py:1641 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
+#: src/app/tui.py:1232 src/app/tui.py:1258 src/app/tui.py:1456
+#: src/app/tui.py:1658 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
 #: src/app/dialogs/agent.py:187 src/app/dialogs/agent.py:207
 #: src/app/dialogs/agent.py:210 src/tool/oi_select_agent.py:67
 #: src/tool/oi_select_agent.py:94
 msgid "智能问答"
 msgstr ""
 
-#: src/app/tui.py:1358
+#: src/app/tui.py:1294
+msgid "> Agent changed, conversation has been reset"
+msgstr ""
+
+#: src/app/tui.py:1375
 msgid "💡 MCP response sent"
 msgstr ""
 
-#: src/app/tui.py:1361 src/app/tui.py:1389
+#: src/app/tui.py:1378 src/app/tui.py:1406
 msgid "❌ Current client does not support MCP response"
 msgstr ""
 
-#: src/app/tui.py:1370
+#: src/app/tui.py:1387
 #, python-brace-format
 msgid "❌ Failed to send MCP response: {error}"
 msgstr ""
 
-#: src/app/tui.py:1428
+#: src/app/tui.py:1445
 msgid "🚫 MCP response cancelled"
 msgstr ""
 
-#: src/app/tui.py:1524
+#: src/app/tui.py:1541
 msgid "Backend configuration validation failed, please check and modify"
 msgstr ""
 
-#: src/app/tui.py:1525
+#: src/app/tui.py:1542
 msgid "Configuration Error"
 msgstr ""
 
@@ -1393,35 +1397,35 @@ msgstr ""
 msgid "使用上下键选择，回车确认，ESC取消 | ✓ 表示当前选中"
 msgstr ""
 
-#: src/backend/hermes/client.py:325
+#: src/backend/hermes/client.py:330
 msgid "无法确定会话 ID，请重试当前请求"
 msgstr ""
 
-#: src/backend/hermes/client.py:401
+#: src/backend/hermes/client.py:406
 msgid "未配置 Chat 模型"
 msgstr ""
 
-#: src/backend/hermes/client.py:402
+#: src/backend/hermes/client.py:407
 msgid "配置步骤"
 msgstr ""
 
-#: src/backend/hermes/client.py:403
+#: src/backend/hermes/client.py:408
 msgid "按 Ctrl+S 打开设置"
 msgstr ""
 
-#: src/backend/hermes/client.py:404
+#: src/backend/hermes/client.py:409
 msgid "确认后端为 openEuler Intelligence"
 msgstr ""
 
-#: src/backend/hermes/client.py:405
+#: src/backend/hermes/client.py:410
 msgid "点击 \"更改用户设置\" 按钮"
 msgstr ""
 
-#: src/backend/hermes/client.py:406
+#: src/backend/hermes/client.py:411
 msgid "切换到 \"大模型设置\" 标签页"
 msgstr ""
 
-#: src/backend/hermes/client.py:407
+#: src/backend/hermes/client.py:412
 msgid "使用 ↑↓ 键选择模型，空格激活，回车保存"
 msgstr ""
 

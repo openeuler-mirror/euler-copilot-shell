@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: oi-cli\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
-"POT-Creation-Date: 2025-12-10 10:47+0800\n"
+"POT-Creation-Date: 2025-12-10 11:58+0800\n"
 "PO-Revision-Date: 2025-10-21 09:40+0800\n"
 "Last-Translator: openEuler Intelligence Team\n"
 "Language-Team: Chinese (Simplified)\n"
@@ -1228,88 +1228,92 @@ msgstr "智能命令行助手 {version}"
 msgid "[Cancelled]"
 msgstr "[已取消]"
 
-#: src/app/tui.py:631
+#: src/app/tui.py:630
 msgid ""
 "No response received, please check network connection or try again later"
 msgstr "没有收到响应，请检查网络连接或稍后重试"
 
-#: src/app/tui.py:744
+#: src/app/tui.py:743
 msgid "Request timeout, processing stopped"
 msgstr "请求超时，已停止处理"
 
-#: src/app/tui.py:751
+#: src/app/tui.py:750
 msgid "No response for a long time, processing stopped"
 msgstr "长时间无响应，已停止处理"
 
-#: src/app/tui.py:818 src/app/tui.py:1061
+#: src/app/tui.py:817 src/app/tui.py:1058
 msgid "Request timeout, please try again later"
 msgstr "请求超时，请稍后重试"
 
-#: src/app/tui.py:1047
+#: src/app/tui.py:1044
 #, python-brace-format
 msgid "Server error: {message}"
 msgstr "服务端错误: {message}"
 
-#: src/app/tui.py:1049
+#: src/app/tui.py:1046
 #, python-brace-format
 msgid "Request failed: {message}"
 msgstr "请求失败: {message}"
 
-#: src/app/tui.py:1053
+#: src/app/tui.py:1050
 msgid "Network connection interrupted, please check network and try again"
 msgstr "网络连接异常中断，请检查网络连接后重试"
 
-#: src/app/tui.py:1065
+#: src/app/tui.py:1062
 msgid "Network connection error, please check network and try again"
 msgstr "网络连接错误，请检查网络后重试"
 
-#: src/app/tui.py:1074 src/app/tui.py:1108
+#: src/app/tui.py:1071 src/app/tui.py:1105
 msgid "Server response error, please try again later"
 msgstr "服务端响应异常，请稍后重试"
 
-#: src/app/tui.py:1079
+#: src/app/tui.py:1076
 msgid "Data format error, please try again later"
 msgstr "数据格式错误，请稍后重试"
 
-#: src/app/tui.py:1086
+#: src/app/tui.py:1083
 msgid "Authentication failed, please check configuration"
 msgstr "认证失败，请检查配置"
 
-#: src/app/tui.py:1110
+#: src/app/tui.py:1107
 #, python-brace-format
 msgid "Error processing command: {error}"
 msgstr "处理命令时出错: {error}"
 
-#: src/app/tui.py:1235 src/app/tui.py:1261 src/app/tui.py:1439
-#: src/app/tui.py:1641 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
+#: src/app/tui.py:1232 src/app/tui.py:1258 src/app/tui.py:1456
+#: src/app/tui.py:1658 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
 #: src/app/dialogs/agent.py:187 src/app/dialogs/agent.py:207
 #: src/app/dialogs/agent.py:210 src/tool/oi_select_agent.py:67
 #: src/tool/oi_select_agent.py:94
 msgid "智能问答"
 msgstr "智能问答"
 
-#: src/app/tui.py:1358
+#: src/app/tui.py:1294
+msgid "> Agent changed, conversation has been reset"
+msgstr "> 智能体已变更，会话已重置"
+
+#: src/app/tui.py:1375
 msgid "💡 MCP response sent"
 msgstr "💡 MCP 响应已发送"
 
-#: src/app/tui.py:1361 src/app/tui.py:1389
+#: src/app/tui.py:1378 src/app/tui.py:1406
 msgid "❌ Current client does not support MCP response"
 msgstr "❌ 当前客户端不支持 MCP 响应功能"
 
-#: src/app/tui.py:1370
+#: src/app/tui.py:1387
 #, python-brace-format
 msgid "❌ Failed to send MCP response: {error}"
 msgstr "❌ 发送 MCP 响应失败: {error}"
 
-#: src/app/tui.py:1428
+#: src/app/tui.py:1445
 msgid "🚫 MCP response cancelled"
 msgstr "🚫 MCP 响应被取消"
 
-#: src/app/tui.py:1524
+#: src/app/tui.py:1541
 msgid "Backend configuration validation failed, please check and modify"
 msgstr "后端配置验证失败，请检查并修改配置"
 
-#: src/app/tui.py:1525
+#: src/app/tui.py:1542
 msgid "Configuration Error"
 msgstr "配置错误"
 
@@ -1405,35 +1409,35 @@ msgstr "OS 智能助手"
 msgid "使用上下键选择，回车确认，ESC取消 | ✓ 表示当前选中"
 msgstr "使用上下键选择，回车确认，ESC取消 | ✓ 表示当前选中"
 
-#: src/backend/hermes/client.py:325
+#: src/backend/hermes/client.py:330
 msgid "无法确定会话 ID，请重试当前请求"
 msgstr "无法确定会话 ID，请重试当前请求"
 
-#: src/backend/hermes/client.py:401
+#: src/backend/hermes/client.py:406
 msgid "未配置 Chat 模型"
 msgstr "未配置 Chat 模型"
 
-#: src/backend/hermes/client.py:402
+#: src/backend/hermes/client.py:407
 msgid "配置步骤"
 msgstr "配置步骤"
 
-#: src/backend/hermes/client.py:403
+#: src/backend/hermes/client.py:408
 msgid "按 Ctrl+S 打开设置"
 msgstr "按 Ctrl+S 打开设置"
 
-#: src/backend/hermes/client.py:404
+#: src/backend/hermes/client.py:409
 msgid "确认后端为 openEuler Intelligence"
 msgstr "确认后端为 openEuler Intelligence"
 
-#: src/backend/hermes/client.py:405
+#: src/backend/hermes/client.py:410
 msgid "点击 \"更改用户设置\" 按钮"
 msgstr "点击 \"更改用户设置\" 按钮"
 
-#: src/backend/hermes/client.py:406
+#: src/backend/hermes/client.py:411
 msgid "切换到 \"大模型设置\" 标签页"
 msgstr "切换到 \"大模型设置\" 标签页"
 
-#: src/backend/hermes/client.py:407
+#: src/backend/hermes/client.py:412
 msgid "使用 ↑↓ 键选择模型，空格激活，回车保存"
 msgstr "使用 ↑↓ 键选择模型，空格激活，回车保存"
 
