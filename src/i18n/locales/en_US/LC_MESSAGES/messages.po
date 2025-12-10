@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: oi-cli\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
-"POT-Creation-Date: 2025-12-09 16:32+0800\n"
+"POT-Creation-Date: 2025-12-10 10:47+0800\n"
 "PO-Revision-Date: 2025-10-20 19:28+0800\n"
 "Last-Translator: openEuler Intelligence Team\n"
 "Language-Team: English\n"
@@ -115,307 +115,313 @@ msgstr "✗ Deployment failed"
 msgid "✓ openEuler Intelligence 后端部署完成！"
 msgstr "✓ openEuler Intelligence backend deployment completed!"
 
-#: src/app/deployment/service.py:297
+#: src/app/deployment/service.py:294
 msgid "正在安装 openeuler-intelligence-installer..."
 msgstr "Installing openeuler-intelligence-installer..."
 
-#: src/app/deployment/service.py:308
+#: src/app/deployment/service.py:305
 msgid "✓ openeuler-intelligence-installer 安装成功"
 msgstr "✓ openeuler-intelligence-installer installed successfully"
 
-#: src/app/deployment/service.py:312
+#: src/app/deployment/service.py:309
 msgid "openeuler-intelligence-installer 安装后资源文件仍然缺失"
 msgstr ""
 "Resource files still missing after openeuler-intelligence-installer "
 "installation"
 
-#: src/app/deployment/service.py:315
+#: src/app/deployment/service.py:312
 msgid "安装 openeuler-intelligence-installer 失败"
 msgstr "Failed to install openeuler-intelligence-installer"
 
-#: src/app/deployment/service.py:318
+#: src/app/deployment/service.py:315
 msgid "安装输出:"
 msgstr "Installation output:"
 
-#: src/app/deployment/service.py:322
+#: src/app/deployment/service.py:319
 #, python-brace-format
 msgid "安装过程中发生异常: {error}"
 msgstr "Exception occurred during installation: {error}"
 
-#: src/app/deployment/service.py:387 src/app/deployment/service.py:421
+#: src/app/deployment/service.py:385 src/app/deployment/service.py:419
 msgid "检查系统环境"
 msgstr "Checking system environment"
 
-#: src/app/deployment/service.py:388
+#: src/app/deployment/service.py:386
 msgid "正在检查系统环境..."
 msgstr "Checking system environment..."
 
-#: src/app/deployment/service.py:395
+#: src/app/deployment/service.py:393
 msgid "✗ 错误: 仅支持 openEuler 操作系统"
 msgstr "✗ Error: Only openEuler operating system is supported"
 
-#: src/app/deployment/service.py:397
+#: src/app/deployment/service.py:395
 msgid "✓ 检测到 openEuler 操作系统"
 msgstr "✓ openEuler operating system detected"
 
-#: src/app/deployment/service.py:401
+#: src/app/deployment/service.py:399
 msgid "✗ 错误: openeuler-intelligence-installer 包未安装或资源缺失"
 msgstr ""
 "✗ Error: openeuler-intelligence-installer package is not installed or "
 "resources are missing"
 
-#: src/app/deployment/service.py:402
+#: src/app/deployment/service.py:400
 msgid "请先安装: sudo dnf install -y openeuler-intelligence-installer"
 msgstr ""
 "Please install first: sudo dnf install -y openeuler-intelligence-installer"
 
-#: src/app/deployment/service.py:404
+#: src/app/deployment/service.py:402
 msgid "✓ openeuler-intelligence-installer 资源可用"
 msgstr "✓ openeuler-intelligence-installer resources available"
 
-#: src/app/deployment/service.py:408
+#: src/app/deployment/service.py:406
 msgid "✗ 错误: 需要管理员权限"
 msgstr "✗ Error: Administrator privileges required"
 
-#: src/app/deployment/service.py:410
+#: src/app/deployment/service.py:408
 msgid "✓ 具有管理员权限"
 msgstr "✓ Administrator privileges available"
 
-#: src/app/deployment/service.py:422
+#: src/app/deployment/service.py:420
 msgid "正在执行系统环境检查..."
 msgstr "Performing system environment check..."
 
-#: src/app/deployment/service.py:429
+#: src/app/deployment/service.py:427
 msgid "环境检查脚本"
 msgstr "Environment check script"
 
-#: src/app/deployment/service.py:431
+#: src/app/deployment/service.py:429
 #, python-brace-format
 msgid "✗ 环境检查失败: {error}"
 msgstr "✗ Environment check failed: {error}"
 
-#: src/app/deployment/service.py:442
+#: src/app/deployment/service.py:440
 msgid "安装依赖组件"
 msgstr "Installing dependency components"
 
-#: src/app/deployment/service.py:443
+#: src/app/deployment/service.py:441
 msgid "正在安装 openEuler Intelligence 依赖组件..."
 msgstr "Installing openEuler Intelligence dependency components..."
 
-#: src/app/deployment/service.py:452
+#: src/app/deployment/service.py:450
 msgid "依赖安装脚本"
 msgstr "Dependency installation script"
 
-#: src/app/deployment/service.py:454
+#: src/app/deployment/service.py:452
 #, python-brace-format
 msgid "✗ 依赖安装失败: {error}"
 msgstr "✗ Dependency installation failed: {error}"
 
-#: src/app/deployment/service.py:465
+#: src/app/deployment/service.py:463
 msgid "初始化配置和服务"
 msgstr "Initializing configuration and services"
 
-#: src/app/deployment/service.py:466
+#: src/app/deployment/service.py:464
 msgid "正在初始化配置和启动服务..."
 msgstr "Initializing configuration and starting services..."
 
-#: src/app/deployment/service.py:473
+#: src/app/deployment/service.py:471
 msgid "配置初始化脚本"
 msgstr "Configuration initialization script"
 
-#: src/app/deployment/service.py:475
+#: src/app/deployment/service.py:473
 #, python-brace-format
 msgid "✗ 配置初始化失败: {error}"
 msgstr "✗ Configuration initialization failed: {error}"
 
-#: src/app/deployment/service.py:487
+#: src/app/deployment/service.py:485
 #, python-brace-format
 msgid "✗ 脚本文件不存在: {path}"
 msgstr "✗ Script file does not exist: {path}"
 
-#: src/app/deployment/service.py:525
+#: src/app/deployment/service.py:523
 #, python-brace-format
 msgid "✓ {name}执行成功"
 msgstr "✓ {name} executed successfully"
 
-#: src/app/deployment/service.py:529
+#: src/app/deployment/service.py:527
 #, python-brace-format
 msgid "✗ 运行{name}时发生错误: {error}"
 msgstr "✗ Error occurred while running {name}: {error}"
 
-#: src/app/deployment/service.py:534
+#: src/app/deployment/service.py:532
 #, python-brace-format
 msgid "✗ {name}执行失败，返回码: {code}"
 msgstr "✗ {name} execution failed, return code: {code}"
 
-#: src/app/deployment/service.py:555
+#: src/app/deployment/service.py:553
 msgid "更新配置文件"
 msgstr "Updating configuration files"
 
-#: src/app/deployment/service.py:556
+#: src/app/deployment/service.py:554
 msgid "正在更新配置文件..."
 msgstr "Updating configuration files..."
 
-#: src/app/deployment/service.py:564
+#: src/app/deployment/service.py:562
 msgid "✓ 更新 config.toml 配置文件"
 msgstr "✓ Updated config.toml configuration file"
 
-#: src/app/deployment/service.py:567
+#: src/app/deployment/service.py:565
 #, python-brace-format
 msgid "✗ 更新配置文件失败: {error}"
 msgstr "✗ Failed to update configuration files: {error}"
 
-#: src/app/deployment/service.py:599
+#: src/app/deployment/service.py:597
 #, python-brace-format
 msgid "备份 config.toml 文件失败: {error}"
 msgstr "Failed to backup config.toml file: {error}"
 
-#: src/app/deployment/service.py:614
+#: src/app/deployment/service.py:612
 #, python-brace-format
 msgid "写入 config.toml 文件失败: {error}"
 msgstr "Failed to write config.toml file: {error}"
 
-#: src/app/deployment/service.py:663
+#: src/app/deployment/service.py:661
 #, python-brace-format
 msgid "检查 sysagent 服务状态 ({current}/{total})..."
 msgstr "Checking sysagent service status ({current}/{total})..."
 
-#: src/app/deployment/service.py:686
+#: src/app/deployment/service.py:684
 msgid "✓ Framework 服务状态正常"
 msgstr "✓ Framework service status is normal"
 
-#: src/app/deployment/service.py:689
+#: src/app/deployment/service.py:687
 #, python-brace-format
 msgid "Framework 服务状态: {status}"
 msgstr "Framework service status: {status}"
 
-#: src/app/deployment/service.py:692
+#: src/app/deployment/service.py:690
 #, python-brace-format
 msgid "等待 {seconds} 秒后重试..."
 msgstr "Retrying in {seconds} seconds..."
 
-#: src/app/deployment/service.py:696
+#: src/app/deployment/service.py:694
 #, python-brace-format
 msgid "检查服务状态时发生错误: {error}"
 msgstr "Error occurred while checking service status: {error}"
 
-#: src/app/deployment/service.py:700
+#: src/app/deployment/service.py:698
 msgid "✗ Framework 服务状态检查超时失败"
 msgstr "✗ Framework service status check timed out"
 
-#: src/app/deployment/service.py:728
+#: src/app/deployment/service.py:726
 msgid "等待 openEuler Intelligence 服务就绪"
 msgstr "Waiting for openEuler Intelligence service to be ready"
 
-#: src/app/deployment/service.py:745
+#: src/app/deployment/service.py:743
 msgid "✓ openEuler Intelligence 服务已就绪"
 msgstr "✓ openEuler Intelligence service is ready"
 
-#: src/app/deployment/service.py:754
+#: src/app/deployment/service.py:752
 #, python-brace-format
 msgid "连接 {url} 超时"
 msgstr "Connection to {url} timed out"
 
-#: src/app/deployment/service.py:756
+#: src/app/deployment/service.py:754
 #, python-brace-format
 msgid "API 连通性检查时发生错误: {error}"
 msgstr "Error occurred during API connectivity check: {error}"
 
-#: src/app/deployment/service.py:761
+#: src/app/deployment/service.py:759
 msgid "✗ openEuler Intelligence API 服务检查超时失败"
 msgstr "✗ openEuler Intelligence API service check timed out"
 
-#: src/app/deployment/service.py:771
-msgid "初始化 Agent 服务"
-msgstr "Initializing Agent service"
+#: src/app/deployment/service.py:782
+msgid "注册大模型配置"
+msgstr "Register LLM configuration"
 
-#: src/app/deployment/service.py:772
+#: src/app/deployment/service.py:783
 msgid "正在检查 openEuler Intelligence 后端服务状态..."
 msgstr "Checking openEuler Intelligence backend service status..."
 
-#: src/app/deployment/service.py:783
+#: src/app/deployment/service.py:794
 msgid "✗ openEuler Intelligence 服务检查失败"
 msgstr "✗ openEuler Intelligence service check failed"
 
-#: src/app/deployment/service.py:786
-msgid "✓ openEuler Intelligence 服务检查通过，开始初始化 Agent..."
-msgstr ""
-"✓ openEuler Intelligence service check passed, starting Agent "
-"initialization..."
+#: src/app/deployment/service.py:797
+msgid "✓ openEuler Intelligence 服务检查通过"
+msgstr "✓ openEuler Intelligence service check passed"
 
-#: src/app/deployment/service.py:796
+#: src/app/deployment/service.py:811
+msgid "初始化 Agent 服务"
+msgstr "Initializing Agent service"
+
+#: src/app/deployment/service.py:812
+msgid "正在初始化 Agent 和 MCP 服务..."
+msgstr "Initializing Agent and MCP services..."
+
+#: src/app/deployment/service.py:822
 msgid "✓ Agent 初始化完成"
 msgstr "✓ Agent initialization completed"
 
-#: src/app/deployment/service.py:800
+#: src/app/deployment/service.py:826
 msgid "⚠ Agent 初始化已跳过（RPM 包不可用），但部署将继续进行"
 msgstr ""
 "⚠ Agent initialization skipped (RPM package unavailable), but deployment "
 "will continue"
 
-#: src/app/deployment/service.py:845
+#: src/app/deployment/service.py:871
 msgid "✓ 全局配置模板创建成功，其他用户可正常使用"
 msgstr ""
 "✓ Global configuration template created successfully, other users can use it "
 "normally"
 
-#: src/app/deployment/service.py:848
+#: src/app/deployment/service.py:874
 msgid "⚠ 全局配置模板创建失败，可能影响其他用户使用"
 msgstr ""
 "⚠ Failed to create global configuration template, may affect other users"
 
-#: src/app/deployment/service.py:853
+#: src/app/deployment/service.py:879
 msgid "⚠ 配置模板创建异常，可能影响其他用户使用"
 msgstr "⚠ Configuration template creation exception, may affect other users"
 
-#: src/app/deployment/service.py:981
+#: src/app/deployment/service.py:1007
 msgid "正在注册大模型配置..."
 msgstr "Registering LLM configuration..."
 
-#: src/app/deployment/service.py:990
+#: src/app/deployment/service.py:1016
 msgid "⚠ 未找到 Hermes 后端 URL 配置，跳过模型注册"
 msgstr "⚠ Hermes backend URL not configured, skipping model registration"
 
-#: src/app/deployment/service.py:1008
+#: src/app/deployment/service.py:1034
 #, python-brace-format
 msgid "⚠ 注册模型时发生错误: {error}"
 msgstr "⚠ Error occurred while registering model: {error}"
 
-#: src/app/deployment/service.py:1033
+#: src/app/deployment/service.py:1059
 msgid "正在连接 Hermes 后端服务..."
 msgstr "Connecting to Hermes backend service..."
 
-#: src/app/deployment/service.py:1040
+#: src/app/deployment/service.py:1066
 msgid "⚠ 无法连接 Hermes 后端服务，跳过模型注册"
 msgstr ""
 "⚠ Unable to connect to Hermes backend service, skipping model registration"
 
-#: src/app/deployment/service.py:1046
+#: src/app/deployment/service.py:1072
 msgid "⚠ 当前用户非管理员，跳过模型注册"
 msgstr "⚠ Current user is not an administrator, skipping model registration"
 
-#: src/app/deployment/service.py:1050
+#: src/app/deployment/service.py:1076
 msgid "✓ 已连接 Hermes 后端服务（管理员权限）"
 msgstr "✓ Connected to Hermes backend service (administrator privileges)"
 
-#: src/app/deployment/service.py:1085
+#: src/app/deployment/service.py:1111
 msgid "✓ 已更新全局模型设置"
 msgstr "✓ Global model settings updated"
 
-#: src/app/deployment/service.py:1103
+#: src/app/deployment/service.py:1129
 msgid "部署时配置的 Chat 模型（支持 Function Call）"
 msgstr "Chat model configured during deployment (supports Function Call)"
 
-#: src/app/deployment/service.py:1109
+#: src/app/deployment/service.py:1135
 #, python-brace-format
 msgid "✓ 已注册 LLM 模型: {model}"
 msgstr "✓ LLM model registered: {model}"
 
-#: src/app/deployment/service.py:1129
+#: src/app/deployment/service.py:1155
 msgid "部署时配置的 Embedding 模型"
 msgstr "Embedding model configured during deployment"
 
-#: src/app/deployment/service.py:1134
+#: src/app/deployment/service.py:1160
 #, python-brace-format
 msgid "✓ 已注册 Embedding 模型: {model}"
 msgstr "✓ Embedding model registered: {model}"
@@ -831,348 +837,348 @@ msgstr "Permission check failed: {error}"
 msgid "权限检查异常: {error}"
 msgstr "Permission check exception: {error}"
 
-#: src/app/deployment/agent.py:203
+#: src/app/deployment/agent.py:212
 msgid "[bold blue]开始初始化智能体...[/bold blue]"
 msgstr "[bold blue]Starting agent initialization...[/bold blue]"
 
-#: src/app/deployment/agent.py:212
+#: src/app/deployment/agent.py:221
 msgid "智能体初始化失败"
 msgstr "Agent initialization failed"
 
-#: src/app/deployment/agent.py:239
+#: src/app/deployment/agent.py:248
 msgid "[yellow]停止 sysagent 服务失败，但继续执行[/yellow]"
 msgstr ""
 "[yellow]Failed to stop sysagent service, but continuing execution[/yellow]"
 
-#: src/app/deployment/agent.py:262
+#: src/app/deployment/agent.py:271
 msgid "[yellow]启动 sysagent 服务失败，请手动检查[/yellow]"
 msgstr ""
 "[yellow]Failed to start sysagent service, please check manually[/yellow]"
 
-#: src/app/deployment/agent.py:271
+#: src/app/deployment/agent.py:280
 #, python-brace-format
 msgid "[bold green]智能体初始化完成! 默认 App ID: {app_id}[/bold green]"
 msgstr ""
 "[bold green]Agent initialization completed! Default App ID: {app_id}[/bold "
 "green]"
 
-#: src/app/deployment/agent.py:275
+#: src/app/deployment/agent.py:284
 msgid "[bold yellow]智能体初始化完成，但默认 App 未写入配置[/bold yellow]"
 msgstr ""
 "[bold yellow]Agent initialization completed, but default App was not written "
 "to configuration[/bold yellow]"
 
-#: src/app/deployment/agent.py:290
+#: src/app/deployment/agent.py:299
 msgid "[yellow]未能创建任何智能体[/yellow]"
 msgstr "[yellow]Failed to create any agent[/yellow]"
 
-#: src/app/deployment/agent.py:320
+#: src/app/deployment/agent.py:329
 msgid "[cyan]写入 MCP 配置到文件系统...[/cyan]"
 msgstr "[cyan]Writing MCP configuration to file system...[/cyan]"
 
-#: src/app/deployment/agent.py:348
+#: src/app/deployment/agent.py:359
 #, python-brace-format
 msgid "  [red]处理 {name} 失败[/red]"
 msgstr "  [red]Failed to process {name}[/red]"
 
-#: src/app/deployment/agent.py:356
+#: src/app/deployment/agent.py:367
 #, python-brace-format
 msgid "[green]MCP 配置写入完成，成功 {count} 个[/green]"
 msgstr ""
 "[green]MCP configuration written successfully, {count} completed[/green]"
 
-#: src/app/deployment/agent.py:373
+#: src/app/deployment/agent.py:396
 #, python-brace-format
 msgid "  [blue]写入 {name}...[/blue]"
 msgstr "  [blue]Writing {name}...[/blue]"
 
-#: src/app/deployment/agent.py:412
+#: src/app/deployment/agent.py:440
 #, python-brace-format
 msgid "  [red]{name} 写入失败[/red]"
 msgstr "  [red]{name} write failed[/red]"
 
-#: src/app/deployment/agent.py:420
+#: src/app/deployment/agent.py:448
 #, python-brace-format
-msgid "  [green]{name} 写入成功 -> {path}[/green]"
-msgstr "  [green]{name} written successfully -> {path}[/green]"
+msgid "  [green]{name} 写入成功 (MCP ID: {mcp_id}) -> {path}[/green]"
+msgstr "  [green]{name} written successfully (MCP ID: {mcp_id}) -> {path}[/green]"
 
-#: src/app/deployment/agent.py:590
+#: src/app/deployment/agent.py:656
 msgid "[cyan]写入智能体元数据到文件系统...[/cyan]"
 msgstr "[cyan]Writing agent metadata to file system...[/cyan]"
 
-#: src/app/deployment/agent.py:621
+#: src/app/deployment/agent.py:687
 #, python-brace-format
 msgid "  [red]创建 {name} 元数据失败[/red]"
 msgstr "  [red]Failed to create {name} metadata[/red]"
 
-#: src/app/deployment/agent.py:632
+#: src/app/deployment/agent.py:698
 #, python-brace-format
 msgid "[green]成功创建 {count} 个智能体[/green]"
 msgstr "[green]Successfully created {count} agents[/green]"
 
-#: src/app/deployment/agent.py:652
+#: src/app/deployment/agent.py:730
 #, python-brace-format
 msgid "[magenta]创建智能体元数据: {name}[/magenta]"
 msgstr "[magenta]Creating agent metadata: {name}[/magenta]"
 
-#: src/app/deployment/agent.py:667
+#: src/app/deployment/agent.py:745
 #, python-brace-format
 msgid "  [yellow]警告: 以下 MCP 服务未找到: {services}[/yellow]"
 msgstr ""
 "  [yellow]Warning: The following MCP services were not found: {services}[/"
 "yellow]"
 
-#: src/app/deployment/agent.py:681
+#: src/app/deployment/agent.py:759
 #, python-brace-format
 msgid "  [red]{name} 没有可用的 MCP 服务[/red]"
 msgstr "  [red]{name} has no available MCP services[/red]"
 
-#: src/app/deployment/agent.py:737
+#: src/app/deployment/agent.py:815
 #, python-brace-format
 msgid "  [red]{name} 元数据创建失败[/red]"
 msgstr "  [red]{name} metadata creation failed[/red]"
 
-#: src/app/deployment/agent.py:745
+#: src/app/deployment/agent.py:823
 #, python-brace-format
 msgid "  [green]{name} 元数据创建成功 (ID: {app_id})[/green]"
 msgstr "  [green]{name} metadata created successfully (ID: {app_id})[/green]"
 
-#: src/app/deployment/agent.py:790
+#: src/app/deployment/agent.py:878
 msgid "[cyan]加载应用配置文件...[/cyan]"
 msgstr "[cyan]Loading application configuration file...[/cyan]"
 
-#: src/app/deployment/agent.py:797
+#: src/app/deployment/agent.py:885
 #, python-brace-format
 msgid "[red]应用配置文件不存在: {path}[/red]"
 msgstr "[red]Application configuration file does not exist: {path}[/red]"
 
-#: src/app/deployment/agent.py:843
+#: src/app/deployment/agent.py:931
 msgid "[red]加载应用配置失败[/red]"
 msgstr "[red]Failed to load application configuration[/red]"
 
-#: src/app/deployment/agent.py:851
+#: src/app/deployment/agent.py:939
 #, python-brace-format
 msgid "[green]成功加载 {count} 个应用配置[/green]"
 msgstr "[green]Successfully loaded {count} application configurations[/green]"
 
-#: src/app/deployment/agent.py:866
+#: src/app/deployment/agent.py:954
 msgid "[cyan]加载 MCP 配置文件...[/cyan]"
 msgstr "[cyan]Loading MCP configuration file...[/cyan]"
 
-#: src/app/deployment/agent.py:876
+#: src/app/deployment/agent.py:964
 msgid "[yellow]未找到 MCP 配置[/yellow]"
 msgstr "[yellow]MCP configuration not found[/yellow]"
 
-#: src/app/deployment/agent.py:882
+#: src/app/deployment/agent.py:970
 #, python-brace-format
 msgid "[green]成功加载 {count} 个 MCP 配置[/green]"
 msgstr "[green]Successfully loaded {count} MCP configurations[/green]"
 
-#: src/app/deployment/agent.py:897
+#: src/app/deployment/agent.py:985
 msgid "[cyan]停止 sysagent 服务...[/cyan]"
 msgstr "[cyan]Stopping sysagent service...[/cyan]"
 
-#: src/app/deployment/agent.py:915
+#: src/app/deployment/agent.py:1003
 msgid "[yellow]sysagent 服务不存在，跳过停止操作[/yellow]"
 msgstr ""
 "[yellow]sysagent service does not exist, skipping stop operation[/yellow]"
 
-#: src/app/deployment/agent.py:934
+#: src/app/deployment/agent.py:1022
 msgid "[green]sysagent 服务未运行，无需停止[/green]"
 msgstr "[green]sysagent service is not running, no need to stop[/green]"
 
-#: src/app/deployment/agent.py:953
+#: src/app/deployment/agent.py:1041
 msgid "[red]停止 sysagent 服务时发生异常[/red]"
 msgstr "[red]Exception occurred while stopping sysagent service[/red]"
 
-#: src/app/deployment/agent.py:962
+#: src/app/deployment/agent.py:1050
 msgid "[green]sysagent 服务已停止[/green]"
 msgstr "[green]sysagent service has been stopped[/green]"
 
-#: src/app/deployment/agent.py:971
+#: src/app/deployment/agent.py:1059
 #, python-brace-format
 msgid "[red]停止 sysagent 服务失败: {error}[/red]"
 msgstr "[red]Failed to stop sysagent service: {error}[/red]"
 
-#: src/app/deployment/agent.py:987
+#: src/app/deployment/agent.py:1075
 msgid "[cyan]启动 sysagent 服务...[/cyan]"
 msgstr "[cyan]Starting sysagent service...[/cyan]"
 
-#: src/app/deployment/agent.py:1005
+#: src/app/deployment/agent.py:1093
 msgid "[yellow]sysagent 服务不存在，跳过启动操作[/yellow]"
 msgstr ""
 "[yellow]sysagent service does not exist, skipping start operation[/yellow]"
 
-#: src/app/deployment/agent.py:1024
+#: src/app/deployment/agent.py:1112
 msgid "[red]启动 sysagent 服务时发生异常[/red]"
 msgstr "[red]Exception occurred while starting sysagent service[/red]"
 
-#: src/app/deployment/agent.py:1033
+#: src/app/deployment/agent.py:1121
 msgid "[green]sysagent 服务已启动[/green]"
 msgstr "[green]sysagent service has been started[/green]"
 
-#: src/app/deployment/agent.py:1044
+#: src/app/deployment/agent.py:1132
 #, python-brace-format
 msgid "[red]启动 sysagent 服务失败: {error}[/red]"
 msgstr "[red]Failed to start sysagent service: {error}[/red]"
 
-#: src/app/deployment/agent.py:1068
+#: src/app/deployment/agent.py:1156
 #, python-brace-format
 msgid "[yellow]服务配置目录不存在: {dir}，跳过{operation}[/yellow]"
 msgstr ""
 "[yellow]Service configuration directory does not exist: {dir}, skipping "
 "{operation}[/yellow]"
 
-#: src/app/deployment/agent.py:1081
+#: src/app/deployment/agent.py:1169
 #, python-brace-format
 msgid "[yellow]未找到服务配置文件，跳过{operation}[/yellow]"
 msgstr ""
 "[yellow]Service configuration file not found, skipping {operation}[/yellow]"
 
-#: src/app/deployment/agent.py:1098
+#: src/app/deployment/agent.py:1186
 msgid "[cyan]安装 systemd 服务文件...[/cyan]"
 msgstr "[cyan]Installing systemd service files...[/cyan]"
 
-#: src/app/deployment/agent.py:1103
+#: src/app/deployment/agent.py:1191
 msgid "服务文件安装"
 msgstr "Service file installation"
 
-#: src/app/deployment/agent.py:1115
+#: src/app/deployment/agent.py:1203
 #, python-brace-format
 msgid "    [red]安装 {file} 时发生异常[/red]"
 msgstr "    [red]Exception occurred while installing {file}[/red]"
 
-#: src/app/deployment/agent.py:1128
+#: src/app/deployment/agent.py:1216
 #, python-brace-format
 msgid "[green]成功安装 {count} 个服务文件[/green]"
 msgstr "[green]Successfully installed {count} service files[/green]"
 
-#: src/app/deployment/agent.py:1149
+#: src/app/deployment/agent.py:1237
 #, python-brace-format
 msgid "  [blue]复制服务文件: {name}[/blue]"
 msgstr "  [blue]Copying service file: {name}[/blue]"
 
-#: src/app/deployment/agent.py:1166
+#: src/app/deployment/agent.py:1254
 #, python-brace-format
 msgid "    [red]复制 {name} 时发生异常[/red]"
 msgstr "    [red]Exception occurred while copying {name}[/red]"
 
-#: src/app/deployment/agent.py:1175
+#: src/app/deployment/agent.py:1263
 #, python-brace-format
 msgid "    [green]{name} 复制成功[/green]"
 msgstr "    [green]{name} copied successfully[/green]"
 
-#: src/app/deployment/agent.py:1184
+#: src/app/deployment/agent.py:1272
 #, python-brace-format
 msgid "    [red]{name} 复制失败: {error}[/red]"
 msgstr "    [red]{name} copy failed: {error}[/red]"
 
-#: src/app/deployment/agent.py:1201
+#: src/app/deployment/agent.py:1289
 msgid "[cyan]重新加载 systemd 配置...[/cyan]"
 msgstr "[cyan]Reloading systemd configuration...[/cyan]"
 
-#: src/app/deployment/agent.py:1218
+#: src/app/deployment/agent.py:1306
 msgid "[red]重新加载 systemd 配置时发生异常[/red]"
 msgstr "[red]Exception occurred while reloading systemd configuration[/red]"
 
-#: src/app/deployment/agent.py:1227
+#: src/app/deployment/agent.py:1315
 msgid "[green]systemd 配置重新加载成功[/green]"
 msgstr "[green]systemd configuration reloaded successfully[/green]"
 
-#: src/app/deployment/agent.py:1236
+#: src/app/deployment/agent.py:1324
 #, python-brace-format
 msgid "[red]systemd 配置重新加载失败: {error}[/red]"
 msgstr "[red]systemd configuration reload failed: {error}[/red]"
 
-#: src/app/deployment/agent.py:1252
+#: src/app/deployment/agent.py:1340
 msgid "[cyan]启动 MCP Server 进程...[/cyan]"
 msgstr "[cyan]Starting MCP Server process...[/cyan]"
 
-#: src/app/deployment/agent.py:1259
+#: src/app/deployment/agent.py:1347
 #, python-brace-format
 msgid "[red]MCP 启动脚本不存在: {path}[/red]"
 msgstr "[red]MCP startup script does not exist: {path}[/red]"
 
-#: src/app/deployment/agent.py:1270
+#: src/app/deployment/agent.py:1358
 msgid "[yellow]清理旧进程时遇到问题，但继续执行启动脚本[/yellow]"
 msgstr ""
 "[yellow]Problem encountered while cleaning old processes, but continuing "
 "with startup script[/yellow]"
 
-#: src/app/deployment/agent.py:1278
+#: src/app/deployment/agent.py:1366
 #, python-brace-format
 msgid "  [blue]执行命令: {cmd}[/blue]"
 msgstr "  [blue]Executing command: {cmd}[/blue]"
 
-#: src/app/deployment/agent.py:1293
+#: src/app/deployment/agent.py:1381
 msgid "执行 MCP Server 启动脚本失败"
 msgstr "Failed to execute MCP Server startup script"
 
-#: src/app/deployment/agent.py:1301
+#: src/app/deployment/agent.py:1389
 msgid "[green]MCP Server 启动脚本执行成功[/green]"
 msgstr "[green]MCP Server startup script executed successfully[/green]"
 
-#: src/app/deployment/agent.py:1309
+#: src/app/deployment/agent.py:1397
 #, python-brace-format
 msgid "[red]MCP Server 启动脚本执行失败 (返回码: {code})[/red]"
 msgstr ""
 "[red]MCP Server startup script execution failed (return code: {code})[/red]"
 
-#: src/app/deployment/agent.py:1368
+#: src/app/deployment/agent.py:1456
 msgid "[cyan]验证 MCP Server 服务状态...[/cyan]"
 msgstr "[cyan]Validating MCP Server service status...[/cyan]"
 
-#: src/app/deployment/agent.py:1373
+#: src/app/deployment/agent.py:1461
 msgid "服务验证"
 msgstr "Service validation"
 
-#: src/app/deployment/agent.py:1389
+#: src/app/deployment/agent.py:1477
 #, python-brace-format
 msgid "    [red]验证 {file} 时发生异常[/red]"
 msgstr "    [red]Exception occurred while validating {file}[/red]"
 
-#: src/app/deployment/agent.py:1400
+#: src/app/deployment/agent.py:1488
 #, python-brace-format
 msgid "[red]关键服务状态异常: {services}，停止初始化[/red]"
 msgstr ""
 "[red]Critical service status abnormal: {services}, stopping initialization[/"
 "red]"
 
-#: src/app/deployment/agent.py:1410
+#: src/app/deployment/agent.py:1498
 msgid "[green]MCP Server 服务验证完成[/green]"
 msgstr "[green]MCP Server service validation completed[/green]"
 
-#: src/app/deployment/agent.py:1430
+#: src/app/deployment/agent.py:1518
 #, python-brace-format
 msgid "    [red]{name} 启动超时 (30秒)[/red]"
 msgstr "    [red]{name} startup timed out (30 seconds)[/red]"
 
-#: src/app/deployment/agent.py:1439
+#: src/app/deployment/agent.py:1527
 #, python-brace-format
 msgid "  [magenta]检查服务状态: {name}[/magenta]"
 msgstr "  [magenta]Checking service status: {name}[/magenta]"
 
-#: src/app/deployment/agent.py:1447
+#: src/app/deployment/agent.py:1535
 #, python-brace-format
 msgid "    [dim]{name} 重新检查状态... (第 {count} 次)[/dim]"
 msgstr "    [dim]{name} rechecking status... (attempt {count})[/dim]"
 
-#: src/app/deployment/agent.py:1468
+#: src/app/deployment/agent.py:1556
 #, python-brace-format
 msgid "    [red]检查 {name} 状态失败[/red]"
 msgstr "    [red]Failed to check {name} status[/red]"
 
-#: src/app/deployment/agent.py:1478
+#: src/app/deployment/agent.py:1566
 #, python-brace-format
 msgid "    [green]{name} 运行正常[/green]"
 msgstr "    [green]{name} is running normally[/green]"
 
-#: src/app/deployment/agent.py:1487
+#: src/app/deployment/agent.py:1575
 #, python-brace-format
 msgid "    [red]{name} 启动失败[/red]"
 msgstr "    [red]{name} startup failed[/red]"
 
-#: src/app/deployment/agent.py:1504
+#: src/app/deployment/agent.py:1592
 #, python-brace-format
 msgid "    [red]{name} 状态异常[/red]"
 msgstr "    [red]{name} status abnormal[/red]"
@@ -1313,7 +1319,7 @@ msgid "Error processing command: {error}"
 msgstr "Processing command failed with error: {error}"
 
 #: src/app/tui.py:1235 src/app/tui.py:1261 src/app/tui.py:1439
-#: src/app/tui.py:1600 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
+#: src/app/tui.py:1641 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
 #: src/app/dialogs/agent.py:187 src/app/dialogs/agent.py:207
 #: src/app/dialogs/agent.py:210 src/tool/oi_select_agent.py:67
 #: src/tool/oi_select_agent.py:94
@@ -1337,11 +1343,11 @@ msgstr "❌ Failed to send MCP response: {error}"
 msgid "🚫 MCP response cancelled"
 msgstr "🚫 MCP response cancelled"
 
-#: src/app/tui.py:1510
+#: src/app/tui.py:1524
 msgid "Backend configuration validation failed, please check and modify"
 msgstr "Backend configuration validation failed, please check and modify"
 
-#: src/app/tui.py:1511
+#: src/app/tui.py:1525
 msgid "Configuration Error"
 msgstr "Configuration Error"
 
@@ -1389,7 +1395,7 @@ msgstr "Failed to load models"
 msgid "加载中..."
 msgstr "Loading..."
 
-#: src/app/dialogs/user.py:219 src/tool/oi_llm_config.py:1091
+#: src/app/dialogs/user.py:219 src/tool/oi_llm_config.py:1092
 msgid "暂无可用模型"
 msgstr "No models available"
 
@@ -1688,7 +1694,7 @@ msgstr ""
 msgid "错误: {error}\n"
 msgstr "Error: {error}\n"
 
-#: src/tool/oi_llm_config.py:398 src/tool/oi_llm_config.py:966
+#: src/tool/oi_llm_config.py:398 src/tool/oi_llm_config.py:967
 msgid "新建模型"
 msgstr "New model"
 
@@ -1810,7 +1816,9 @@ msgstr "Embedding Model:"
 
 #: src/tool/oi_llm_config.py:776
 msgid "Function 模型用于智能体的函数调用，Embedding 模型用于向量嵌入。"
-msgstr "Function model is used for agent function calls, Embedding model is used for vector embeddings."
+msgstr ""
+"Function model is used for agent function calls, Embedding model is used for "
+"vector embeddings."
 
 #: src/tool/oi_llm_config.py:807
 #, python-brace-format
@@ -1825,121 +1833,120 @@ msgstr "LLM Configuration Management"
 msgid "正在加载模型列表..."
 msgstr "Loading model list..."
 
-#: src/tool/oi_llm_config.py:960
-msgid ""
-"快捷键: \\[N] 新建  \\[Enter] 编辑  \\[D] 删除  \\[R] 刷新  \\[Esc] 退出"
+#: src/tool/oi_llm_config.py:961
+msgid "快捷键: [N] 新建  [Enter] 编辑  [D] 删除  [R] 刷新  [Esc] 退出"
 msgstr "Shortcuts: [N] New  [Enter] Edit  [D] Delete  [R] Refresh  [Esc] Exit"
-
-#: src/tool/oi_llm_config.py:967
-msgid "设置默认"
-msgstr "Set Default"
 
 #: src/tool/oi_llm_config.py:968
 msgid "刷新列表"
 msgstr "Refresh list"
 
-#: src/tool/oi_llm_config.py:985
+#: src/tool/oi_llm_config.py:970
+msgid "设置默认"
+msgstr "Set Default"
+
+#: src/tool/oi_llm_config.py:986
 msgid "未配置后端服务地址"
 msgstr "Backend service address not configured"
 
-#: src/tool/oi_llm_config.py:992
+#: src/tool/oi_llm_config.py:993
 msgid "登录失败，无法获取用户信息"
 msgstr "Login failed, unable to get user information"
 
-#: src/tool/oi_llm_config.py:996
+#: src/tool/oi_llm_config.py:997
 msgid "当前用户不是管理员，无法管理模型"
 msgstr "Current user is not an administrator, unable to manage models"
 
-#: src/tool/oi_llm_config.py:1003
+#: src/tool/oi_llm_config.py:1004
 #, python-brace-format
 msgid "初始化失败: {error}"
 msgstr "Initialization failed: {error}"
 
-#: src/tool/oi_llm_config.py:1016
+#: src/tool/oi_llm_config.py:1017
 #, python-brace-format
 msgid "加载模型列表失败: {error}"
 msgstr "Failed to load model list: {error}"
 
-#: src/tool/oi_llm_config.py:1048
+#: src/tool/oi_llm_config.py:1049
 msgid "暂无模型，点击「新建模型」添加"
 msgstr "No models yet, click \"New model\" to add"
 
-#: src/tool/oi_llm_config.py:1062
+#: src/tool/oi_llm_config.py:1063
 #, python-brace-format
 msgid "共 {count} 个模型"
 msgstr "{count} model(s) in total"
 
-#: src/tool/oi_llm_config.py:1079
+#: src/tool/oi_llm_config.py:1080
 msgid "正在刷新..."
 msgstr "Refreshing..."
 
-#: src/tool/oi_llm_config.py:1114
+#: src/tool/oi_llm_config.py:1115
 msgid "默认模型设置已保存"
 msgstr "Default model settings saved"
 
-#: src/tool/oi_llm_config.py:1117
+#: src/tool/oi_llm_config.py:1118
 #, python-brace-format
 msgid "保存默认模型设置失败: {error}"
 msgstr "Failed to save default model settings: {error}"
 
-#: src/tool/oi_llm_config.py:1134 src/tool/oi_llm_config.py:1199
+#: src/tool/oi_llm_config.py:1135 src/tool/oi_llm_config.py:1200
 msgid "请先选择一个模型"
 msgstr "Please select a model first"
 
-#: src/tool/oi_llm_config.py:1146
+#: src/tool/oi_llm_config.py:1147
 #, python-brace-format
 msgid "编辑模型失败: {error}"
 msgstr "Failed to edit model: {error}"
 
-#: src/tool/oi_llm_config.py:1161
+#: src/tool/oi_llm_config.py:1162
 #, python-brace-format
 msgid "获取模型配置失败: {error}"
 msgstr "Failed to get model configuration: {error}"
 
-#: src/tool/oi_llm_config.py:1187
+#: src/tool/oi_llm_config.py:1188
 msgid "模型保存成功"
 msgstr "Model saved successfully"
 
-#: src/tool/oi_llm_config.py:1192
+#: src/tool/oi_llm_config.py:1193
 #, python-brace-format
 msgid "保存模型失败: {error}"
 msgstr "Failed to save model: {error}"
 
-#: src/tool/oi_llm_config.py:1212 src/tool/oi_llm_config.py:1227
+#: src/tool/oi_llm_config.py:1213 src/tool/oi_llm_config.py:1228
 #, python-brace-format
 msgid "删除模型失败: {error}"
 msgstr "Failed to delete model: {error}"
 
-#: src/tool/oi_llm_config.py:1222
+#: src/tool/oi_llm_config.py:1223
 #, python-brace-format
 msgid "模型已删除: {id}"
 msgstr "Model deleted: {id}"
 
-#: src/tool/oi_llm_config.py:1273
+#: src/tool/oi_llm_config.py:1274
 msgid "需要管理员权限才能管理 LLM 配置"
 msgstr "Administrator privileges are required to manage LLM configuration"
 
-#: src/tool/oi_llm_config.py:1274
+#: src/tool/oi_llm_config.py:1275
 msgid "请使用 'sudo oi --llm-config' 运行"
 msgstr "Please run with 'sudo oi --llm-config'"
 
-#: src/tool/oi_llm_config.py:1291
+#: src/tool/oi_llm_config.py:1292
 msgid "错误：无法启动 LLM 配置工具"
 msgstr "Error: Unable to start LLM configuration tool"
 
-#: src/tool/oi_llm_config.py:1302
+#: src/tool/oi_llm_config.py:1303
 msgid "✓ LLM 配置管理完成"
 msgstr "✓ LLM configuration management completed"
 
-#: src/tool/oi_llm_config.py:1304
+#: src/tool/oi_llm_config.py:1305
 msgid "LLM 配置管理已退出"
 msgstr "LLM configuration management has exited"
 
-#: src/tool/oi_llm_config.py:1307
+#: src/tool/oi_llm_config.py:1308
 msgid "配置已取消"
 msgstr "Configuration cancelled"
 
-#: src/tool/oi_llm_config.py:1311
+#: src/tool/oi_llm_config.py:1312
 #, python-brace-format
 msgid "错误：{error}"
 msgstr "Error: {error}"
