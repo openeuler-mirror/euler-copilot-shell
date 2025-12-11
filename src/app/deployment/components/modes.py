@@ -306,9 +306,9 @@ class ConnectExistingServiceScreen(ModalScreen[bool]):
         try:
             # 更新当前用户配置
             config_manager = ConfigManager()
-            config_manager.set_eulerintelli_url(url)
-            config_manager.set_eulerintelli_key(token)
-            config_manager.set_backend(Backend.EULERINTELLI)
+            config_manager.set_witty_url(url)
+            config_manager.set_witty_key(token)
+            config_manager.set_backend(Backend.SYSAGENT)
 
             self.logger.info("用户配置已保存: URL=%s", url)
 

@@ -177,12 +177,12 @@ rm -f /var/lib/pgsql/*.log
 
 echo "Clearing user configs & cache logs..."
 for home in /root /home/*; do
-    cache_dir="$home/.cache/openEuler Intelligence/logs"
+    cache_dir="$home/.cache/witty/logs"
     if [ -d "$cache_dir" ]; then
         echo "Removing $cache_dir"
         rm -rf "$cache_dir"
     fi
-    config_dir="$home/.config/eulerintelli"
+    config_dir="$home/.config/witty"
     if [ -d "$config_dir" ]; then
         echo "Removing $config_dir"
         rm -rf "$config_dir"
@@ -190,7 +190,7 @@ for home in /root /home/*; do
 done
 
 echo "Removing configuration template..."
-rm -f /etc/openEuler-Intelligence/smart-shell-template.json
+rm -f /etc/witty-assistant/witty-assistant-template.json
 
 echo "Uninstalling built-in MCP servers ..."
 # Check for running systrace-mcpserver services and stop/disable them if present.

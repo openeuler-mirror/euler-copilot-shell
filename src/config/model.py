@@ -8,13 +8,13 @@ class Backend(str, Enum):
     """后端类型"""
 
     OPENAI = "openai"
-    EULERINTELLI = "eulerintelli"
+    SYSAGENT = "witty"
 
     def get_display_name(self) -> str:
         """获取后端的可读显示名称"""
         display_names = {
-            Backend.OPENAI: "OpenAI 大模型接口",
-            Backend.EULERINTELLI: "openEuler Intelligence",
+            Backend.OPENAI: "OpenAI API",
+            Backend.SYSAGENT: "sysAgent",
         }
         return display_names.get(self, self.value)
 
@@ -83,9 +83,9 @@ class HermesConfig:
 class ConfigModel:
     """配置模型"""
 
-    backend: Backend = field(default=Backend.EULERINTELLI)
+    backend: Backend = field(default=Backend.SYSAGENT)
     openai: OpenAIConfig = field(default_factory=OpenAIConfig)
-    eulerintelli: HermesConfig = field(default_factory=HermesConfig)
+    witty: HermesConfig = field(default_factory=HermesConfig)
     log_level: LogLevel = field(default=LogLevel.DEBUG)
     locale: str = field(default="")  # 空字符串表示自动检测系统语言
 
@@ -116,7 +116,7 @@ class ConfigModel:
         return cls(
             backend=backend,
             openai=OpenAIConfig.from_dict(d.get("openai", {})),
-            eulerintelli=HermesConfig.from_dict(d.get("eulerintelli", {})),
+            witty=HermesConfig.from_dict(d.get("witty", {})),
             log_level=log_level,
             locale=d.get("locale", ""),  # 空字符串表示自动检测
         )
@@ -126,7 +126,7 @@ class ConfigModel:
         return {
             "backend": self.backend.value,  # 保存枚举的值
             "openai": self.openai.to_dict(),
-            "eulerintelli": self.eulerintelli.to_dict(),
+            "witty": self.witty.to_dict(),
             "log_level": self.log_level.value,
             "locale": self.locale,
         }

@@ -42,11 +42,11 @@ def test_init_copies_global_template(
     global_path = global_dir / "template.json"
     user_dir = tmp_path / "user"
     user_dir.mkdir()
-    user_path = user_dir / "smart-shell.json"
+    user_path = user_dir / "witty-assistant.json"
 
     template = {
         "openai": {"base_url": "http://demo", "model": "gpt"},
-        "eulerintelli": {"base_url": "http://witty", "api_key": "token"},
+        "witty": {"base_url": "http://witty", "api_key": "token"},
     }
     global_path.write_text(json.dumps(template), encoding="utf-8")
 
@@ -57,7 +57,7 @@ def test_init_copies_global_template(
     assert user_path.exists()
     data = json.loads(user_path.read_text(encoding="utf-8"))
     assert data["openai"]["base_url"] == "http://demo"
-    assert manager.get_eulerintelli_key() == "token"
+    assert manager.get_witty_key() == "token"
 
 
 @pytest.mark.unit
@@ -71,7 +71,7 @@ def test_init_creates_default_when_no_template(
     global_path = global_dir / "template.json"
     user_dir = tmp_path / "user"
     user_dir.mkdir()
-    user_path = user_dir / "smart-shell.json"
+    user_path = user_dir / "witty-assistant.json"
 
     _patch_paths(monkeypatch, user_path, global_path)
 
@@ -80,9 +80,9 @@ def test_init_creates_default_when_no_template(
     assert user_path.exists()
     data = json.loads(user_path.read_text(encoding="utf-8"))
     assert data["openai"]["api_key"] == ""
-    manager.set_eulerintelli_url("https://witty.local")
+    manager.set_witty_url("https://witty.local")
     assert (
-        json.loads(user_path.read_text(encoding="utf-8"))["eulerintelli"]["base_url"]
+        json.loads(user_path.read_text(encoding="utf-8"))["witty"]["base_url"]
         == "https://witty.local"
     )
 
@@ -98,7 +98,7 @@ def test_validate_and_update_config_merges_missing_fields(
     global_path = global_dir / "template.json"
     user_dir = tmp_path / "user"
     user_dir.mkdir()
-    user_path = user_dir / "smart-shell.json"
+    user_path = user_dir / "witty-assistant.json"
     user_path.parent.mkdir(parents=True, exist_ok=True)
 
     minimal_config = {"openai": {"base_url": "http://demo"}}

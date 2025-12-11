@@ -40,13 +40,13 @@ def test_stale_empty_logs_are_removed_during_init(
     fake_home.mkdir()
     _set_fake_home(monkeypatch, fake_home)
 
-    log_dir = fake_home / ".cache" / "openEuler Intelligence" / "logs"
+    log_dir = fake_home / ".cache" / "witty" / "logs"
     log_dir.mkdir(parents=True)
 
     date_prefix = datetime.now(tz=UTC).strftime("%Y%m%d")
-    stale_empty = log_dir / f"smart-shell-{date_prefix}-000000.log"
+    stale_empty = log_dir / f"witty-assistant-{date_prefix}-000000.log"
     stale_empty.touch()
-    non_empty = log_dir / f"smart-shell-{date_prefix}-010101.log"
+    non_empty = log_dir / f"witty-assistant-{date_prefix}-010101.log"
     non_empty.write_text("active log entry")
 
     _assert_no_extra_handlers()

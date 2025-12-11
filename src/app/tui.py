@@ -1190,12 +1190,12 @@ class IntelligentTerminal(App):
                 return
 
             # 获取当前配置中的 personalToken
-            current_token = self.config_manager.get_eulerintelli_key()
+            current_token = self.config_manager.get_witty_key()
 
             # 如果 personalToken 不一致，更新配置
             if personal_token != current_token:
                 self.logger.info("检测到 personalToken 变更，正在同步到配置...")
-                self.config_manager.set_eulerintelli_key(personal_token)
+                self.config_manager.set_witty_key(personal_token)
                 self.logger.info("PersonalToken 已同步到配置文件")
             else:
                 self.logger.info("PersonalToken 与配置一致，无需同步")
@@ -1512,12 +1512,12 @@ class IntelligentTerminal(App):
                 self.logger.info("OpenAI 配置验证结果: %s", valid)
                 return valid
 
-            if backend == Backend.EULERINTELLI:
+            if backend == Backend.SYSAGENT:
                 # 验证 Hermes 配置
                 llm_client = self.get_llm_client()
                 if isinstance(llm_client, HermesChatClient):
                     # 检查当前 token 状态
-                    current_token = self.config_manager.get_eulerintelli_key()
+                    current_token = self.config_manager.get_witty_key()
                     http_token = llm_client.http_manager.auth_token
                     self.logger.info(
                         "Hermes 验证前状态 - 配置 token 长度: %d, http_token 长度: %d",
@@ -1581,7 +1581,7 @@ class IntelligentTerminal(App):
         if not isinstance(self._llm_client, HermesChatClient):
             return
 
-        config_token = self.config_manager.get_eulerintelli_key()
+        config_token = self.config_manager.get_witty_key()
         client_token = self._llm_client.http_manager.auth_token
 
         if config_token != client_token:

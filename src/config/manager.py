@@ -18,12 +18,12 @@ class ConfigManager:
     data = ConfigModel()
 
     # 全局配置路径（用于部署时创建的模板配置）
-    GLOBAL_CONFIG_DIR = Path("/etc/openEuler-Intelligence")
-    GLOBAL_CONFIG_PATH = GLOBAL_CONFIG_DIR / "smart-shell-template.json"
+    GLOBAL_CONFIG_DIR = Path("/etc/witty-assistant")
+    GLOBAL_CONFIG_PATH = GLOBAL_CONFIG_DIR / "witty-assistant-template.json"
 
     # 用户配置目录和文件
-    USER_CONFIG_DIR = Path.home() / ".config" / "eulerintelli"
-    USER_CONFIG_PATH = USER_CONFIG_DIR / "smart-shell.json"
+    USER_CONFIG_DIR = Path.home() / ".config" / "witty"
+    USER_CONFIG_PATH = USER_CONFIG_DIR / "witty-assistant.json"
 
     def __init__(self) -> None:
         """
@@ -168,22 +168,22 @@ class ConfigManager:
         self.data.backend = backend
         self._save_settings()
 
-    def get_eulerintelli_url(self) -> str:
+    def get_witty_url(self) -> str:
         """获取当前 Hermes base_url"""
-        return self.data.eulerintelli.base_url
+        return self.data.witty.base_url
 
-    def set_eulerintelli_url(self, url: str) -> None:
+    def set_witty_url(self, url: str) -> None:
         """更新 Hermes base_url 并保存"""
-        self.data.eulerintelli.base_url = url
+        self.data.witty.base_url = url
         self._save_settings()
 
-    def get_eulerintelli_key(self) -> str:
+    def get_witty_key(self) -> str:
         """获取当前 Hermes api_key"""
-        return self.data.eulerintelli.api_key
+        return self.data.witty.api_key
 
-    def set_eulerintelli_key(self, key: str) -> None:
+    def set_witty_key(self, key: str) -> None:
         """更新 Hermes api_key 并保存"""
-        self.data.eulerintelli.api_key = key
+        self.data.witty.api_key = key
         self._save_settings()
 
     def get_log_level(self) -> LogLevel:
@@ -197,20 +197,20 @@ class ConfigManager:
 
     def get_default_app(self) -> str:
         """获取当前默认智能体 ID"""
-        return self.data.eulerintelli.default_app
+        return self.data.witty.default_app
 
     def set_default_app(self, app_id: str) -> None:
         """更新默认智能体 ID 并保存"""
-        self.data.eulerintelli.default_app = app_id
+        self.data.witty.default_app = app_id
         self._save_settings()
 
     def get_llm_chat_model(self) -> str:
         """获取 Chat 模型的 llmId"""
-        return self.data.eulerintelli.llm_chat
+        return self.data.witty.llm_chat
 
     def set_llm_chat_model(self, llm_id: str) -> None:
         """更新 Chat 模型的 llmId 并保存"""
-        self.data.eulerintelli.llm_chat = llm_id
+        self.data.witty.llm_chat = llm_id
         self._save_settings()
 
     def get_locale(self) -> str:

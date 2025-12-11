@@ -980,7 +980,7 @@ class LLMConfigScreen(ModalScreen[bool]):
         """初始化后端客户端"""
         try:
             config_manager = ConfigManager()
-            base_url = config_manager.get_eulerintelli_url()
+            base_url = config_manager.get_witty_url()
 
             if not base_url:
                 self.post_message(self.LoadError(_("未配置后端服务地址")))

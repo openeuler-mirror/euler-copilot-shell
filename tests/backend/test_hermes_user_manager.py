@@ -84,7 +84,7 @@ class _StubConfigManager:
     def __init__(self) -> None:
         self.saved_key: str | None = None
 
-    def set_eulerintelli_key(self, key: str) -> None:
+    def set_witty_key(self, key: str) -> None:
         self.saved_key = key
 
 

@@ -856,7 +856,7 @@ class DeploymentService:
 
             # 清除 token，每个用户需要自己登录获取
             # _check_framework_api_health 会写入当前用户的 token，但不应该传播给其他用户
-            current_config_manager.set_eulerintelli_key("")
+            current_config_manager.set_witty_key("")
 
             # 创建专用的模板配置管理器
             template_manager = ConfigManager.create_deployment_manager()
@@ -894,10 +894,10 @@ class DeploymentService:
 
             # 根据部署配置更新 sysAgent URL
             server_host = LOCAL_DEPLOYMENT_HOST
-            eulerintelli_url = f"http://{server_host}:8002"
+            witty_url = f"http://{server_host}:8002"
 
-            config_manager.set_eulerintelli_url(eulerintelli_url)
-            logger.info("已更新当前用户 sysAgent URL: %s", eulerintelli_url)
+            config_manager.set_witty_url(witty_url)
+            logger.info("已更新当前用户 sysAgent URL: %s", witty_url)
 
         except Exception:
             logger.exception("更新当前用户配置时发生异常")
@@ -1010,7 +1010,7 @@ class DeploymentService:
 
         # 使用 ConfigManager 获取已保存的配置，验证前面写入的配置是否正确
         config_manager = ConfigManager()
-        base_url = config_manager.get_eulerintelli_url()
+        base_url = config_manager.get_witty_url()
 
         if not base_url:
             self.state.add_log(_("⚠ 未找到 Hermes 后端 URL 配置，跳过模型注册"))

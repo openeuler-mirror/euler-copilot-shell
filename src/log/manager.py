@@ -17,7 +17,7 @@ class LogManager:
 
     def __init__(self, config_manager: ConfigManager | None = None) -> None:
         """初始化日志管理器"""
-        self._log_dir = Path.home() / ".cache" / "openEuler Intelligence" / "logs"
+        self._log_dir = Path.home() / ".cache" / "witty" / "logs"
         self._log_dir.mkdir(parents=True, exist_ok=True)
         self._current_log_file: Path | None = None
         self._config_manager = config_manager
@@ -83,7 +83,7 @@ class LogManager:
 
         """
         # 查找所有日志文件
-        log_files = list(self._log_dir.glob("smart-shell-*.log"))
+        log_files = list(self._log_dir.glob("witty-assistant-*.log"))
         if not log_files:
             return ["未找到日志文件"]
 
@@ -141,7 +141,7 @@ class LogManager:
         """配置日志系统"""
         # 生成当前时间的日志文件名
         current_time = datetime.now(tz=UTC).astimezone()
-        log_filename = f"smart-shell-{current_time.strftime('%Y%m%d-%H%M%S')}.log"
+        log_filename = f"witty-assistant-{current_time.strftime('%Y%m%d-%H%M%S')}.log"
         self._current_log_file = self._log_dir / log_filename
 
         # 获取日志级别并配置根日志记录器
@@ -168,7 +168,7 @@ class LogManager:
         try:
             cutoff_date = datetime.now(tz=UTC).astimezone() - timedelta(days=7)
 
-            for log_file in self._log_dir.glob("smart-shell-*.log"):
+            for log_file in self._log_dir.glob("witty-assistant-*.log"):
                 try:
                     # 跳过当前正在使用的日志文件
                     if self._current_log_file and log_file.samefile(self._current_log_file):
@@ -195,7 +195,7 @@ class LogManager:
     def _cleanup_empty_logs(self, skip_files: set[Path] | None) -> None:
         """删除空日志文件，可跳过指定文件"""
         logger = logging.getLogger(__name__)
-        for log_file in self._log_dir.glob("smart-shell-*.log"):
+        for log_file in self._log_dir.glob("witty-assistant-*.log"):
             try:
                 if skip_files and any(log_file.samefile(skip_file) for skip_file in skip_files):
                     continue

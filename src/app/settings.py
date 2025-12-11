@@ -99,7 +99,7 @@ class SettingsScreen(ModalScreen):
         """切换后端"""
         # 切换后端类型
         self.backend = (
-            Backend.EULERINTELLI if self.backend == Backend.OPENAI else Backend.OPENAI
+            Backend.SYSAGENT if self.backend == Backend.OPENAI else Backend.OPENAI
         )
 
         # 更新后端按钮文本
@@ -185,7 +185,7 @@ class SettingsScreen(ModalScreen):
                 Input(
                     value=self.config_manager.get_base_url()
                     if self.backend == Backend.OPENAI
-                    else self.config_manager.get_eulerintelli_url(),
+                    else self.config_manager.get_witty_url(),
                     classes="settings-input",
                     id="base-url",
                 ),
@@ -197,7 +197,7 @@ class SettingsScreen(ModalScreen):
                 Input(
                     value=self.config_manager.get_api_key()
                     if self.backend == Backend.OPENAI
-                    else self.config_manager.get_eulerintelli_key(),
+                    else self.config_manager.get_witty_key(),
                     classes="settings-input",
                     id="api-key",
                     placeholder=_("API 访问密钥，可选"),
@@ -223,7 +223,7 @@ class SettingsScreen(ModalScreen):
                 ),
             ]
 
-        # EULERINTELLI 后端
+        # SYSAGENT 后端
         return [
             Horizontal(
                 Label(_("用户设置:"), classes="settings-label"),
@@ -252,8 +252,8 @@ class SettingsScreen(ModalScreen):
             old_base = self.config_manager.get_base_url()
             old_key = self.config_manager.get_api_key()
         else:
-            old_base = self.config_manager.get_eulerintelli_url()
-            old_key = self.config_manager.get_eulerintelli_key()
+            old_base = self.config_manager.get_witty_url()
+            old_key = self.config_manager.get_witty_key()
 
         return old_backend, old_base, old_key
 
@@ -266,9 +266,9 @@ class SettingsScreen(ModalScreen):
 
         if self.backend == Backend.OPENAI:
             self._save_openai_config(base_url, api_key)
-        else:  # eulerintelli
-            self.config_manager.set_eulerintelli_url(base_url)
-            self.config_manager.set_eulerintelli_key(api_key)
+        else:  # witty
+            self.config_manager.set_witty_url(base_url)
+            self.config_manager.set_witty_key(api_key)
 
         return base_url, api_key
 
@@ -375,9 +375,9 @@ class SettingsScreen(ModalScreen):
         if self.backend == Backend.OPENAI:
             base_url.value = self.config_manager.get_base_url()
             api_key.value = self.config_manager.get_api_key()
-        else:  # EULERINTELLI
-            base_url.value = self.config_manager.get_eulerintelli_url()
-            api_key.value = self.config_manager.get_eulerintelli_key()
+        else:  # SYSAGENT
+            base_url.value = self.config_manager.get_witty_url()
+            api_key.value = self.config_manager.get_witty_key()
 
     def _replace_backend_widgets(self) -> None:
         """替换后端特定的 UI 组件"""

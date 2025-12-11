@@ -114,20 +114,20 @@ ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/wit
 if [ $1 -eq 0 ]; then
 # 卸载时清理用户缓存和配置文件
 for home in /root /home/*; do
-    cache_dir="$home/.cache/openEuler Intelligence/logs"
+    cache_dir="$home/.cache/witty/logs"
     if [ -d "$cache_dir" ]; then
         rm -rf "$cache_dir"
     fi
-    config_dir="$home/.config/eulerintelli"
+    config_dir="$home/.config/witty"
     if [ -d "$config_dir" ]; then
         rm -rf "$config_dir"
     fi
 done
-rm -f /etc/openEuler-Intelligence/smart-shell-template.json
+rm -f /etc/witty-assistant/witty-assistant-template.json
 elif [ $1 -ge 1 ]; then
 # 升级时清理日志
 for home in /root /home/*; do
-    cache_dir="$home/.cache/openEuler Intelligence/logs"
+    cache_dir="$home/.cache/witty/logs"
     if [ -d "$cache_dir" ]; then
         rm -rf "$cache_dir"
     fi
