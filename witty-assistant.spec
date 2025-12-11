@@ -67,7 +67,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name="oi-cli",
+    name="witty-assistant",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

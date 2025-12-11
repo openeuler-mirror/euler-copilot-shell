@@ -1,12 +1,12 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR openEuler Intelligence Project
-# This file is distributed under the same license as the oi-cli package.
+# This file is distributed under the same license as the witty-assistant package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: oi-cli 2.0.0\n"
+"Project-Id-Version: witty-assistant 2.0.0\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
 "POT-Creation-Date: 2025-12-10 11:58+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"

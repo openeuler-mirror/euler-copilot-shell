@@ -1,5 +1,5 @@
 [project]
-name = "oi-cli"
+name = "witty-assistant"
 version = "2.0.0"
 description = "智能 Shell 命令行工具"
 readme = "README.md"

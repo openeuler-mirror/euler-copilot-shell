@@ -1,4 +1,4 @@
-%global pypi_name oi-cli
+%global pypi_name witty-assistant
 %global shortcut_name oi
 %global debug_package %{nil}
 
@@ -65,7 +65,7 @@ uv pip install pyinstaller
 # 使用虚拟环境中的 PyInstaller 创建单一可执行文件
 pyinstaller --noconfirm \
             --distpath dist \
-            oi-cli.spec
+            witty-assistant.spec
 
 # 退出虚拟环境
 deactivate
