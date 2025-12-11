@@ -1,10 +1,10 @@
-# OE-CLI 命令行助手
+# Witty Assistant
 
-OE-CLI 是 openEuler Intelligence 的命令行客户端，提供 AI 驱动的命令行交互体验。支持多种 LLM 后端，集成 MCP 协议，提供现代化的 TUI 界面。
+Witty Assistant 是 openEuler AI 助手的命令行客户端，提供 AI 驱动的命令行交互体验。支持多种 LLM 后端，集成 MCP 协议，提供现代化的 TUI 界面。
 
 ## 核心特性
 
-- **多后端支持**: 支持 OpenAI API 大模型和 openEuler Intelligence 后端
+- **多后端支持**: 支持 OpenAI API 大模型和 sysAgent
 - **智能终端界面**: 基于 Textual 的现代化 TUI 界面
 - **流式响应**: 实时显示 AI 回复内容
 - **部署助手**: 内置 openEuler Intelligence 自动部署功能
@@ -59,19 +59,19 @@ witty --logs
 witty --log-level INFO
 ```
 
-初始化 openEuler Intelligence 后端（仅支持 openEuler 操作系统）:
+初始化 sysAgent（仅支持 openEuler 操作系统）:
 
 ```sh
 witty --init
 ```
 
-选择和设置默认智能体（仅适用于 openEuler Intelligence 后端）:
+选择和设置默认智能体（仅适用于 sysAgent）:
 
 ```sh
 witty --agent
 ```
 
-通过浏览器登录并自动保存 API Key（需要已配置的 openEuler Intelligence 后端）:
+通过浏览器登录并自动保存 API Key（需要已配置的 sysAgent）:
 
 ```sh
 witty --login
@@ -100,7 +100,7 @@ witty --login
 
 ### `--init` 命令说明
 
-`--init` 命令用于在 openEuler 操作系统上自动安装和配置 openEuler Intelligence 后端，它将执行以下步骤：
+`--init` 命令用于在 openEuler 操作系统上自动安装和配置 sysAgent，它将执行以下步骤：
 
 1. **系统检测**: 检测当前操作系统是否为 openEuler
 2. **环境检查**: 验证 dnf 包管理器和管理员权限
@@ -116,7 +116,7 @@ witty --login
 **注意**:
 
 1. 此命令会自动安装系统服务，请在生产环境使用前仔细评估；
-2. 如果需要重启或卸载 openEuler Intelligence 后端，请以管理员身份运行 `witty-manager` 并根据指引操作；
+2. 如果需要重启或卸载 sysAgent，请以管理员身份运行 `witty-manager` 并根据指引操作；
 3. `witty-manager` 的卸载功能会清空机器上 MongoDB 和 PostgreSQL 的全部数据并重置 nginx 服务，请谨慎操作。
 
 ### `--agent` 命令说明
@@ -130,7 +130,7 @@ witty --login
 
 **使用要求**:
 
-- 必须配置为 openEuler Intelligence 后端
+- 必须配置为 sysAgent
 - 需要有效的服务器连接来获取智能体列表
 - 如果后端不是 openEuler Intelligence，会显示错误提示并引导切换
 
@@ -142,7 +142,7 @@ witty --login
 
 ### `--llm-config` 命令说明
 
-`--llm-config` 命令用于配置已部署的 openEuler Intelligence 后端的 LLM 和 Embedding 模型参数，它提供了一个简洁的 TUI 界面来管理系统级配置：
+`--llm-config` 命令用于配置已部署的 sysAgent 的 LLM 和 Embedding 模型参数，它提供了一个简洁的 TUI 界面来管理系统级配置：
 
 1. **系统配置管理**: 直接修改系统配置文件 `/etc/sysagent/config.toml` 和 `/etc/euler-copilot-rag/data_chain/env`
 2. **LLM 配置**: 设置大语言模型的端点、API 密钥、模型名称、最大输出令牌数和温度参数
@@ -192,7 +192,7 @@ witty --login
 
 `--login` 命令用于通过默认浏览器获取 openEuler Intelligence 的 API Key，并自动写入到本地配置：
 
-1. **获取授权地址**: 从已配置的 openEuler Intelligence 后端读取登录跳转链接；
+1. **获取授权地址**: 从已配置的 sysAgent 读取登录跳转链接；
 2. **本地回调服务**: 在本地启动一个临时回调服务器，处理浏览器回传的数据；
 3. **打开浏览器**: 自动打开登录页面，用户按提示完成账号登录；
 4. **保存凭证**: 登录成功后自动将返回的访问令牌写入配置文件。
@@ -201,7 +201,7 @@ witty --login
 
 - 已通过 `--init` 或手动方式配置 openEuler Intelligence URL；
 - 运行环境具备可用浏览器（无头服务器需使用图形转发或在本地执行）；
-- 登录过程需要网络访问 openEuler Intelligence 后端。
+- 登录过程需要网络访问 sysAgent。
 
 遇到错误时，命令会输出详细的提示信息帮助排查，例如未检测到浏览器或 URL 未配置等情况。
 
@@ -269,7 +269,7 @@ witty --locale en_US
 
 ### 智能体管理
 
-对于 openEuler Intelligence 后端，应用程序支持多智能体切换：
+对于 sysAgent，应用程序支持多智能体切换：
 
 1. **默认智能问答**: 通用 AI 助手
 2. **专业智能体**: 针对特定领域的专门助手

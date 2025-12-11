@@ -52,9 +52,9 @@ For more information and documentation, please visit:
     # init 子命令
     subparsers.add_parser(
         "init",
-        help=_("Initialize openEuler Intelligence backend"),
+        help=_("Initialize sysAgent"),
         description=_(
-            "Initialize openEuler Intelligence backend\n"
+            "Initialize sysAgent\n"
             " * Initialization requires administrator privileges and network connection",
         ),
         formatter_class=argparse.RawTextHelpFormatter,
@@ -260,7 +260,7 @@ def main() -> None:
         app = IntelligentTerminal()
         app.run()
     except Exception:
-        logger.exception(_("Fatal error in Intelligent Shell application"))
+        logger.exception(_("Fatal error in Witty Assistant application"))
         raise
 
 

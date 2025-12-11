@@ -5,7 +5,7 @@
 Name:           euler-copilot-shell
 Version:        2.0.0
 Release:        1%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
-Summary:        openEuler Intelligence 智能命令行工具集
+Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
 URL:            https://gitee.com/openeuler/euler-copilot-shell
 Source0:        %{name}-%{version}.tar.gz
@@ -16,11 +16,11 @@ BuildRequires:  python3-devel python3-virtualenv python3-pip
 BuildRequires:  gettext
 
 %description
-openEuler Intelligence 智能命令行工具集，包含智能 Shell 命令行程序和部署安装工具。
+Witty Assistant 智能命令行工具集，包含 Witty Assistant 命令行程序和部署安装工具。
 
-# 智能命令行工具子包
+# 智能命令行助手子包
 %package -n witty-assistant
-Summary:        openEuler Intelligence 智能 Shell 命令行工具
+Summary:        Witty Assistant 命令行助手
 Requires:       glibc
 
 # 替换原来的 euler-copilot-shell 包
@@ -31,12 +31,12 @@ Obsoletes:      openeuler-intelligence-cli < %{version}-%{release}
 Provides:       openeuler-intelligence-cli = %{version}-%{release}
 
 %description -n witty-assistant
-openEuler Intelligence 智能 Shell 是一个智能命令行程序。
+Witty Assistant 是一个智能命令行程序。
 它允许用户输入命令，通过集成大语言模型提供命令建议，帮助用户更高效地使用命令行。
 
 # 部署安装工具子包
 %package -n witty-assistant-installer
-Summary:        openEuler Intelligence 部署安装脚本
+Summary:        Witty Assistant 部署安装脚本
 Requires:       wget
 Requires:       python3-aiohttp
 Requires:       python3-requests
@@ -47,7 +47,7 @@ Obsoletes:      openeuler-intelligence-installer < %{version}-%{release}
 Provides:       openeuler-intelligence-installer = %{version}-%{release}
 
 %description -n witty-assistant-installer
-openEuler Intelligence 部署安装工具包，包含部署脚本和相关资源文件。
+Witty Assistant 部署安装工具包，包含部署脚本和相关资源文件。
 
 %prep
 %autosetup -n %{name}-%{version}

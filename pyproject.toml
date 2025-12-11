@@ -1,7 +1,7 @@
 [project]
 name = "witty-assistant"
 version = "2.0.0"
-description = "智能 Shell 命令行工具"
+description = "Witty Assistant 命令行助手"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MulanPSL-2.0" }

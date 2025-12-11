@@ -112,8 +112,8 @@ msgid "✗ 部署失败"
 msgstr "✗ Deployment failed"
 
 #: src/app/deployment/service.py:256
-msgid "✓ openEuler Intelligence 后端部署完成！"
-msgstr "✓ openEuler Intelligence backend deployment completed!"
+msgid "✓ sysAgent 部署完成！"
+msgstr "✓ sysAgent deployment completed!"
 
 #: src/app/deployment/service.py:294
 msgid "正在安装 witty-assistant-installer..."
@@ -330,8 +330,8 @@ msgid "注册大模型配置"
 msgstr "Register LLM configuration"
 
 #: src/app/deployment/service.py:783
-msgid "正在检查 openEuler Intelligence 后端服务状态..."
-msgstr "Checking openEuler Intelligence backend service status..."
+msgid "正在检查 sysAgent 服务状态..."
+msgstr "Checking sysAgent service status..."
 
 #: src/app/deployment/service.py:794
 msgid "✗ openEuler Intelligence 服务检查失败"
@@ -1433,8 +1433,8 @@ msgid "智能体功能提示"
 msgstr "Agent Feature Notification"
 
 #: src/app/dialogs/agent.py:28
-msgid "请选择 openEuler Intelligence 后端来使用智能体功能"
-msgstr "Please select openEuler Intelligence backend to use agent features"
+msgid "请选择 sysAgent 来使用智能体功能"
+msgstr "Please select sysAgent to use agent features"
 
 #: src/app/dialogs/agent.py:29
 msgid "按任意键关闭"
@@ -1551,15 +1551,15 @@ msgid "Use 'witty <command> --help' for more information on a specific command"
 msgstr "Use 'witty <command> --help' for more information on a specific command"
 
 #: src/main.py:55
-msgid "Initialize openEuler Intelligence backend"
-msgstr "Initialize openEuler Intelligence backend"
+msgid "Initialize sysAgent"
+msgstr "Initialize sysAgent"
 
 #: src/main.py:57
 msgid ""
-"Initialize openEuler Intelligence backend\n"
+"Initialize sysAgent\n"
 " * Initialization requires administrator privileges and network connection"
 msgstr ""
-"Initialize openEuler Intelligence backend\n"
+"Initialize sysAgent\n"
 " * Initialization requires administrator privileges and network connection"
 
 #: src/main.py:66 src/main.py:67
@@ -1658,8 +1658,8 @@ msgstr ""
 "No option specified. Use 'witty set-default --help' for available options.\n"
 
 #: src/main.py:263
-msgid "Fatal error in Intelligent Shell application"
-msgstr "Fatal error in Intelligent Shell application"
+msgid "Fatal error in Witty Assistant application"
+msgstr "Fatal error in Witty Assistant application"
 
 #: src/tool/oi_select_agent.py:123
 #, python-brace-format
@@ -1680,8 +1680,8 @@ msgid "已取消选择\n"
 msgstr "Selection cancelled\n"
 
 #: src/tool/oi_select_agent.py:143
-msgid "错误: 智能体功能需要使用 openEuler Intelligence 后端\n"
-msgstr "Error: Agent functionality requires openEuler Intelligence backend\n"
+msgid "错误: 智能体功能需要使用 sysAgent\n"
+msgstr "Error: Agent functionality requires sysAgent\n"
 
 #: src/tool/oi_select_agent.py:144
 msgid "请先运行以下命令切换后端：\n"
@@ -1689,10 +1689,10 @@ msgstr "Please run the following command to switch backend:\n"
 
 #: src/tool/oi_select_agent.py:145
 msgid ""
-"  witty  # 然后按下 Ctrl+S 进入设置界面切换到 openEuler Intelligence 后端\n"
+"  witty  # 然后按下 Ctrl+S 进入设置界面切换到 sysAgent\n"
 msgstr ""
 "  witty  # Then press Ctrl+S to enter settings and switch to openEuler "
-"Intelligence backend\n"
+"sysAgent\n"
 
 #: src/tool/oi_select_agent.py:163
 #, python-brace-format

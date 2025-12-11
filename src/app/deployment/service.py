@@ -1,7 +1,7 @@
 """
 部署服务模块
 
-处理 openEuler Intelligence 后端部署的核心逻辑。
+处理 sysAgent 部署的核心逻辑。
 """
 
 from __future__ import annotations
@@ -97,7 +97,7 @@ class DeploymentService:
     """
     部署服务
 
-    负责执行 openEuler Intelligence 后端的部署流程。
+    负责执行 sysAgent 的部署流程。
     基于已安装的 witty-assistant-installer RPM 包资源。
     """
 
@@ -226,7 +226,7 @@ class DeploymentService:
         self._update_backend_url_config(config)
 
         try:
-            logger.info("开始部署 openEuler Intelligence 后端")
+            logger.info("开始部署 sysAgent")
 
             # 重置状态
             self.state.reset()
@@ -253,7 +253,7 @@ class DeploymentService:
         # 部署完成，创建全局配置模板供其他用户使用
         self.state.is_running = False
         self.state.is_completed = True
-        self.state.add_log(_("✓ openEuler Intelligence 后端部署完成！"))
+        self.state.add_log(_("✓ sysAgent 部署完成！"))
 
         # 创建全局配置模板，包含部署时的配置信息
         await self._create_global_config_template(config)
@@ -780,7 +780,7 @@ class DeploymentService:
         """
         self.state.current_step = 5
         self.state.current_step_name = _("注册大模型配置")
-        self.state.add_log(_("正在检查 openEuler Intelligence 后端服务状态..."))
+        self.state.add_log(_("正在检查 sysAgent 服务状态..."))
 
         if progress_callback:
             progress_callback(self.state)
@@ -789,7 +789,7 @@ class DeploymentService:
         server_host = LOCAL_DEPLOYMENT_HOST
         server_port = 8002
 
-        # 检查 openEuler Intelligence 后端服务状态
+        # 检查 sysAgent 服务状态
         if not await self._check_framework_service_health(server_host, server_port, progress_callback):
             self.state.add_log(_("✗ openEuler Intelligence 服务检查失败"))
             return False
@@ -883,7 +883,7 @@ class DeploymentService:
         更新当前用户的配置
 
         在部署开始时根据部署模式
-        更新 openEuler Intelligence 后端的 URL 配置
+        更新 sysAgent 的 URL 配置
 
         Args:
             config: 部署配置
@@ -892,12 +892,12 @@ class DeploymentService:
         try:
             config_manager = ConfigManager()
 
-            # 根据部署配置更新 openEuler Intelligence 后端 URL
+            # 根据部署配置更新 sysAgent URL
             server_host = LOCAL_DEPLOYMENT_HOST
             eulerintelli_url = f"http://{server_host}:8002"
 
             config_manager.set_eulerintelli_url(eulerintelli_url)
-            logger.info("已更新当前用户 openEuler Intelligence 后端 URL: %s", eulerintelli_url)
+            logger.info("已更新当前用户 sysAgent URL: %s", eulerintelli_url)
 
         except Exception:
             logger.exception("更新当前用户配置时发生异常")
