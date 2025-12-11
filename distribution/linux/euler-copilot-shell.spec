@@ -88,7 +88,7 @@ cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deplo
 chmod -R +x %{buildroot}/usr/lib/openeuler-intelligence/scripts/
 
 # 创建可执行文件的符号链接
-ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/oi-manager
+ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/witty-manager
 
 %files -n openeuler-intelligence-cli
 %license LICENSE
@@ -100,7 +100,7 @@ ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/oi-
 %license LICENSE
 %doc scripts/deploy/安装部署手册.md
 /usr/lib/openeuler-intelligence
-%{_bindir}/oi-manager
+%{_bindir}/witty-manager
 
 %postun -n openeuler-intelligence-cli
 if [ $1 -eq 0 ]; then
@@ -153,7 +153,7 @@ fi
 - Feature: Add login through browser (requires proper desktop environment)
 
 * Wed Oct 29 2025 openEuler <contact@openeuler.org> - 0.10.2-3
-- Fix issue where failing to fetch mcp when creating agent with oi-manager
+- Fix issue where failing to fetch mcp when creating agent with witty-manager
 
 * Sat Oct 25 2025 openEuler <contact@openeuler.org> - 0.10.2-2
 - Add internationalization support (currently supports English and Simplified Chinese)
@@ -178,7 +178,7 @@ fi
 
 * Wed Sep 10 2025 openEuler <contact@openeuler.org> - 0.10.1-1
 - 支持切换 MCP 自动执行模式
-- 简化安装器命令为 oi-manager
+- 简化安装器命令为 witty-manager
 
 * Tue Sep 09 2025 openEuler <contact@openeuler.org> - 0.10.0-4
 - 优化安装脚本：添加内核版本检查和架构支持，优化 MongoDB 和 MinIO 安装逻辑
