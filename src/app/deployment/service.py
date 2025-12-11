@@ -98,7 +98,7 @@ class DeploymentService:
     部署服务
 
     负责执行 openEuler Intelligence 后端的部署流程。
-    基于已安装的 openeuler-intelligence-installer RPM 包资源。
+    基于已安装的 witty-assistant-installer RPM 包资源。
     """
 
     def __init__(self) -> None:
@@ -144,10 +144,10 @@ class DeploymentService:
             temp_state.add_log(warning_msg)
             progress_callback(temp_state)
 
-        # 检查并安装 openeuler-intelligence-installer
+        # 检查并安装 witty-assistant-installer
         if not self.resource_manager.check_installer_available():
             if progress_callback:
-                temp_state.add_log(_("缺少 openeuler-intelligence-installer 包，正在尝试安装..."))
+                temp_state.add_log(_("缺少 witty-assistant-installer 包，正在尝试安装..."))
                 progress_callback(temp_state)
 
             success, install_errors = await self._install_intelligence_installer(progress_callback)
@@ -280,7 +280,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None = None,
     ) -> tuple[bool, list[str]]:
         """
-        安装 openeuler-intelligence-installer 包
+        安装 witty-assistant-installer 包
 
         Returns:
             tuple[bool, list[str]]: (是否成功安装, 错误信息列表)
@@ -291,25 +291,25 @@ class DeploymentService:
         try:
             temp_state = DeploymentState()
             if progress_callback:
-                temp_state.add_log(_("正在安装 openeuler-intelligence-installer..."))
+                temp_state.add_log(_("正在安装 witty-assistant-installer..."))
                 progress_callback(temp_state)
 
             # 执行安装命令
-            cmd = ["sudo", "dnf", "install", "-y", "openeuler-intelligence-installer"]
+            cmd = ["sudo", "dnf", "install", "-y", "witty-assistant-installer"]
             success, output_lines = await self._execute_install_command(cmd, progress_callback, temp_state)
 
             if success:
                 # 验证安装是否成功
                 if self.resource_manager.check_installer_available():
                     if progress_callback:
-                        temp_state.add_log(_("✓ openeuler-intelligence-installer 安装成功"))
+                        temp_state.add_log(_("✓ witty-assistant-installer 安装成功"))
                         progress_callback(temp_state)
                     return True, []
 
-                errors.append(_("openeuler-intelligence-installer 安装后资源文件仍然缺失"))
+                errors.append(_("witty-assistant-installer 安装后资源文件仍然缺失"))
                 return False, errors
 
-            errors.append(_("安装 openeuler-intelligence-installer 失败"))
+            errors.append(_("安装 witty-assistant-installer 失败"))
             # 添加安装输出到错误信息
             if output_lines:
                 errors.append(_("安装输出:"))
@@ -317,7 +317,7 @@ class DeploymentService:
 
         except Exception as e:
             errors.append(_("安装过程中发生异常: {error}").format(error=e))
-            logger.exception("安装 openeuler-intelligence-installer 时发生异常")
+            logger.exception("安装 witty-assistant-installer 时发生异常")
 
         return False, errors
 
@@ -396,10 +396,10 @@ class DeploymentService:
 
         # 检查安装器资源
         if not self.resource_manager.check_installer_available():
-            self.state.add_log(_("✗ 错误: openeuler-intelligence-installer 包未安装或资源缺失"))
-            self.state.add_log(_("请先安装: sudo dnf install -y openeuler-intelligence-installer"))
+            self.state.add_log(_("✗ 错误: witty-assistant-installer 包未安装或资源缺失"))
+            self.state.add_log(_("请先安装: sudo dnf install -y witty-assistant-installer"))
             return False
-        self.state.add_log(_("✓ openeuler-intelligence-installer 资源可用"))
+        self.state.add_log(_("✓ witty-assistant-installer 资源可用"))
 
         # 检查权限
         if not await self.check_sudo_privileges():

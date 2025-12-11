@@ -23,7 +23,7 @@ from tool import backend_init, llm_config, select_agent
 def parse_args() -> argparse.Namespace:
     """解析命令行参数"""
     parser = argparse.ArgumentParser(
-        prog="oi",
+        prog="witty",
         description=_("openEuler Intelligence - Intelligent command-line tool"),
         epilog=_("""
 For more information and documentation, please visit:
@@ -45,7 +45,7 @@ For more information and documentation, please visit:
     subparsers = parser.add_subparsers(
         dest="command",
         title=_("Available Commands"),
-        description=_("Use 'oi <command> --help' for more information on a specific command"),
+        description=_("Use 'witty <command> --help' for more information on a specific command"),
         metavar="<command>",
     )
 
@@ -205,7 +205,7 @@ def handle_set_default(args: argparse.Namespace, config_manager: ConfigManager) 
     # 如果没有指定任何参数，显示帮助信息
     if not handled:
         sys.stderr.write(
-            _("No option specified. Use 'oi set-default --help' for available options.\n"),
+            _("No option specified. Use 'witty set-default --help' for available options.\n"),
         )
         sys.exit(1)
 

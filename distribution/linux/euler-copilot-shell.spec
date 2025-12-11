@@ -1,5 +1,5 @@
 %global pypi_name witty-assistant
-%global shortcut_name oi
+%global shortcut_name witty
 %global debug_package %{nil}
 
 Name:           euler-copilot-shell
@@ -19,26 +19,34 @@ BuildRequires:  gettext
 openEuler Intelligence 智能命令行工具集，包含智能 Shell 命令行程序和部署安装工具。
 
 # 智能命令行工具子包
-%package -n openeuler-intelligence-cli
+%package -n witty-assistant
 Summary:        openEuler Intelligence 智能 Shell 命令行工具
 Requires:       glibc
+
 # 替换原来的 euler-copilot-shell 包
 Obsoletes:      euler-copilot-shell < %{version}-%{release}
 Provides:       euler-copilot-shell = %{version}-%{release}
+# 替换原来的 openeuler-intelligence-cli 包
+Obsoletes:      openeuler-intelligence-cli < %{version}-%{release}
+Provides:       openeuler-intelligence-cli = %{version}-%{release}
 
-%description -n openeuler-intelligence-cli
+%description -n witty-assistant
 openEuler Intelligence 智能 Shell 是一个智能命令行程序。
 它允许用户输入命令，通过集成大语言模型提供命令建议，帮助用户更高效地使用命令行。
 
 # 部署安装工具子包
-%package -n openeuler-intelligence-installer
+%package -n witty-assistant-installer
 Summary:        openEuler Intelligence 部署安装脚本
 Requires:       wget
 Requires:       python3-aiohttp
 Requires:       python3-requests
 BuildArch:      noarch
 
-%description -n openeuler-intelligence-installer
+# 替换原来的 openeuler-intelligence-installer 包
+Obsoletes:      openeuler-intelligence-installer < %{version}-%{release}
+Provides:       openeuler-intelligence-installer = %{version}-%{release}
+
+%description -n witty-assistant-installer
 openEuler Intelligence 部署安装工具包，包含部署脚本和相关资源文件。
 
 %prep
@@ -90,19 +98,19 @@ chmod -R +x %{buildroot}/usr/lib/openeuler-intelligence/scripts/
 # 创建可执行文件的符号链接
 ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/witty-manager
 
-%files -n openeuler-intelligence-cli
+%files -n witty-assistant
 %license LICENSE
 %doc README.md
 %{_bindir}/%{pypi_name}
 %{_bindir}/%{shortcut_name}
 
-%files -n openeuler-intelligence-installer
+%files -n witty-assistant-installer
 %license LICENSE
 %doc scripts/deploy/安装部署手册.md
 /usr/lib/openeuler-intelligence
 %{_bindir}/witty-manager
 
-%postun -n openeuler-intelligence-cli
+%postun -n witty-assistant
 if [ $1 -eq 0 ]; then
 # 卸载时清理用户缓存和配置文件
 for home in /root /home/*; do
@@ -126,7 +134,7 @@ for home in /root /home/*; do
 done
 fi
 
-%postun -n openeuler-intelligence-installer
+%postun -n witty-assistant-installer
 if [ $1 -eq 0 ]; then
 # 卸载时清理安装器相关文件
 rm -f /etc/euler_Intelligence_install*

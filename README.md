@@ -34,7 +34,7 @@ OE-CLI 是 openEuler Intelligence 的命令行客户端，提供 AI 驱动的命
 注意：*仅适用于 openEuler 24.03 LTS SP2*
 
 ```sh
-sudo dnf install openeuler-intelligence-cli
+sudo dnf install witty-assistant
 ```
 
 安装完成后，可以使用 `oi` 命令启动应用程序。
@@ -50,31 +50,31 @@ oi
 查看最新的日志内容:
 
 ```sh
-oi --logs
+witty --logs
 ```
 
 设置日志级别并验证:
 
 ```sh
-oi --log-level INFO
+witty --log-level INFO
 ```
 
 初始化 openEuler Intelligence 后端（仅支持 openEuler 操作系统）:
 
 ```sh
-oi --init
+witty --init
 ```
 
 选择和设置默认智能体（仅适用于 openEuler Intelligence 后端）:
 
 ```sh
-oi --agent
+witty --agent
 ```
 
 通过浏览器登录并自动保存 API Key（需要已配置的 openEuler Intelligence 后端）:
 
 ```sh
-oi --login
+witty --login
 ```
 
 运行前请确保运行环境具备图形界面并能启动默认浏览器；在无图形界面的场景下可使用 X11 转发或直接在目标服务器上执行该命令。
@@ -104,7 +104,7 @@ oi --login
 
 1. **系统检测**: 检测当前操作系统是否为 openEuler
 2. **环境检查**: 验证 dnf 包管理器和管理员权限
-3. **包安装**: 通过 dnf 安装 `openeuler-intelligence-installer` RPM 包
+3. **包安装**: 通过 dnf 安装 `witty-assistant-installer` RPM 包
 4. **服务部署**: 运行部署脚本完成系统初始化
 
 **使用要求**:
@@ -218,10 +218,10 @@ oi --login
 
 ```sh
 # 切换到中文
-oi --locale zh_CN
+witty --locale zh_CN
 
 # 切换到英文
-oi --locale en_US
+witty --locale en_US
 ```
 
 语言设置会自动保存，下次启动时生效。
@@ -286,7 +286,7 @@ oi --locale en_US
 ##### 方式一：命令行（修改默认配置）
 
 ```sh
-oi --agent
+witty --agent
 ```
 
 通过图形化界面选择默认智能体，选择会自动保存到配置文件。

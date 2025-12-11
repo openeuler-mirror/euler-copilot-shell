@@ -46,7 +46,7 @@ def test_init_copies_global_template(
 
     template = {
         "openai": {"base_url": "http://demo", "model": "gpt"},
-        "eulerintelli": {"base_url": "http://oi", "api_key": "token"},
+        "eulerintelli": {"base_url": "http://witty", "api_key": "token"},
     }
     global_path.write_text(json.dumps(template), encoding="utf-8")
 
@@ -80,10 +80,10 @@ def test_init_creates_default_when_no_template(
     assert user_path.exists()
     data = json.loads(user_path.read_text(encoding="utf-8"))
     assert data["openai"]["api_key"] == ""
-    manager.set_eulerintelli_url("https://oi.local")
+    manager.set_eulerintelli_url("https://witty.local")
     assert (
         json.loads(user_path.read_text(encoding="utf-8"))["eulerintelli"]["base_url"]
-        == "https://oi.local"
+        == "https://witty.local"
     )
 
 

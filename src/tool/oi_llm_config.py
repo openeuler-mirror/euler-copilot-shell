@@ -1272,7 +1272,7 @@ def check_admin_permission() -> tuple[bool, list[str]]:
     # 检查是否以管理员权限运行
     if os.geteuid() != 0:
         errors.append(_("需要管理员权限才能管理 LLM 配置"))
-        errors.append(_("请使用 'sudo oi --llm-config' 运行"))
+        errors.append(_("请使用 'sudo witty --llm-config' 运行"))
 
     return len(errors) == 0, errors
 

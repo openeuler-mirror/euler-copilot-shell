@@ -90,9 +90,9 @@ msgstr ""
 "compatibility"
 
 #: src/app/deployment/service.py:150
-msgid "缺少 openeuler-intelligence-installer 包，正在尝试安装..."
+msgid "缺少 witty-assistant-installer 包，正在尝试安装..."
 msgstr ""
-"Missing openeuler-intelligence-installer package, attempting to install..."
+"Missing witty-assistant-installer package, attempting to install..."
 
 #: src/app/deployment/service.py:160
 #: src/app/deployment/components/env_check.py:164
@@ -116,22 +116,22 @@ msgid "✓ openEuler Intelligence 后端部署完成！"
 msgstr "✓ openEuler Intelligence backend deployment completed!"
 
 #: src/app/deployment/service.py:294
-msgid "正在安装 openeuler-intelligence-installer..."
-msgstr "Installing openeuler-intelligence-installer..."
+msgid "正在安装 witty-assistant-installer..."
+msgstr "Installing witty-assistant-installer..."
 
 #: src/app/deployment/service.py:305
-msgid "✓ openeuler-intelligence-installer 安装成功"
-msgstr "✓ openeuler-intelligence-installer installed successfully"
+msgid "✓ witty-assistant-installer 安装成功"
+msgstr "✓ witty-assistant-installer installed successfully"
 
 #: src/app/deployment/service.py:309
-msgid "openeuler-intelligence-installer 安装后资源文件仍然缺失"
+msgid "witty-assistant-installer 安装后资源文件仍然缺失"
 msgstr ""
-"Resource files still missing after openeuler-intelligence-installer "
+"Resource files still missing after witty-assistant-installer "
 "installation"
 
 #: src/app/deployment/service.py:312
-msgid "安装 openeuler-intelligence-installer 失败"
-msgstr "Failed to install openeuler-intelligence-installer"
+msgid "安装 witty-assistant-installer 失败"
+msgstr "Failed to install witty-assistant-installer"
 
 #: src/app/deployment/service.py:315
 msgid "安装输出:"
@@ -159,19 +159,19 @@ msgid "✓ 检测到 openEuler 操作系统"
 msgstr "✓ openEuler operating system detected"
 
 #: src/app/deployment/service.py:399
-msgid "✗ 错误: openeuler-intelligence-installer 包未安装或资源缺失"
+msgid "✗ 错误: witty-assistant-installer 包未安装或资源缺失"
 msgstr ""
-"✗ Error: openeuler-intelligence-installer package is not installed or "
+"✗ Error: witty-assistant-installer package is not installed or "
 "resources are missing"
 
 #: src/app/deployment/service.py:400
-msgid "请先安装: sudo dnf install -y openeuler-intelligence-installer"
+msgid "请先安装: sudo dnf install -y witty-assistant-installer"
 msgstr ""
-"Please install first: sudo dnf install -y openeuler-intelligence-installer"
+"Please install first: sudo dnf install -y witty-assistant-installer"
 
 #: src/app/deployment/service.py:402
-msgid "✓ openeuler-intelligence-installer 资源可用"
-msgstr "✓ openeuler-intelligence-installer resources available"
+msgid "✓ witty-assistant-installer 资源可用"
+msgstr "✓ witty-assistant-installer resources available"
 
 #: src/app/deployment/service.py:406
 msgid "✗ 错误: 需要管理员权限"
@@ -1547,8 +1547,8 @@ msgid "Available Commands"
 msgstr "Available Commands"
 
 #: src/main.py:48
-msgid "Use 'oi <command> --help' for more information on a specific command"
-msgstr "Use 'oi <command> --help' for more information on a specific command"
+msgid "Use 'witty <command> --help' for more information on a specific command"
+msgstr "Use 'witty <command> --help' for more information on a specific command"
 
 #: src/main.py:55
 msgid "Initialize openEuler Intelligence backend"
@@ -1653,9 +1653,9 @@ msgstr "✗ Unsupported language: {locale}\n"
 
 #: src/main.py:208
 msgid ""
-"No option specified. Use 'oi set-default --help' for available options.\n"
+"No option specified. Use 'witty set-default --help' for available options.\n"
 msgstr ""
-"No option specified. Use 'oi set-default --help' for available options.\n"
+"No option specified. Use 'witty set-default --help' for available options.\n"
 
 #: src/main.py:263
 msgid "Fatal error in Intelligent Shell application"
@@ -1689,9 +1689,9 @@ msgstr "Please run the following command to switch backend:\n"
 
 #: src/tool/oi_select_agent.py:145
 msgid ""
-"  oi  # 然后按下 Ctrl+S 进入设置界面切换到 openEuler Intelligence 后端\n"
+"  witty  # 然后按下 Ctrl+S 进入设置界面切换到 openEuler Intelligence 后端\n"
 msgstr ""
-"  oi  # Then press Ctrl+S to enter settings and switch to openEuler "
+"  witty  # Then press Ctrl+S to enter settings and switch to openEuler "
 "Intelligence backend\n"
 
 #: src/tool/oi_select_agent.py:163
@@ -1932,8 +1932,8 @@ msgid "需要管理员权限才能管理 LLM 配置"
 msgstr "Administrator privileges are required to manage LLM configuration"
 
 #: src/tool/oi_llm_config.py:1275
-msgid "请使用 'sudo oi --llm-config' 运行"
-msgstr "Please run with 'sudo oi --llm-config'"
+msgid "请使用 'sudo witty --llm-config' 运行"
+msgstr "Please run with 'sudo witty --llm-config'"
 
 #: src/tool/oi_llm_config.py:1292
 msgid "错误：无法启动 LLM 配置工具"
