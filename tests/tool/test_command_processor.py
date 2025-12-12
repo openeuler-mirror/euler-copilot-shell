@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 
 from backend.base import LLMClientBase
+from i18n.manager import _
 from tool import command_processor
 from tool.command_processor import is_command_safe, process_command
 
@@ -87,7 +88,7 @@ async def test_process_command_with_empty_input() -> None:
     """空输入应提示用户重新输入"""
     llm_client = StubLLMClient(["unused"])
     result = [item async for item in process_command("   ", llm_client)]
-    assert result == [("请输入有效命令或问题。", True)]
+    assert result == [(_("请输入有效命令或问题。"), True)]
 
 
 @pytest.mark.asyncio
@@ -133,7 +134,7 @@ async def test_process_command_blocks_unsafe_system_command(monkeypatch: pytest.
 
     output = [item async for item in process_command("rm -rf /", llm_client)]
 
-    assert output == [("检测到不安全命令，已阻止执行。", True)]
+    assert output == [(_("检测到不安全命令，已阻止执行。"), True)]
 
 
 @pytest.mark.asyncio
@@ -217,7 +218,7 @@ async def test_execute_and_stream_output_success() -> None:
     assert output == [
         ("line1\n", False),
         ("line2\n", False),
-        ("\n[命令完成] 退出码: 0", False),
+        (_("\n[命令完成] 退出码: {returncode}").format(returncode=0), False),
     ]
 
 
@@ -240,6 +241,6 @@ async def test_execute_and_stream_output_failure_triggers_llm() -> None:
     ]
 
     assert output == [
-        ("[命令失败] 退出码: 1", False),
+        (_("[命令失败] 退出码: {returncode}").format(returncode=1), False),
         ("Try sudo", True),
     ]

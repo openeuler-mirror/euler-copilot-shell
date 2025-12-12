@@ -107,8 +107,8 @@ async def test_get_user_info_no_remote_user_header() -> None:
 @pytest.mark.asyncio
 async def test_get_user_info_auth_failure_triggers_login(monkeypatch: pytest.MonkeyPatch) -> None:
     """GET /api/user 返回 401 时应自动登录并重试"""
-    remote_uid = 2048
-    monkeypatch.setattr("backend.hermes.services.user.os.getuid", lambda: remote_uid)
+    # 现实现使用 getpass.getuser() 构建 X-Remote-User
+    monkeypatch.setattr("backend.hermes.services.user.getpass.getuser", lambda: "tester")
 
     http_manager = _StubHttpManager()
     config_manager = _StubConfigManager()
@@ -135,8 +135,7 @@ async def test_get_user_info_auth_failure_triggers_login(monkeypatch: pytest.Mon
 @pytest.mark.asyncio
 async def test_get_user_info_forbidden_triggers_login(monkeypatch: pytest.MonkeyPatch) -> None:
     """GET /api/user 返回 403 时也应自动登录并重试"""
-    remote_uid = 1000
-    monkeypatch.setattr("backend.hermes.services.user.os.getuid", lambda: remote_uid)
+    monkeypatch.setattr("backend.hermes.services.user.getpass.getuser", lambda: "tester")
 
     http_manager = _StubHttpManager()
     config_manager = _StubConfigManager()
@@ -177,8 +176,7 @@ async def test_get_user_info_other_error_returns_none() -> None:
 @pytest.mark.asyncio
 async def test_login_includes_remote_user_header(monkeypatch: pytest.MonkeyPatch) -> None:
     """GET /api/auth/login 请求应包含 X-Remote-User 头"""
-    remote_uid = 3000
-    monkeypatch.setattr("backend.hermes.services.user.os.getuid", lambda: remote_uid)
+    monkeypatch.setattr("backend.hermes.services.user.getpass.getuser", lambda: "tester")
 
     http_manager = _StubHttpManager()
     config_manager = _StubConfigManager()
@@ -204,8 +202,7 @@ async def test_login_includes_remote_user_header(monkeypatch: pytest.MonkeyPatch
 @pytest.mark.asyncio
 async def test_login_failure_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
     """登录失败时应返回 None"""
-    remote_uid = 1000
-    monkeypatch.setattr("backend.hermes.services.user.os.getuid", lambda: remote_uid)
+    monkeypatch.setattr("backend.hermes.services.user.getpass.getuser", lambda: "tester")
 
     http_manager = _StubHttpManager()
     config_manager = _StubConfigManager()

@@ -37,48 +37,48 @@ def sample_mcp_server_config() -> dict[str, Any]:
     模拟 mcp_server_mcp/config.json 的配置数据
 
     基于真实配置:
-    - mcpServers 内部键名为 "mcp_server"
+    - mcpServers 内部键名为 "mcp_server_mcp"
     - URL 为 http://127.0.0.1:12555/sse
     """
     return {
         "mcpServers": {
-            "mcp_server": {
+            "mcp_server_mcp": {
                 "headers": {},
                 "autoApprove": [],
-                "autoInstall": False,
+                "autoInstall": True,
                 "timeout": 60,
                 "url": "http://127.0.0.1:12555/sse",
             },
         },
-        "name": "mcptool集成管理工具",
-        "overview": "定制化的配置自己tool",
-        "description": "定制化的配置自己tool",
+        "name": "oe-智能运维工具",
+        "overview": "文件管理，文件操作，软件包管理，系统信息查询，进程管理，网络修复，ssh修复",
+        "description": "文件管理，文件操作，软件包管理，系统信息查询，进程管理，网络修复，ssh修复",
         "mcpType": "sse",
     }
 
 
 @pytest.fixture
-def sample_remote_info_config() -> dict[str, Any]:
+def sample_rag_config() -> dict[str, Any]:
     """
-    模拟 remote_info_mcp/config.json 的配置数据
+    模拟 rag_mcp/config.json 的配置数据
 
     基于真实配置:
-    - mcpServers 内部键名为 "mcp_server"（与上面相同，这是真实场景）
-    - URL 为 http://127.0.0.1:12100/sse
+    - mcpServers 内部键名为 "rag_mcp"
+    - URL 为 http://127.0.0.1:12311/sse
     """
     return {
         "mcpServers": {
-            "mcp_server": {
+            "rag_mcp": {
                 "headers": {},
                 "autoApprove": [],
-                "autoInstall": False,
+                "autoInstall": True,
                 "timeout": 60,
-                "url": "http://127.0.0.1:12100/sse",
+                "url": "http://127.0.0.1:12311/sse",
             },
         },
-        "name": "端侧信息收集工具",
-        "overview": "端侧信息收集工具",
-        "description": "端侧信息收集工具",
+        "name": "轻量化知识库",
+        "overview": "轻量化知识库",
+        "description": "基于 SQLite 的检索增强生成（RAG）知识库，提供知识库全生命周期管理。支持 TXT、DOCX、DOC、PDF 格式，采用 FTS5 全文检索与 sqlite-vec 向量检索的混合搜索策略，结合关键词与语义检索，提升检索准确性。支持异步批量向量化处理、多知识库管理、文档导入导出，并提供命令行工具与 MCP 服务接口，适配中英文环境，适用于轻量级知识库构建与智能检索场景。",
         "mcpType": "sse",
     }
 
@@ -89,7 +89,7 @@ def sample_app_config_toml() -> str:
     模拟 mcp_to_app_config.toml 的内容
 
     基于真实配置:
-    - mcpPath 使用目录名 ["remote_info_mcp", "mcp_server_mcp"]
+    - mcpPath 使用目录名 ["rag_mcp", "mcp_server_mcp"]
     """
     return """\
 [[applications]]
@@ -97,7 +97,7 @@ appType = "agent"
 name = "OE-智能运维助手"
 description = "提供通用系统运维能力，含网络监控、性能分析、硬件信息查询、存储管理等功能"
 mcpPath = [
-    "remote_info_mcp",
+    "rag_mcp",
     "mcp_server_mcp",
 ]
 published = true
@@ -108,7 +108,7 @@ published = true
 def temp_mcp_config_dir(
     tmp_path: Path,
     sample_mcp_server_config: dict[str, Any],
-    sample_remote_info_config: dict[str, Any],
+    sample_rag_config: dict[str, Any],
     sample_app_config_toml: str,
 ) -> Path:
     """
@@ -117,7 +117,7 @@ def temp_mcp_config_dir(
     目录结构:
         tmp_path/mcp_config/
             mcp_server_mcp/config.json
-            remote_info_mcp/config.json
+            rag_mcp/config.json
             mcp_to_app_config.toml
     """
     config_dir = tmp_path / "mcp_config"
@@ -129,11 +129,11 @@ def temp_mcp_config_dir(
     with (mcp_server_dir / "config.json").open("w", encoding="utf-8") as f:
         json.dump(sample_mcp_server_config, f, ensure_ascii=False, indent=4)
 
-    # 创建 remote_info_mcp 配置
-    remote_info_dir = config_dir / "remote_info_mcp"
-    remote_info_dir.mkdir()
-    with (remote_info_dir / "config.json").open("w", encoding="utf-8") as f:
-        json.dump(sample_remote_info_config, f, ensure_ascii=False, indent=4)
+    # 创建 rag_mcp 配置
+    rag_dir = config_dir / "rag_mcp"
+    rag_dir.mkdir()
+    with (rag_dir / "config.json").open("w", encoding="utf-8") as f:
+        json.dump(sample_rag_config, f, ensure_ascii=False, indent=4)
 
     # 创建应用配置 TOML
     with (config_dir / "mcp_to_app_config.toml").open("w", encoding="utf-8") as f:
@@ -254,37 +254,37 @@ class TestResolveMcpServices:
         """存在的服务应被正确解析"""
         manager = AgentManager()
         mapping = {
-            "remote_info_mcp": "remote_info_mcp",
+            "rag_mcp": "rag_mcp",
             "mcp_server_mcp": "mcp_server_mcp",
         }
-        mcp_paths = ["remote_info_mcp", "mcp_server_mcp"]
+        mcp_paths = ["rag_mcp", "mcp_server_mcp"]
 
         resolved, missing = manager._resolve_mcp_services(mcp_paths, mapping)  # noqa: SLF001
 
-        assert resolved == ["remote_info_mcp", "mcp_server_mcp"]
+        assert resolved == ["rag_mcp", "mcp_server_mcp"]
         assert missing == []
 
     def test_identifies_missing_services(self) -> None:
         """缺失的服务应被识别出来"""
         manager = AgentManager()
-        mapping = {"remote_info_mcp": "remote_info_mcp"}
-        mcp_paths = ["remote_info_mcp", "non_existent_mcp"]
+        mapping = {"rag_mcp": "rag_mcp"}
+        mcp_paths = ["rag_mcp", "non_existent_mcp"]
 
         resolved, missing = manager._resolve_mcp_services(mcp_paths, mapping)  # noqa: SLF001
 
-        assert resolved == ["remote_info_mcp"]
+        assert resolved == ["rag_mcp"]
         assert missing == ["non_existent_mcp"]
 
     def test_handles_empty_mapping(self) -> None:
         """空映射应导致所有服务都缺失"""
         manager = AgentManager()
         mapping: dict[str, str] = {}
-        mcp_paths = ["remote_info_mcp"]
+        mcp_paths = ["rag_mcp"]
 
         resolved, missing = manager._resolve_mcp_services(mcp_paths, mapping)  # noqa: SLF001
 
         assert resolved == []
-        assert missing == ["remote_info_mcp"]
+        assert missing == ["rag_mcp"]
 
     def test_preserves_order(self) -> None:
         """解析结果应保持原始顺序"""
@@ -363,7 +363,7 @@ class TestMcpConfigLoader:
         assert len(configs) == 2  # noqa: PLR2004
 
         dir_names = {dir_name for dir_name, _ in configs}
-        assert dir_names == {"mcp_server_mcp", "remote_info_mcp"}
+        assert dir_names == {"mcp_server_mcp", "rag_mcp"}
 
     def test_parses_config_structure(self, temp_mcp_config_dir: Path) -> None:
         """配置结构应被正确解析"""
@@ -384,15 +384,18 @@ class TestMcpConfigLoader:
         """
         mcpServers 应包含正确的键名
 
-        真实场景: 两个不同的 MCP 配置都使用 "mcp_server" 作为内部键名
+        真实场景: mcpServers 的内部键名与目录名可能一致，也可能不一致。
+        但每个配置必须只包含 1 个内部键名。
         """  # noqa: D403
         loader = McpConfigLoader(temp_mcp_config_dir)
         configs = loader.load_all_configs()
 
         for _dir_name, config in configs:
-            # 两个配置都使用 "mcp_server" 作为键名
-            assert "mcp_server" in config.mcp_servers
-            server_config = config.mcp_servers["mcp_server"]
+            assert isinstance(config.mcp_servers, dict)
+            assert len(config.mcp_servers) == 1
+            (server_id,) = tuple(config.mcp_servers.keys())
+            assert server_id in {"mcp_server_mcp", "rag_mcp"}
+            server_config = config.mcp_servers[server_id]
             assert "url" in server_config
             assert "timeout" in server_config
 
@@ -461,33 +464,30 @@ class TestWriteMcpConfigs:
         # 验证创建了两个目录
         assert len(mcp_mapping) == 2  # noqa: PLR2004
 
-        for dir_name in mcp_mapping:
-            target_dir = temp_semantics_dir / "mcp" / "template" / dir_name
+        # 目录应使用 mcpServers 内部键名（mapping 的 value），而不是配置目录名
+        for server_id in mcp_mapping.values():
+            target_dir = temp_semantics_dir / "mcp" / "template" / server_id
             assert target_dir.exists()
             assert (target_dir / "config.json").exists()
 
-    async def test_mapping_uses_directory_names(
+    async def test_mapping_uses_internal_server_ids_and_is_unique(
         self,
         configured_agent_manager: AgentManager,
     ) -> None:
         """
-        映射应使用目录名作为键和值
-
-        这是关键测试: 确保 mcp_service 使用目录名而非 mcpServers 内部键名
+        映射应使用目录名作为键，mcpServers 内部键名作为值，并且内部键名不能重复。
         """
         manager = configured_agent_manager
         state = DeploymentState()
 
         mcp_mapping = await manager._write_mcp_configs_to_filesystem(state, None)  # noqa: SLF001
 
-        # 映射的键和值都应该是目录名
-        assert "remote_info_mcp" in mcp_mapping
-        assert "mcp_server_mcp" in mcp_mapping
-        assert mcp_mapping["remote_info_mcp"] == "remote_info_mcp"
-        assert mcp_mapping["mcp_server_mcp"] == "mcp_server_mcp"
+        # 映射的键是路径目录名（供 mcp_to_app_config.toml 引用）
+        assert set(mcp_mapping.keys()) == {"rag_mcp", "mcp_server_mcp"}
 
-        # 不应该出现 mcpServers 内部的键名
-        assert "mcp_server" not in mcp_mapping
+        # 映射的值是 mcpServers 内部键名（实际落盘目录/元数据使用）
+        assert set(mcp_mapping.values()) == {"rag_mcp", "mcp_server_mcp"}
+        assert len(set(mcp_mapping.values())) == len(mcp_mapping)
 
     async def test_normalizes_server_config(
         self,
@@ -507,7 +507,7 @@ class TestWriteMcpConfigs:
         with config_file.open(encoding="utf-8") as f:
             config_data = json.load(f)
 
-        server_config = config_data["mcpServers"]["mcp_server"]
+        server_config = config_data["mcpServers"]["mcp_server_mcp"]
 
         # 验证规范化后添加了默认字段
         assert "env" in server_config
@@ -528,18 +528,86 @@ class TestWriteMcpConfigs:
 
         # 读取写入的配置
         config_file = (
-            temp_semantics_dir / "mcp" / "template" / "remote_info_mcp" / "config.json"
+            temp_semantics_dir / "mcp" / "template" / "rag_mcp" / "config.json"
         )
         with config_file.open(encoding="utf-8") as f:
             config_data = json.load(f)
 
         # 验证原始值被保留
-        assert config_data["name"] == "端侧信息收集工具"
+        assert config_data["name"] == "轻量化知识库"
         assert config_data["mcpType"] == "sse"
 
-        server_config = config_data["mcpServers"]["mcp_server"]
-        assert server_config["url"] == "http://127.0.0.1:12100/sse"
+        server_config = config_data["mcpServers"]["rag_mcp"]
+        assert server_config["url"] == "http://127.0.0.1:12311/sse"
         assert server_config["timeout"] == 60  # noqa: PLR2004
+
+    async def test_raises_error_when_internal_server_id_duplicates(self, tmp_path: Path) -> None:
+        """当多个配置复用同一个 mcpServers 内部键名时应报错（防止落盘覆盖）"""
+        from app.deployment.agent import ConfigError  # noqa: PLC0415
+
+        # semantics 目录
+        semantics_dir = tmp_path / "semantics"
+        (semantics_dir / "mcp" / "template").mkdir(parents=True)
+
+        # 构造重复 internal key 的 mcp_config
+        config_dir = tmp_path / "mcp_config"
+        config_dir.mkdir()
+
+        a_dir = config_dir / "svc_a_path"
+        a_dir.mkdir()
+        with (a_dir / "config.json").open("w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "mcpServers": {
+                        "mcp_server": {
+                            "headers": {},
+                            "autoApprove": [],
+                            "autoInstall": True,
+                            "timeout": 60,
+                            "url": "http://127.0.0.1:11111/sse",
+                        },
+                    },
+                    "name": "A",
+                    "overview": "A",
+                    "description": "A",
+                    "mcpType": "sse",
+                },
+                f,
+                ensure_ascii=False,
+                indent=4,
+            )
+
+        b_dir = config_dir / "svc_b_path"
+        b_dir.mkdir()
+        with (b_dir / "config.json").open("w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "mcpServers": {
+                        "mcp_server": {
+                            "headers": {},
+                            "autoApprove": [],
+                            "autoInstall": True,
+                            "timeout": 60,
+                            "url": "http://127.0.0.1:22222/sse",
+                        },
+                    },
+                    "name": "B",
+                    "overview": "B",
+                    "description": "B",
+                    "mcpType": "sse",
+                },
+                f,
+                ensure_ascii=False,
+                indent=4,
+            )
+
+        manager = AgentManager()
+        manager.mcp_config_dir = config_dir
+        manager.mcp_template_dir = semantics_dir / "mcp" / "template"
+
+        state = DeploymentState()
+        with pytest.raises(ConfigError):
+            await manager._write_mcp_configs_to_filesystem(state, None)  # noqa: SLF001
 
 
 # ============================================================================
@@ -605,19 +673,18 @@ class TestWriteAppMetadata:
         assert metadata["app_type"] == "agent"
         assert metadata["published"] is True
 
-    async def test_mcp_service_uses_directory_names(
+    async def test_mcp_service_uses_internal_server_ids(
         self,
         configured_agent_manager: AgentManager,
         temp_semantics_dir: Path,
     ) -> None:
         """
-        mcp_service 应使用目录名而非 mcpServers 内部键名
+        mcp_to_app_config.toml 中的 mcpPath 一定使用“配置目录名”，
+        但最终写入 metadata.yaml 的 mcp_service 应使用 mcpServers 的内部键名。
 
-        这是最关键的测试:
-        - mcpPath 配置: ["remote_info_mcp", "mcp_server_mcp"]
-        - mcpServers 内部键名: "mcp_server" (两个配置相同)
-        - 期望结果: mcp_service = ["remote_info_mcp", "mcp_server_mcp"]
-        - 错误结果: mcp_service = ["mcp_server", "mcp_server"]
+        在本测试的真实样例中，目录名与内部键名恰好相同：
+        - mcpPath: ["rag_mcp", "mcp_server_mcp"]
+        - mcpServers 内部键名: "rag_mcp" / "mcp_server_mcp"
         """
         manager = configured_agent_manager
         state = DeploymentState()
@@ -636,16 +703,7 @@ class TestWriteAppMetadata:
 
         mcp_services = metadata["mcp_service"]
 
-        # 应该使用目录名
-        assert "remote_info_mcp" in mcp_services
-        assert "mcp_server_mcp" in mcp_services
-
-        # 不应该使用 mcpServers 内部键名
-        # 如果只有 ["mcp_server", "mcp_server"]，说明逻辑错误
-        assert mcp_services != ["mcp_server", "mcp_server"], (
-            "mcp_service 错误地使用了 mcpServers 内部键名 'mcp_server'，"
-            "应该使用目录名 'remote_info_mcp' 和 'mcp_server_mcp'"
-        )
+        assert mcp_services == ["rag_mcp", "mcp_server_mcp"]
 
     async def test_handles_missing_mcp_services(
         self,
@@ -656,7 +714,7 @@ class TestWriteAppMetadata:
         state = DeploymentState()
 
         # 只提供部分映射
-        partial_mapping = {"remote_info_mcp": "remote_info_mcp"}
+        partial_mapping = {"rag_mcp": "rag_mcp"}
 
         app_id = await manager._write_app_metadata_to_filesystem(  # noqa: SLF001
             partial_mapping,
@@ -666,6 +724,103 @@ class TestWriteAppMetadata:
 
         # 应该仍然创建智能体（使用可用的服务）
         assert app_id is not None
+
+    async def test_mcp_path_resolves_to_internal_server_id_when_names_differ(self, tmp_path: Path) -> None:
+        """当目录名与 mcpServers 内部键名不一致时：toml 用目录名，最终 mcp_service 用内部键名"""
+        # semantics 目录
+        semantics_dir = tmp_path / "semantics"
+        (semantics_dir / "mcp" / "template").mkdir(parents=True)
+        (semantics_dir / "app").mkdir(parents=True)
+
+        # mcp_config 目录
+        config_dir = tmp_path / "mcp_config"
+        config_dir.mkdir()
+
+        # 目录名为 rag_mcp_path，但内部键名为 rag_mcp
+        rag_path_dir = config_dir / "rag_mcp_path"
+        rag_path_dir.mkdir()
+        with (rag_path_dir / "config.json").open("w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "mcpServers": {
+                        "rag_mcp": {
+                            "headers": {},
+                            "autoApprove": [],
+                            "autoInstall": True,
+                            "timeout": 60,
+                            "url": "http://127.0.0.1:12311/sse",
+                        },
+                    },
+                    "name": "轻量化知识库",
+                    "overview": "轻量化知识库",
+                    "description": "轻量化知识库",
+                    "mcpType": "sse",
+                },
+                f,
+                ensure_ascii=False,
+                indent=4,
+            )
+
+        # 目录名与内部键名一致
+        mcp_server_dir = config_dir / "mcp_server_mcp"
+        mcp_server_dir.mkdir()
+        with (mcp_server_dir / "config.json").open("w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "mcpServers": {
+                        "mcp_server_mcp": {
+                            "headers": {},
+                            "autoApprove": [],
+                            "autoInstall": True,
+                            "timeout": 60,
+                            "url": "http://127.0.0.1:12555/sse",
+                        },
+                    },
+                    "name": "oe-智能运维工具",
+                    "overview": "oe-智能运维工具",
+                    "description": "oe-智能运维工具",
+                    "mcpType": "sse",
+                },
+                f,
+                ensure_ascii=False,
+                indent=4,
+            )
+
+        # app toml：只能写目录名
+        app_toml = """\
+[[applications]]
+appType = "agent"
+name = "OE-智能运维助手"
+description = "desc"
+mcpPath = ["rag_mcp_path", "mcp_server_mcp"]
+published = true
+"""
+        with (config_dir / "mcp_to_app_config.toml").open("w", encoding="utf-8") as f:
+            f.write(app_toml)
+
+        manager = AgentManager()
+        manager.semantics_dir = semantics_dir
+        manager.mcp_template_dir = semantics_dir / "mcp" / "template"
+        manager.app_dir = semantics_dir / "app"
+        manager.mcp_config_dir = config_dir
+        manager.app_config_path = config_dir / "mcp_to_app_config.toml"
+
+        state = DeploymentState()
+        mapping = await manager._write_mcp_configs_to_filesystem(state, None)  # noqa: SLF001
+        assert mapping["rag_mcp_path"] == "rag_mcp"
+        assert mapping["mcp_server_mcp"] == "mcp_server_mcp"
+
+        app_id = await manager._write_app_metadata_to_filesystem(mapping, state, None)  # noqa: SLF001
+        assert app_id is not None
+
+        metadata_file = semantics_dir / "app" / app_id / "metadata.yaml"
+        with metadata_file.open(encoding="utf-8") as f:
+            metadata = yaml.safe_load(f)
+
+        assert metadata["mcp_service"] == ["rag_mcp", "mcp_server_mcp"]
+
+        # 落盘目录也应使用内部键名
+        assert (semantics_dir / "mcp" / "template" / "rag_mcp" / "config.json").exists()
 
 
 # ============================================================================
@@ -698,7 +853,7 @@ class TestFullIntegrationFlow:
         )
 
         assert len(mcp_mapping) == 2  # noqa: PLR2004
-        assert "remote_info_mcp" in mcp_mapping
+        assert "rag_mcp" in mcp_mapping
         assert "mcp_server_mcp" in mcp_mapping
 
         # Step 2: 写入 App 元数据
@@ -713,7 +868,7 @@ class TestFullIntegrationFlow:
         # Step 3: 验证最终结构
         # MCP 配置目录
         mcp_template_dir = temp_semantics_dir / "mcp" / "template"
-        assert (mcp_template_dir / "remote_info_mcp" / "config.json").exists()
+        assert (mcp_template_dir / "rag_mcp" / "config.json").exists()
         assert (mcp_template_dir / "mcp_server_mcp" / "config.json").exists()
 
         # App 目录
@@ -725,7 +880,7 @@ class TestFullIntegrationFlow:
             metadata = yaml.safe_load(f)
 
         assert metadata["name"] == "OE-智能运维助手"
-        assert set(metadata["mcp_service"]) == {"remote_info_mcp", "mcp_server_mcp"}
+        assert set(metadata["mcp_service"]) == {"rag_mcp", "mcp_server_mcp"}
 
         # 验证有进度日志
         assert len(progress_logs) > 0
@@ -742,7 +897,7 @@ class TestFullIntegrationFlow:
 appType = "agent"
 name = "智能体A"
 description = "第一个智能体"
-mcpPath = ["remote_info_mcp"]
+    mcpPath = ["rag_mcp"]
 published = true
 
 [[applications]]
@@ -831,7 +986,7 @@ class TestEdgeCases:
         manager.app_config_path = temp_mcp_config_dir / "mcp_to_app_config.toml"
 
         state = DeploymentState()
-        mcp_mapping = {"remote_info_mcp": "remote_info_mcp"}
+        mcp_mapping = {"rag_mcp": "rag_mcp"}
 
         app_id = await manager._write_app_metadata_to_filesystem(  # noqa: SLF001
             mcp_mapping,

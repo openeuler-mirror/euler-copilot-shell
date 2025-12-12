@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from i18n.manager import _
 from tool.oi_select_agent import (
     get_agent_list,
     get_current_agent,
@@ -219,7 +220,8 @@ class TestHandleAgentSelection:
 
         mock_config.set_default_app.assert_not_called()
         output = captured_output.getvalue()
-        assert "取消" in output
+        # 源码输出包含换行符，翻译条目也以带换行的 msgid 为准
+        assert _("已取消选择\n") == output
 
 
 class TestAgentSelectorApp:
