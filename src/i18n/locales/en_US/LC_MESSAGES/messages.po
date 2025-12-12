@@ -1,10 +1,10 @@
-# English translations for oi-cli package.
-# Copyright (C) 2025 openEuler Intelligence Project
-# This file is distributed under the same license as the oi-cli package.
+# English translations for witty-assistant package.
+# Copyright (C) 2025 openEuler
+# This file is distributed under the same license as the witty-assistant package.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: oi-cli\n"
+"Project-Id-Version: witty-assistant\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
 "POT-Creation-Date: 2025-12-10 11:58+0800\n"
 "PO-Revision-Date: 2025-10-20 19:28+0800\n"
@@ -90,9 +90,9 @@ msgstr ""
 "compatibility"
 
 #: src/app/deployment/service.py:150
-msgid "缺少 openeuler-intelligence-installer 包，正在尝试安装..."
+msgid "缺少 witty-assistant-installer 包，正在尝试安装..."
 msgstr ""
-"Missing openeuler-intelligence-installer package, attempting to install..."
+"Missing witty-assistant-installer package, attempting to install..."
 
 #: src/app/deployment/service.py:160
 #: src/app/deployment/components/env_check.py:164
@@ -112,26 +112,26 @@ msgid "✗ 部署失败"
 msgstr "✗ Deployment failed"
 
 #: src/app/deployment/service.py:256
-msgid "✓ openEuler Intelligence 后端部署完成！"
-msgstr "✓ openEuler Intelligence backend deployment completed!"
+msgid "✓ sysAgent 部署完成！"
+msgstr "✓ sysAgent deployment completed!"
 
 #: src/app/deployment/service.py:294
-msgid "正在安装 openeuler-intelligence-installer..."
-msgstr "Installing openeuler-intelligence-installer..."
+msgid "正在安装 witty-assistant-installer..."
+msgstr "Installing witty-assistant-installer..."
 
 #: src/app/deployment/service.py:305
-msgid "✓ openeuler-intelligence-installer 安装成功"
-msgstr "✓ openeuler-intelligence-installer installed successfully"
+msgid "✓ witty-assistant-installer 安装成功"
+msgstr "✓ witty-assistant-installer installed successfully"
 
 #: src/app/deployment/service.py:309
-msgid "openeuler-intelligence-installer 安装后资源文件仍然缺失"
+msgid "witty-assistant-installer 安装后资源文件仍然缺失"
 msgstr ""
-"Resource files still missing after openeuler-intelligence-installer "
+"Resource files still missing after witty-assistant-installer "
 "installation"
 
 #: src/app/deployment/service.py:312
-msgid "安装 openeuler-intelligence-installer 失败"
-msgstr "Failed to install openeuler-intelligence-installer"
+msgid "安装 witty-assistant-installer 失败"
+msgstr "Failed to install witty-assistant-installer"
 
 #: src/app/deployment/service.py:315
 msgid "安装输出:"
@@ -159,19 +159,19 @@ msgid "✓ 检测到 openEuler 操作系统"
 msgstr "✓ openEuler operating system detected"
 
 #: src/app/deployment/service.py:399
-msgid "✗ 错误: openeuler-intelligence-installer 包未安装或资源缺失"
+msgid "✗ 错误: witty-assistant-installer 包未安装或资源缺失"
 msgstr ""
-"✗ Error: openeuler-intelligence-installer package is not installed or "
+"✗ Error: witty-assistant-installer package is not installed or "
 "resources are missing"
 
 #: src/app/deployment/service.py:400
-msgid "请先安装: sudo dnf install -y openeuler-intelligence-installer"
+msgid "请先安装: sudo dnf install -y witty-assistant-installer"
 msgstr ""
-"Please install first: sudo dnf install -y openeuler-intelligence-installer"
+"Please install first: sudo dnf install -y witty-assistant-installer"
 
 #: src/app/deployment/service.py:402
-msgid "✓ openeuler-intelligence-installer 资源可用"
-msgstr "✓ openeuler-intelligence-installer resources available"
+msgid "✓ witty-assistant-installer 资源可用"
+msgstr "✓ witty-assistant-installer resources available"
 
 #: src/app/deployment/service.py:406
 msgid "✗ 错误: 需要管理员权限"
@@ -199,8 +199,8 @@ msgid "安装依赖组件"
 msgstr "Installing dependency components"
 
 #: src/app/deployment/service.py:441
-msgid "正在安装 openEuler Intelligence 依赖组件..."
-msgstr "Installing openEuler Intelligence dependency components..."
+msgid "正在安装后端依赖组件..."
+msgstr "Installing backend dependency components..."
 
 #: src/app/deployment/service.py:450
 msgid "依赖安装脚本"
@@ -304,12 +304,12 @@ msgid "✗ Framework 服务状态检查超时失败"
 msgstr "✗ Framework service status check timed out"
 
 #: src/app/deployment/service.py:726
-msgid "等待 openEuler Intelligence 服务就绪"
-msgstr "Waiting for openEuler Intelligence service to be ready"
+msgid "等待后端服务就绪"
+msgstr "Waiting for backend service to be ready"
 
 #: src/app/deployment/service.py:743
-msgid "✓ openEuler Intelligence 服务已就绪"
-msgstr "✓ openEuler Intelligence service is ready"
+msgid "✓ 后端服务已就绪"
+msgstr "✓ Backend service is ready"
 
 #: src/app/deployment/service.py:752
 #, python-brace-format
@@ -322,25 +322,24 @@ msgid "API 连通性检查时发生错误: {error}"
 msgstr "Error occurred during API connectivity check: {error}"
 
 #: src/app/deployment/service.py:759
-msgid "✗ openEuler Intelligence API 服务检查超时失败"
-msgstr "✗ openEuler Intelligence API service check timed out"
+msgid "✗ 后端 API 服务检查超时失败"
+msgstr "✗ Backend API service check timed out"
 
 #: src/app/deployment/service.py:782
 msgid "注册大模型配置"
 msgstr "Register LLM configuration"
 
 #: src/app/deployment/service.py:783
-msgid "正在检查 openEuler Intelligence 后端服务状态..."
-msgstr "Checking openEuler Intelligence backend service status..."
+msgid "正在检查 sysAgent 服务状态..."
+msgstr "Checking sysAgent service status..."
 
 #: src/app/deployment/service.py:794
-msgid "✗ openEuler Intelligence 服务检查失败"
-msgstr "✗ openEuler Intelligence service check failed"
+msgid "✗ 后端服务检查失败"
+msgstr "✗ Backend service check failed"
 
 #: src/app/deployment/service.py:797
-msgid "✓ openEuler Intelligence 服务检查通过"
-msgstr "✓ openEuler Intelligence service check passed"
-
+msgid "✓ 后端服务检查通过"
+msgstr "✓ Backend service check passed"
 #: src/app/deployment/service.py:811
 msgid "初始化 Agent 服务"
 msgstr "Initializing Agent service"
@@ -688,8 +687,8 @@ msgid "退出"
 msgstr "Exit"
 
 #: src/app/deployment/components/modes.py:65
-msgid "openEuler Intelligence 初始化"
-msgstr "openEuler Intelligence initialization"
+msgid "Witty Assistant 初始化"
+msgstr "Witty Assistant initialization"
 
 #: src/app/deployment/components/modes.py:67
 msgid "请选择您的初始化方式："
@@ -722,13 +721,13 @@ msgid "返回"
 msgstr "Back"
 
 #: src/app/deployment/components/modes.py:162
-msgid "连接现有 openEuler Intelligence 服务"
-msgstr "Connect to existing openEuler Intelligence service"
+msgid "连接现有后端服务"
+msgstr "Connect to existing backend service"
 
 #: src/app/deployment/components/modes.py:164
-msgid "请输入您的 openEuler Intelligence 服务连接信息："
+msgid "请输入您的后端服务连接信息："
 msgstr ""
-"Please enter your openEuler Intelligence service connection information:"
+"Please enter your backend service connection information:"
 
 #: src/app/deployment/components/modes.py:169
 msgid "服务 URL:"
@@ -1433,8 +1432,8 @@ msgid "智能体功能提示"
 msgstr "Agent Feature Notification"
 
 #: src/app/dialogs/agent.py:28
-msgid "请选择 openEuler Intelligence 后端来使用智能体功能"
-msgstr "Please select openEuler Intelligence backend to use agent features"
+msgid "请选择 sysAgent 来使用智能体功能"
+msgstr "Please select sysAgent to use agent features"
 
 #: src/app/dialogs/agent.py:29
 msgid "按任意键关闭"
@@ -1467,8 +1466,8 @@ msgid "按 Ctrl+S 打开设置"
 msgstr "Press Ctrl+S to open settings"
 
 #: src/backend/hermes/client.py:409
-msgid "确认后端为 openEuler Intelligence"
-msgstr "Confirm backend is openEuler Intelligence"
+msgid "确认后端为 sysAgent"
+msgstr "Confirm backend is sysAgent"
 
 #: src/backend/hermes/client.py:410
 msgid "点击 \"更改用户设置\" 按钮"
@@ -1523,8 +1522,8 @@ msgid "说明"
 msgstr "Description"
 
 #: src/main.py:27
-msgid "openEuler Intelligence - Intelligent command-line tool"
-msgstr "openEuler Intelligence - Command-line Client"
+msgid "Witty Assistant - Intelligent command-line tool"
+msgstr "Witty Assistant - Intelligent command-line tool"
 
 #: src/main.py:28
 msgid ""
@@ -1547,19 +1546,19 @@ msgid "Available Commands"
 msgstr "Available Commands"
 
 #: src/main.py:48
-msgid "Use 'oi <command> --help' for more information on a specific command"
-msgstr "Use 'oi <command> --help' for more information on a specific command"
+msgid "Use 'witty <command> --help' for more information on a specific command"
+msgstr "Use 'witty <command> --help' for more information on a specific command"
 
 #: src/main.py:55
-msgid "Initialize openEuler Intelligence backend"
-msgstr "Initialize openEuler Intelligence backend"
+msgid "Initialize sysAgent"
+msgstr "Initialize sysAgent"
 
 #: src/main.py:57
 msgid ""
-"Initialize openEuler Intelligence backend\n"
+"Initialize sysAgent\n"
 " * Initialization requires administrator privileges and network connection"
 msgstr ""
-"Initialize openEuler Intelligence backend\n"
+"Initialize sysAgent\n"
 " * Initialization requires administrator privileges and network connection"
 
 #: src/main.py:66 src/main.py:67
@@ -1575,16 +1574,16 @@ msgid "Configure default settings"
 msgstr "Configure default settings"
 
 #: src/main.py:83
-msgid "Configure default settings for openEuler Intelligence"
-msgstr "Configure default settings for openEuler Intelligence"
+msgid "Configure default settings for Witty Assistant"
+msgstr "Configure default settings for Witty Assistant"
 
 #: src/main.py:90
 msgid ""
-"Change openEuler Intelligence LLM settings (requires valid local backend "
+"Change Witty Assistant LLM settings (requires valid local backend "
 "service)\n"
 " * Configuration editing requires administrator privileges"
 msgstr ""
-"Change openEuler Intelligence LLM settings (requires valid local backend "
+"Change Witty Assistant LLM settings (requires valid local backend "
 "service)\n"
 " * Configuration editing requires administrator privileges"
 
@@ -1653,13 +1652,13 @@ msgstr "✗ Unsupported language: {locale}\n"
 
 #: src/main.py:208
 msgid ""
-"No option specified. Use 'oi set-default --help' for available options.\n"
+"No option specified. Use 'witty set-default --help' for available options.\n"
 msgstr ""
-"No option specified. Use 'oi set-default --help' for available options.\n"
+"No option specified. Use 'witty set-default --help' for available options.\n"
 
 #: src/main.py:263
-msgid "Fatal error in Intelligent Shell application"
-msgstr "Fatal error in Intelligent Shell application"
+msgid "Fatal error in Witty Assistant application"
+msgstr "Fatal error in Witty Assistant application"
 
 #: src/tool/oi_select_agent.py:123
 #, python-brace-format
@@ -1680,8 +1679,8 @@ msgid "已取消选择\n"
 msgstr "Selection cancelled\n"
 
 #: src/tool/oi_select_agent.py:143
-msgid "错误: 智能体功能需要使用 openEuler Intelligence 后端\n"
-msgstr "Error: Agent functionality requires openEuler Intelligence backend\n"
+msgid "错误: 智能体功能需要使用 sysAgent\n"
+msgstr "Error: Agent functionality requires sysAgent\n"
 
 #: src/tool/oi_select_agent.py:144
 msgid "请先运行以下命令切换后端：\n"
@@ -1689,10 +1688,10 @@ msgstr "Please run the following command to switch backend:\n"
 
 #: src/tool/oi_select_agent.py:145
 msgid ""
-"  oi  # 然后按下 Ctrl+S 进入设置界面切换到 openEuler Intelligence 后端\n"
+"  witty  # 然后按下 Ctrl+S 进入设置界面切换到 sysAgent\n"
 msgstr ""
-"  oi  # Then press Ctrl+S to enter settings and switch to openEuler "
-"Intelligence backend\n"
+"  witty  # Then press Ctrl+S to enter settings and switch to openEuler "
+"sysAgent\n"
 
 #: src/tool/oi_select_agent.py:163
 #, python-brace-format
@@ -1932,8 +1931,8 @@ msgid "需要管理员权限才能管理 LLM 配置"
 msgstr "Administrator privileges are required to manage LLM configuration"
 
 #: src/tool/oi_llm_config.py:1275
-msgid "请使用 'sudo oi --llm-config' 运行"
-msgstr "Please run with 'sudo oi --llm-config'"
+msgid "请使用 'sudo witty --llm-config' 运行"
+msgstr "Please run with 'sudo witty --llm-config'"
 
 #: src/tool/oi_llm_config.py:1292
 msgid "错误：无法启动 LLM 配置工具"
@@ -1957,8 +1956,8 @@ msgid "错误：{error}"
 msgstr "Error: {error}"
 
 #: src/tool/oi_backend_init.py:39
-msgid "openEuler Intelligence 部署助手"
-msgstr "openEuler Intelligence Deployment Assistant"
+msgid "部署助手"
+msgstr "Deployment Assistant"
 
 #: src/tool/validators.py:135 src/tool/validators.py:584
 #: src/tool/validators.py:647

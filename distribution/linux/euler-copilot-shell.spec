@@ -1,11 +1,11 @@
-%global pypi_name oi-cli
-%global shortcut_name oi
+%global pypi_name witty-assistant
+%global shortcut_name witty
 %global debug_package %{nil}
 
 Name:           euler-copilot-shell
 Version:        2.0.0
 Release:        1%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
-Summary:        openEuler Intelligence 智能命令行工具集
+Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
 URL:            https://gitee.com/openeuler/euler-copilot-shell
 Source0:        %{name}-%{version}.tar.gz
@@ -16,30 +16,38 @@ BuildRequires:  python3-devel python3-virtualenv python3-pip
 BuildRequires:  gettext
 
 %description
-openEuler Intelligence 智能命令行工具集，包含智能 Shell 命令行程序和部署安装工具。
+Witty Assistant 智能命令行工具集，包含 Witty Assistant 命令行程序和部署安装工具。
 
-# 智能命令行工具子包
-%package -n openeuler-intelligence-cli
-Summary:        openEuler Intelligence 智能 Shell 命令行工具
+# 智能命令行助手子包
+%package -n witty-assistant
+Summary:        Witty Assistant 命令行助手
 Requires:       glibc
+
 # 替换原来的 euler-copilot-shell 包
 Obsoletes:      euler-copilot-shell < %{version}-%{release}
 Provides:       euler-copilot-shell = %{version}-%{release}
+# 替换原来的 openeuler-intelligence-cli 包
+Obsoletes:      openeuler-intelligence-cli < %{version}-%{release}
+Provides:       openeuler-intelligence-cli = %{version}-%{release}
 
-%description -n openeuler-intelligence-cli
-openEuler Intelligence 智能 Shell 是一个智能命令行程序。
+%description -n witty-assistant
+Witty Assistant 是一个智能命令行程序。
 它允许用户输入命令，通过集成大语言模型提供命令建议，帮助用户更高效地使用命令行。
 
 # 部署安装工具子包
-%package -n openeuler-intelligence-installer
-Summary:        openEuler Intelligence 部署安装脚本
+%package -n witty-assistant-installer
+Summary:        Witty Assistant 部署安装脚本
 Requires:       wget
 Requires:       python3-aiohttp
 Requires:       python3-requests
 BuildArch:      noarch
 
-%description -n openeuler-intelligence-installer
-openEuler Intelligence 部署安装工具包，包含部署脚本和相关资源文件。
+# 替换原来的 openeuler-intelligence-installer 包
+Obsoletes:      openeuler-intelligence-installer < %{version}-%{release}
+Provides:       openeuler-intelligence-installer = %{version}-%{release}
+
+%description -n witty-assistant-installer
+Witty Assistant 部署安装工具包，包含部署脚本和相关资源文件。
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -65,7 +73,7 @@ uv pip install pyinstaller
 # 使用虚拟环境中的 PyInstaller 创建单一可执行文件
 pyinstaller --noconfirm \
             --distpath dist \
-            oi-cli.spec
+            witty-assistant.spec
 
 # 退出虚拟环境
 deactivate
@@ -79,59 +87,58 @@ install -m 0755 dist/%{pypi_name} %{buildroot}%{_bindir}/%{pypi_name}
 ln -sf %{pypi_name} %{buildroot}%{_bindir}/%{shortcut_name}
 
 # 安装部署脚本和资源
-mkdir -p %{buildroot}/usr/lib/openeuler-intelligence/{scripts,resources}
+mkdir -p %{buildroot}/usr/lib/witty-assistant/{scripts,resources}
 mkdir -p %{buildroot}%{_bindir}
 
 # 复制部署脚本和资源
-install -m 755 scripts/deploy/deploy.sh %{buildroot}/usr/lib/openeuler-intelligence/scripts/deploy
-cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deploy/2-install-dependency scripts/deploy/3-install-server scripts/deploy/4-other-script scripts/deploy/5-resource %{buildroot}/usr/lib/openeuler-intelligence/scripts/
-chmod -R +x %{buildroot}/usr/lib/openeuler-intelligence/scripts/
+install -m 755 scripts/deploy/deploy.sh %{buildroot}/usr/lib/witty-assistant/scripts/deploy
+cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deploy/2-install-dependency scripts/deploy/3-install-server scripts/deploy/4-other-script scripts/deploy/5-resource %{buildroot}/usr/lib/witty-assistant/scripts/
+chmod -R +x %{buildroot}/usr/lib/witty-assistant/scripts/
 
 # 创建可执行文件的符号链接
-ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/oi-manager
+ln -sf /usr/lib/witty-assistant/scripts/deploy %{buildroot}%{_bindir}/witty-manager
 
-%files -n openeuler-intelligence-cli
+%files -n witty-assistant
 %license LICENSE
 %doc README.md
 %{_bindir}/%{pypi_name}
 %{_bindir}/%{shortcut_name}
 
-%files -n openeuler-intelligence-installer
+%files -n witty-assistant-installer
 %license LICENSE
 %doc scripts/deploy/安装部署手册.md
-/usr/lib/openeuler-intelligence
-%{_bindir}/oi-manager
+/usr/lib/witty-assistant
+%{_bindir}/witty-manager
 
-%postun -n openeuler-intelligence-cli
+%postun -n witty-assistant
 if [ $1 -eq 0 ]; then
 # 卸载时清理用户缓存和配置文件
 for home in /root /home/*; do
-    cache_dir="$home/.cache/openEuler Intelligence/logs"
+    cache_dir="$home/.cache/witty/logs"
     if [ -d "$cache_dir" ]; then
         rm -rf "$cache_dir"
     fi
-    config_dir="$home/.config/eulerintelli"
+    config_dir="$home/.config/witty"
     if [ -d "$config_dir" ]; then
         rm -rf "$config_dir"
     fi
 done
-rm -f /etc/openEuler-Intelligence/smart-shell-template.json
+rm -f /etc/witty-assistant/config-template.json
 elif [ $1 -ge 1 ]; then
 # 升级时清理日志
 for home in /root /home/*; do
-    cache_dir="$home/.cache/openEuler Intelligence/logs"
+    cache_dir="$home/.cache/witty/logs"
     if [ -d "$cache_dir" ]; then
         rm -rf "$cache_dir"
     fi
 done
 fi
 
-%postun -n openeuler-intelligence-installer
+%postun -n witty-assistant-installer
 if [ $1 -eq 0 ]; then
 # 卸载时清理安装器相关文件
 rm -f /etc/euler_Intelligence_install*
-rm -f /usr/lib/openeuler-intelligence/scripts/5-resource/config.*
-rm -f /usr/lib/openeuler-intelligence/scripts/5-resource/env.*
+rm -f /usr/lib/witty-assistant/scripts
 fi
 
 %changelog
@@ -153,7 +160,7 @@ fi
 - Feature: Add login through browser (requires proper desktop environment)
 
 * Wed Oct 29 2025 openEuler <contact@openeuler.org> - 0.10.2-3
-- Fix issue where failing to fetch mcp when creating agent with oi-manager
+- Fix issue where failing to fetch mcp when creating agent with witty-manager
 
 * Sat Oct 25 2025 openEuler <contact@openeuler.org> - 0.10.2-2
 - Add internationalization support (currently supports English and Simplified Chinese)
@@ -178,7 +185,7 @@ fi
 
 * Wed Sep 10 2025 openEuler <contact@openeuler.org> - 0.10.1-1
 - 支持切换 MCP 自动执行模式
-- 简化安装器命令为 oi-manager
+- 简化安装器命令为 witty-manager
 
 * Tue Sep 09 2025 openEuler <contact@openeuler.org> - 0.10.0-4
 - 优化安装脚本：添加内核版本检查和架构支持，优化 MongoDB 和 MinIO 安装逻辑

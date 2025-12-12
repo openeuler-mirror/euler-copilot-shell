@@ -254,7 +254,7 @@ class HermesUserManager:
             self.logger.warning("配置管理器未设置，无法保存 token")
             return
 
-        self.config_manager.set_eulerintelli_key(token)
+        self.config_manager.set_witty_key(token)
         self.logger.info("token 已保存到配置")
 
     def _update_http_manager_token(self, token: str) -> None:

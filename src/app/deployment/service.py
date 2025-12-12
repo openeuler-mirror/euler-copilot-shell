@@ -1,7 +1,7 @@
 """
 部署服务模块
 
-处理 openEuler Intelligence 后端部署的核心逻辑。
+处理 sysAgent 部署的核心逻辑。
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ class DeploymentResourceManager:
     """部署资源管理器，管理 RPM 包安装的资源文件"""
 
     # RPM 包安装的资源文件路径
-    INSTALLER_BASE_PATH = Path("/usr/lib/openeuler-intelligence/scripts")
+    INSTALLER_BASE_PATH = Path("/usr/lib/witty-assistant/scripts")
     RESOURCE_PATH = INSTALLER_BASE_PATH / "5-resource"
     DEPLOY_SCRIPT = INSTALLER_BASE_PATH / "deploy"
 
@@ -97,8 +97,8 @@ class DeploymentService:
     """
     部署服务
 
-    负责执行 openEuler Intelligence 后端的部署流程。
-    基于已安装的 openeuler-intelligence-installer RPM 包资源。
+    负责执行 sysAgent 的部署流程。
+    基于已安装的 witty-assistant-installer RPM 包资源。
     """
 
     def __init__(self) -> None:
@@ -144,10 +144,10 @@ class DeploymentService:
             temp_state.add_log(warning_msg)
             progress_callback(temp_state)
 
-        # 检查并安装 openeuler-intelligence-installer
+        # 检查并安装 witty-assistant-installer
         if not self.resource_manager.check_installer_available():
             if progress_callback:
-                temp_state.add_log(_("缺少 openeuler-intelligence-installer 包，正在尝试安装..."))
+                temp_state.add_log(_("缺少 witty-assistant-installer 包，正在尝试安装..."))
                 progress_callback(temp_state)
 
             success, install_errors = await self._install_intelligence_installer(progress_callback)
@@ -226,7 +226,7 @@ class DeploymentService:
         self._update_backend_url_config(config)
 
         try:
-            logger.info("开始部署 openEuler Intelligence 后端")
+            logger.info("开始部署 sysAgent")
 
             # 重置状态
             self.state.reset()
@@ -253,7 +253,7 @@ class DeploymentService:
         # 部署完成，创建全局配置模板供其他用户使用
         self.state.is_running = False
         self.state.is_completed = True
-        self.state.add_log(_("✓ openEuler Intelligence 后端部署完成！"))
+        self.state.add_log(_("✓ sysAgent 部署完成！"))
 
         # 创建全局配置模板，包含部署时的配置信息
         await self._create_global_config_template(config)
@@ -280,7 +280,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None = None,
     ) -> tuple[bool, list[str]]:
         """
-        安装 openeuler-intelligence-installer 包
+        安装 witty-assistant-installer 包
 
         Returns:
             tuple[bool, list[str]]: (是否成功安装, 错误信息列表)
@@ -291,25 +291,25 @@ class DeploymentService:
         try:
             temp_state = DeploymentState()
             if progress_callback:
-                temp_state.add_log(_("正在安装 openeuler-intelligence-installer..."))
+                temp_state.add_log(_("正在安装 witty-assistant-installer..."))
                 progress_callback(temp_state)
 
             # 执行安装命令
-            cmd = ["sudo", "dnf", "install", "-y", "openeuler-intelligence-installer"]
+            cmd = ["sudo", "dnf", "install", "-y", "witty-assistant-installer"]
             success, output_lines = await self._execute_install_command(cmd, progress_callback, temp_state)
 
             if success:
                 # 验证安装是否成功
                 if self.resource_manager.check_installer_available():
                     if progress_callback:
-                        temp_state.add_log(_("✓ openeuler-intelligence-installer 安装成功"))
+                        temp_state.add_log(_("✓ witty-assistant-installer 安装成功"))
                         progress_callback(temp_state)
                     return True, []
 
-                errors.append(_("openeuler-intelligence-installer 安装后资源文件仍然缺失"))
+                errors.append(_("witty-assistant-installer 安装后资源文件仍然缺失"))
                 return False, errors
 
-            errors.append(_("安装 openeuler-intelligence-installer 失败"))
+            errors.append(_("安装 witty-assistant-installer 失败"))
             # 添加安装输出到错误信息
             if output_lines:
                 errors.append(_("安装输出:"))
@@ -317,7 +317,7 @@ class DeploymentService:
 
         except Exception as e:
             errors.append(_("安装过程中发生异常: {error}").format(error=e))
-            logger.exception("安装 openeuler-intelligence-installer 时发生异常")
+            logger.exception("安装 witty-assistant-installer 时发生异常")
 
         return False, errors
 
@@ -396,10 +396,10 @@ class DeploymentService:
 
         # 检查安装器资源
         if not self.resource_manager.check_installer_available():
-            self.state.add_log(_("✗ 错误: openeuler-intelligence-installer 包未安装或资源缺失"))
-            self.state.add_log(_("请先安装: sudo dnf install -y openeuler-intelligence-installer"))
+            self.state.add_log(_("✗ 错误: witty-assistant-installer 包未安装或资源缺失"))
+            self.state.add_log(_("请先安装: sudo dnf install -y witty-assistant-installer"))
             return False
-        self.state.add_log(_("✓ openeuler-intelligence-installer 资源可用"))
+        self.state.add_log(_("✓ witty-assistant-installer 资源可用"))
 
         # 检查权限
         if not await self.check_sudo_privileges():
@@ -438,7 +438,7 @@ class DeploymentService:
         """运行依赖安装脚本"""
         self.state.current_step = 2
         self.state.current_step_name = _("安装依赖组件")
-        self.state.add_log(_("正在安装 openEuler Intelligence 依赖组件..."))
+        self.state.add_log(_("正在安装后端依赖组件..."))
 
         if progress_callback:
             progress_callback(self.state)
@@ -723,13 +723,13 @@ class DeploymentService:
         check_interval = 5.0  # 5秒
         base_url = f"http://{server_host}:{server_port}"
 
-        self.state.add_log(_("等待 openEuler Intelligence 服务就绪"))
+        self.state.add_log(_("等待后端服务就绪"))
 
         # 创建配置管理器用于保存登录后的 token
         config_manager = ConfigManager()
 
         for attempt in range(1, max_attempts + 1):
-            logger.debug("第 %d 次检查 openEuler Intelligence 服务状态...", attempt)
+            logger.debug("第 %d 次检查后端服务状态...", attempt)
             if progress_callback:
                 progress_callback(self.state)
 
@@ -740,7 +740,7 @@ class DeploymentService:
                     user_info_loaded = await hermes_client.ensure_user_info_loaded()
 
                     if user_info_loaded:
-                        self.state.add_log(_("✓ openEuler Intelligence 服务已就绪"))
+                        self.state.add_log(_("✓ 后端服务已就绪"))
                         return True
 
                 finally:
@@ -756,7 +756,7 @@ class DeploymentService:
             if attempt < max_attempts:
                 await asyncio.sleep(check_interval)
 
-        self.state.add_log(_("✗ openEuler Intelligence API 服务检查超时失败"))
+        self.state.add_log(_("✗ 后端 API 服务检查超时失败"))
         return False
 
     async def _register_llm_models_step(
@@ -780,7 +780,7 @@ class DeploymentService:
         """
         self.state.current_step = 5
         self.state.current_step_name = _("注册大模型配置")
-        self.state.add_log(_("正在检查 openEuler Intelligence 后端服务状态..."))
+        self.state.add_log(_("正在检查 sysAgent 服务状态..."))
 
         if progress_callback:
             progress_callback(self.state)
@@ -789,12 +789,12 @@ class DeploymentService:
         server_host = LOCAL_DEPLOYMENT_HOST
         server_port = 8002
 
-        # 检查 openEuler Intelligence 后端服务状态
+        # 检查 sysAgent 服务状态
         if not await self._check_framework_service_health(server_host, server_port, progress_callback):
-            self.state.add_log(_("✗ openEuler Intelligence 服务检查失败"))
+            self.state.add_log(_("✗ 后端服务检查失败"))
             return False
 
-        self.state.add_log(_("✓ openEuler Intelligence 服务检查通过"))
+        self.state.add_log(_("✓ 后端服务检查通过"))
 
         # 注册用户配置的 LLM 和 Embedding 模型到后端
         await self._register_llm_models(config, progress_callback)
@@ -856,7 +856,7 @@ class DeploymentService:
 
             # 清除 token，每个用户需要自己登录获取
             # _check_framework_api_health 会写入当前用户的 token，但不应该传播给其他用户
-            current_config_manager.set_eulerintelli_key("")
+            current_config_manager.set_witty_key("")
 
             # 创建专用的模板配置管理器
             template_manager = ConfigManager.create_deployment_manager()
@@ -883,7 +883,7 @@ class DeploymentService:
         更新当前用户的配置
 
         在部署开始时根据部署模式
-        更新 openEuler Intelligence 后端的 URL 配置
+        更新 sysAgent 的 URL 配置
 
         Args:
             config: 部署配置
@@ -892,12 +892,12 @@ class DeploymentService:
         try:
             config_manager = ConfigManager()
 
-            # 根据部署配置更新 openEuler Intelligence 后端 URL
+            # 根据部署配置更新 sysAgent URL
             server_host = LOCAL_DEPLOYMENT_HOST
-            eulerintelli_url = f"http://{server_host}:8002"
+            witty_url = f"http://{server_host}:8002"
 
-            config_manager.set_eulerintelli_url(eulerintelli_url)
-            logger.info("已更新当前用户 openEuler Intelligence 后端 URL: %s", eulerintelli_url)
+            config_manager.set_witty_url(witty_url)
+            logger.info("已更新当前用户 sysAgent URL: %s", witty_url)
 
         except Exception:
             logger.exception("更新当前用户配置时发生异常")
@@ -1010,7 +1010,7 @@ class DeploymentService:
 
         # 使用 ConfigManager 获取已保存的配置，验证前面写入的配置是否正确
         config_manager = ConfigManager()
-        base_url = config_manager.get_eulerintelli_url()
+        base_url = config_manager.get_witty_url()
 
         if not base_url:
             self.state.add_log(_("⚠ 未找到 Hermes 后端 URL 配置，跳过模型注册"))

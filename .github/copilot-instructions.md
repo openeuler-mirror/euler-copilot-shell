@@ -1,6 +1,6 @@
 # Project Overview
 
-openEuler Intelligence 智能 Shell 是一个基于 Python 的智能命令行工具项目，用于提供 AI 驱动的终端交互体验。项目采用模块化架构设计，使用 Textual 构建 TUI 界面，支持多种 AI 后端集成。
+Witty Assistant 是一个基于 Python 的智能命令行助手项目，用于提供 AI 驱动的终端交互体验。项目采用模块化架构设计，使用 Textual 构建 TUI 界面，支持多种 AI 后端集成。
 
 ## Folder Structure
 

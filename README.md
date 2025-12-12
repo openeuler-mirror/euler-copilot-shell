@@ -1,13 +1,12 @@
-# OE-CLI 命令行助手
+# Witty Assistant
 
-OE-CLI 是 openEuler Intelligence 的命令行客户端，提供 AI 驱动的命令行交互体验。支持多种 LLM 后端，集成 MCP 协议，提供现代化的 TUI 界面。
+Witty Assistant 是 openEuler AI 助手的命令行客户端，提供 AI 驱动的命令行交互体验。支持多种 LLM 后端，集成 MCP 协议，提供现代化的 TUI 界面。
 
 ## 核心特性
 
-- **多后端支持**: 支持 OpenAI API 大模型和 openEuler Intelligence 后端
 - **智能终端界面**: 基于 Textual 的现代化 TUI 界面
 - **流式响应**: 实时显示 AI 回复内容
-- **部署助手**: 内置 openEuler Intelligence 自动部署功能
+- **部署助手**: 内置 Witty Assistant 后端服务（sysAgent）自动部署功能
 - **一键认证**: 提供浏览器登录流程，自动获得并保存 API Key
 
 ## 安装说明
@@ -34,7 +33,7 @@ OE-CLI 是 openEuler Intelligence 的命令行客户端，提供 AI 驱动的命
 注意：*仅适用于 openEuler 24.03 LTS SP2*
 
 ```sh
-sudo dnf install openeuler-intelligence-cli
+sudo dnf install witty-assistant
 ```
 
 安装完成后，可以使用 `oi` 命令启动应用程序。
@@ -50,31 +49,31 @@ oi
 查看最新的日志内容:
 
 ```sh
-oi --logs
+witty --logs
 ```
 
 设置日志级别并验证:
 
 ```sh
-oi --log-level INFO
+witty --log-level INFO
 ```
 
-初始化 openEuler Intelligence 后端（仅支持 openEuler 操作系统）:
+初始化 sysAgent（仅支持 openEuler 操作系统）:
 
 ```sh
-oi --init
+witty --init
 ```
 
-选择和设置默认智能体（仅适用于 openEuler Intelligence 后端）:
+选择和设置默认智能体（仅适用于 sysAgent）:
 
 ```sh
-oi --agent
+witty --agent
 ```
 
-通过浏览器登录并自动保存 API Key（需要已配置的 openEuler Intelligence 后端）:
+通过浏览器登录并自动保存 API Key（需要已配置的 sysAgent）:
 
 ```sh
-oi --login
+witty --login
 ```
 
 运行前请确保运行环境具备图形界面并能启动默认浏览器；在无图形界面的场景下可使用 X11 转发或直接在目标服务器上执行该命令。
@@ -100,11 +99,11 @@ oi --login
 
 ### `--init` 命令说明
 
-`--init` 命令用于在 openEuler 操作系统上自动安装和配置 openEuler Intelligence 后端，它将执行以下步骤：
+`--init` 命令用于在 openEuler 操作系统上自动安装和配置 sysAgent，它将执行以下步骤：
 
 1. **系统检测**: 检测当前操作系统是否为 openEuler
 2. **环境检查**: 验证 dnf 包管理器和管理员权限
-3. **包安装**: 通过 dnf 安装 `openeuler-intelligence-installer` RPM 包
+3. **包安装**: 通过 dnf 安装 `witty-assistant-installer` RPM 包
 4. **服务部署**: 运行部署脚本完成系统初始化
 
 **使用要求**:
@@ -116,8 +115,8 @@ oi --login
 **注意**:
 
 1. 此命令会自动安装系统服务，请在生产环境使用前仔细评估；
-2. 如果需要重启或卸载 openEuler Intelligence 后端，请以管理员身份运行 `oi-manager` 并根据指引操作；
-3. `oi-manager` 的卸载功能会清空机器上 MongoDB 和 PostgreSQL 的全部数据并重置 nginx 服务，请谨慎操作。
+2. 如果需要重启或卸载 sysAgent，请以管理员身份运行 `witty-manager` 并根据指引操作；
+3. `witty-manager` 的卸载功能会清空机器上 MongoDB 和 PostgreSQL 的全部数据并重置 nginx 服务，请谨慎操作。
 
 ### `--agent` 命令说明
 
@@ -125,14 +124,14 @@ oi --login
 
 1. **智能体列表**: 自动获取并显示所有可用的智能体
 2. **可视化选择**: 通过图形化界面选择要设置为默认的智能体
-3. **配置保存**: 自动将选择保存到配置文件中的 `eulerintelli.default_app` 字段
+3. **配置保存**: 自动将选择保存到配置文件中的 `witty.default_app` 字段
 4. **即时反馈**: 设置完成后显示确认信息
 
 **使用要求**:
 
-- 必须配置为 openEuler Intelligence 后端
+- 必须配置为 sysAgent
 - 需要有效的服务器连接来获取智能体列表
-- 如果后端不是 openEuler Intelligence，会显示错误提示并引导切换
+- 如果后端不是 sysAgent，会显示错误提示并引导切换
 
 **功能特点**:
 
@@ -142,17 +141,17 @@ oi --login
 
 ### `--llm-config` 命令说明
 
-`--llm-config` 命令用于配置已部署的 openEuler Intelligence 后端的 LLM 和 Embedding 模型参数，它提供了一个简洁的 TUI 界面来管理系统级配置：
+`--llm-config` 命令用于配置已部署的 sysAgent 的 LLM 和 Embedding 模型参数，它提供了一个简洁的 TUI 界面来管理系统级配置：
 
 1. **系统配置管理**: 直接修改系统配置文件 `/etc/sysagent/config.toml` 和 `/etc/euler-copilot-rag/data_chain/env`
 2. **LLM 配置**: 设置大语言模型的端点、API 密钥、模型名称、最大输出令牌数和温度参数
 3. **Embedding 配置**: 配置嵌入模型的端点、API 密钥和模型名称
 4. **实时验证**: 自动验证 API 连接性和配置有效性
-5. **服务重启**: 配置保存后自动重启相关系统服务（`sysagent` 和 `oi-rag`）
+5. **服务重启**: 配置保存后自动重启相关系统服务（`sysagent`）
 
 **使用要求**:
 
-- 仅适用于已部署的 openEuler Intelligence
+- 仅适用于已部署的 sysAgent
 - 需要管理员权限（sudo）运行
 - 需要系统配置文件存在且有写入权限
 - 需要网络连接以验证 API 配置
@@ -184,26 +183,9 @@ oi --login
 **注意**:
 
 1. 此命令直接修改系统配置文件，请在生产环境使用前仔细评估；
-2. 配置保存后会自动重启 `sysagent` 和 `oi-rag` 服务，可能会影响正在运行的服务；
+2. 配置保存后会自动重启 `sysagent` 服务，可能会影响正在运行的服务；
 3. 如果系统配置文件不存在或权限不足，工具会显示相应错误信息并退出；
 4. 建议在修改配置前备份原有的配置文件。
-
-### `--login` 命令说明
-
-`--login` 命令用于通过默认浏览器获取 openEuler Intelligence 的 API Key，并自动写入到本地配置：
-
-1. **获取授权地址**: 从已配置的 openEuler Intelligence 后端读取登录跳转链接；
-2. **本地回调服务**: 在本地启动一个临时回调服务器，处理浏览器回传的数据；
-3. **打开浏览器**: 自动打开登录页面，用户按提示完成账号登录；
-4. **保存凭证**: 登录成功后自动将返回的访问令牌写入配置文件。
-
-**使用要求**:
-
-- 已通过 `--init` 或手动方式配置 openEuler Intelligence URL；
-- 运行环境具备可用浏览器（无头服务器需使用图形转发或在本地执行）；
-- 登录过程需要网络访问 openEuler Intelligence 后端。
-
-遇到错误时，命令会输出详细的提示信息帮助排查，例如未检测到浏览器或 URL 未配置等情况。
 
 ## 国际化支持
 
@@ -218,10 +200,10 @@ oi --login
 
 ```sh
 # 切换到中文
-oi --locale zh_CN
+witty --locale zh_CN
 
 # 切换到英文
-oi --locale en_US
+witty --locale en_US
 ```
 
 语言设置会自动保存，下次启动时生效。
@@ -245,12 +227,12 @@ oi --locale en_US
 
 ## 配置说明
 
-应用程序支持两种后端配置，配置文件会自动保存在 `~/.config/eulerintelli/smart-shell.json`：
+应用程序支持两种后端配置，配置文件会自动保存在 `~/.config/witty/config.json`：
 
 ### 后端类型
 
 1. **OpenAI 兼容 API** (包括 LM Studio、vLLM、Ollama 等)
-2. **openEuler Intelligence**
+2. **sysAgent**
 
 ### 配置示例
 
@@ -262,14 +244,14 @@ oi --locale en_US
 - Model: 如 `qwen/qwen3-30b-a3b`
 - API Key: 如 `sk-xxxxxx`
 
-**openEuler Intelligence 配置:**
+**sysAgent 配置:**
 
 - Base URL: 如 `http://your-server:8002`
 - API Key: 您的认证令牌
 
 ### 智能体管理
 
-对于 openEuler Intelligence 后端，应用程序支持多智能体切换：
+对于 sysAgent，应用程序支持多智能体切换：
 
 1. **默认智能问答**: 通用 AI 助手
 2. **专业智能体**: 针对特定领域的专门助手
@@ -286,14 +268,14 @@ oi --locale en_US
 ##### 方式一：命令行（修改默认配置）
 
 ```sh
-oi --agent
+witty --agent
 ```
 
 通过图形化界面选择默认智能体，选择会自动保存到配置文件。
 
 ##### 方式二：手动修改配置文件（不推荐）
 
-直接编辑配置文件 `~/.config/eulerintelli/smart-shell.json`，修改 `eulerintelli.default_app` 字段的值：
+直接编辑配置文件 `~/.config/witty/config.json`，修改 `witty.default_app` 字段的值：
 
 - 设置为空字符串 `""` 或删除该字段：使用"智能问答"（没有调用工具的能力）
 - 设置为有效的智能体ID：使用指定的智能体作为默认
@@ -301,7 +283,7 @@ oi --agent
 
 ##### 配置详情
 
-- **配置位置**: `~/.config/eulerintelli/smart-shell.json` 中的 `eulerintelli.default_app` 字段
+- **配置位置**: `~/.config/witty/config.json` 中的 `witty.default_app` 字段
 - **默认行为**: 如果未设置或为空，将默认使用"智能问答"（通用助手）
 - **自动应用**: 应用启动时会自动加载配置的默认智能体
 - **自动清理**: 如果配置的智能体ID不存在（如服务器数据更改），会自动清理配置并回退到"智能问答"
@@ -310,8 +292,8 @@ oi --agent
 
 ```json
 {
-  "backend": "eulerintelli",
-  "eulerintelli": {
+  "backend": "witty",
+  "witty": {
     "base_url": "http://your-server:8002",
     "api_key": "your-api-key",
     "default_app": "your-preferred-agent-id"
@@ -332,8 +314,8 @@ oi --agent
 
 应用程序提供完整的日志记录功能：
 
-- **日志位置**: `~/.cache/openEuler Intelligence/logs/`
-- **日志格式**: `smart-shell-YYYYMMDD-HHMMSS.log`（使用本地时区时间）
+- **日志位置**: `~/.cache/witty/logs/`
+- **日志格式**: `witty-assistant-YYYYMMDD-HHMMSS.log`（使用本地时区时间）
 - **自动清理**: 每次启动时自动删除7天前的旧日志和空日志文件
 - **命令行查看**: 使用 `python src/main.py --logs` 查看最新日志内容
 - **记录内容**:
@@ -408,7 +390,7 @@ oi --agent
 ## 项目结构
 
 ```text
-smart-shell/
+witty-assistant/
 ├── README.md                     # 项目说明文档
 ├── pyproject.toml                # 项目配置与依赖（由 uv 管理）
 ├── requirements.txt              # pip 兼容依赖列表（使用 uv export 生成）
@@ -445,8 +427,8 @@ smart-shell/
     │   ├── factory.py            # 后端工厂类
     │   ├── mcp_handler.py        # MCP 事件处理接口
     │   ├── openai.py             # OpenAI 兼容客户端
-    │   └── hermes/               # openEuler Intelligence 客户端
-    │       ├── client.py         # Hermes API 客户端
+    │   └── hermes/               # sysAgent 客户端
+    │       ├── client.py         # sysAgent API 客户端
     │       ├── constants.py      # 常量定义
     │       ├── exceptions.py     # 异常类定义
     │       ├── mcp_helpers.py    # MCP 事件辅助工具

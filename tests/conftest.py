@@ -18,8 +18,8 @@ def mock_config_manager() -> Mock:
     """模拟的配置管理器"""
     mock = Mock()
     mock.get_llm_chat_model.return_value = ""
-    mock.get_eulerintelli_url.return_value = "http://localhost:8080"
-    mock.get_eulerintelli_key.return_value = ""
+    mock.get_witty_url.return_value = "http://localhost:8080"
+    mock.get_witty_key.return_value = ""
     return mock
 
 
@@ -28,8 +28,8 @@ def mock_config_manager_with_llm() -> Mock:
     """模拟的配置管理器（已配置 LLM）"""
     mock = Mock()
     mock.get_llm_chat_model.return_value = "test-model-id"
-    mock.get_eulerintelli_url.return_value = "http://localhost:8080"
-    mock.get_eulerintelli_key.return_value = "test-token"
+    mock.get_witty_url.return_value = "http://localhost:8080"
+    mock.get_witty_key.return_value = "test-token"
     return mock
 
 
@@ -66,8 +66,8 @@ def temp_config_env(
     user_dir.mkdir()
     global_dir.mkdir()
 
-    user_path = user_dir / "smart-shell.json"
-    global_path = global_dir / "smart-shell-template.json"
+    user_path = user_dir / "config.json"
+    global_path = global_dir / "config-template.json"
 
     monkeypatch.setattr(ConfigManager, "USER_CONFIG_DIR", user_dir)
     monkeypatch.setattr(ConfigManager, "USER_CONFIG_PATH", user_path)

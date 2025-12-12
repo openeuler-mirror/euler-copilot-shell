@@ -980,7 +980,7 @@ class LLMConfigScreen(ModalScreen[bool]):
         """初始化后端客户端"""
         try:
             config_manager = ConfigManager()
-            base_url = config_manager.get_eulerintelli_url()
+            base_url = config_manager.get_witty_url()
 
             if not base_url:
                 self.post_message(self.LoadError(_("未配置后端服务地址")))
@@ -1237,7 +1237,7 @@ class LLMConfigScreen(ModalScreen[bool]):
 class LLMConfigApp(App[bool]):
     """LLM 配置应用"""
 
-    TITLE = "openEuler Intelligence LLM 配置工具"
+    TITLE = "LLM Configurator"
 
     def __init__(self) -> None:
         """初始化应用"""
@@ -1272,7 +1272,7 @@ def check_admin_permission() -> tuple[bool, list[str]]:
     # 检查是否以管理员权限运行
     if os.geteuid() != 0:
         errors.append(_("需要管理员权限才能管理 LLM 配置"))
-        errors.append(_("请使用 'sudo oi --llm-config' 运行"))
+        errors.append(_("请使用 'sudo witty --llm-config' 运行"))
 
     return len(errors) == 0, errors
 

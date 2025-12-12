@@ -23,8 +23,8 @@ from tool import backend_init, llm_config, select_agent
 def parse_args() -> argparse.Namespace:
     """解析命令行参数"""
     parser = argparse.ArgumentParser(
-        prog="oi",
-        description=_("openEuler Intelligence - Intelligent command-line tool"),
+        prog="witty",
+        description=_("Witty Assistant - Intelligent command-line tool"),
         epilog=_("""
 For more information and documentation, please visit:
   https://gitee.com/openeuler/euler-copilot-shell/tree/master/docs
@@ -45,16 +45,16 @@ For more information and documentation, please visit:
     subparsers = parser.add_subparsers(
         dest="command",
         title=_("Available Commands"),
-        description=_("Use 'oi <command> --help' for more information on a specific command"),
+        description=_("Use 'witty <command> --help' for more information on a specific command"),
         metavar="<command>",
     )
 
     # init 子命令
     subparsers.add_parser(
         "init",
-        help=_("Initialize openEuler Intelligence backend"),
+        help=_("Initialize sysAgent"),
         description=_(
-            "Initialize openEuler Intelligence backend\n"
+            "Initialize sysAgent\n"
             " * Initialization requires administrator privileges and network connection",
         ),
         formatter_class=argparse.RawTextHelpFormatter,
@@ -80,14 +80,14 @@ For more information and documentation, please visit:
     set_default_parser = subparsers.add_parser(
         "set-default",
         help=_("Configure default settings"),
-        description=_("Configure default settings for openEuler Intelligence"),
+        description=_("Configure default settings for Witty Assistant"),
         formatter_class=argparse.RawTextHelpFormatter,
     )
     set_default_parser.add_argument(
         "--llm-config",
         action="store_true",
         help=_(
-            "Change openEuler Intelligence LLM settings (requires valid local backend service)\n"
+            "Change Witty Assistant LLM settings (requires valid local backend service)\n"
             " * Configuration editing requires administrator privileges",
         ),
     )
@@ -205,7 +205,7 @@ def handle_set_default(args: argparse.Namespace, config_manager: ConfigManager) 
     # 如果没有指定任何参数，显示帮助信息
     if not handled:
         sys.stderr.write(
-            _("No option specified. Use 'oi set-default --help' for available options.\n"),
+            _("No option specified. Use 'witty set-default --help' for available options.\n"),
         )
         sys.exit(1)
 
@@ -260,7 +260,7 @@ def main() -> None:
         app = IntelligentTerminal()
         app.run()
     except Exception:
-        logger.exception(_("Fatal error in Intelligent Shell application"))
+        logger.exception(_("Fatal error in Witty Assistant application"))
         raise
 
 

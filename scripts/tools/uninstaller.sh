@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Uninstaller for openEuler Intelligence
+# Uninstaller for Witty Assistant
 # Run as root or with sudo on openEuler
 
 # Check openEuler environment
@@ -25,7 +25,7 @@ cleanup_mysql_authhub() {
         return
     fi
     # Read password from mysql_temp file
-    local mysql_temp_file="/usr/lib/openeuler-intelligence/scripts/5-resource/mysql_temp"
+    local mysql_temp_file="/usr/lib/witty-assistant/scripts/5-resource/mysql_temp"
     if [ ! -f "$mysql_temp_file" ]; then
         echo "MySQL temp file not found: $mysql_temp_file, skipping MySQL cleanup."
         return
@@ -169,20 +169,20 @@ rm -rf /opt/tika
 rm -f /etc/systemd/system/tika.service
 # Remove installation files
 rm -f /etc/euler_Intelligence_install*
-rm -f /usr/lib/openeuler-intelligence/scripts/5-resource/config.*
-rm -f /usr/lib/openeuler-intelligence/scripts/5-resource/env.*
+rm -f /usr/lib/witty-assistant/scripts/5-resource/config.*
+rm -f /usr/lib/witty-assistant/scripts/5-resource/env.*
 # Remove PostgreSQL data
 rm -rf /var/lib/pgsql/data
 rm -f /var/lib/pgsql/*.log
 
 echo "Clearing user configs & cache logs..."
 for home in /root /home/*; do
-    cache_dir="$home/.cache/openEuler Intelligence/logs"
+    cache_dir="$home/.cache/witty/logs"
     if [ -d "$cache_dir" ]; then
         echo "Removing $cache_dir"
         rm -rf "$cache_dir"
     fi
-    config_dir="$home/.config/eulerintelli"
+    config_dir="$home/.config/witty"
     if [ -d "$config_dir" ]; then
         echo "Removing $config_dir"
         rm -rf "$config_dir"
@@ -190,7 +190,7 @@ for home in /root /home/*; do
 done
 
 echo "Removing configuration template..."
-rm -f /etc/openEuler-Intelligence/smart-shell-template.json
+rm -f /etc/witty-assistant/config-template.json
 
 echo "Uninstalling built-in MCP servers ..."
 # Check for running systrace-mcpserver services and stop/disable them if present.

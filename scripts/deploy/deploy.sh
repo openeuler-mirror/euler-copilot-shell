@@ -30,7 +30,7 @@ show_sub_menu() {
   echo "       手动分步部署菜单         "
   echo "=============================="
   echo "1) 环境检查"
-  echo "2) 安装 openEuler Intelligence"
+  echo "2) 安装后端服务"
   echo "3) 初始化配置"
   echo "4) 返回主菜单"
   echo "=============================="
@@ -72,7 +72,7 @@ run_sub_script() {
     run_script_with_check "./1-check-env/check_env.sh" "环境检查"
     ;;
   2)
-    run_script_with_check "./2-install-dependency/install_openEulerIntelligence.sh" "安装 openEuler Intelligence"
+    run_script_with_check "./2-install-dependency/install_openEulerIntelligence.sh" "安装后端服务"
     ;;
   3)
     run_script_with_check "./3-install-server/init_config.sh" "初始化配置"
@@ -144,7 +144,7 @@ restart_service() {
 
 # 帮助信息函数
 show_help() {
-  echo -e "${GREEN}openEuler Intelligence 一键部署系统使用说明${COLOR_RESET}"
+  echo -e "${GREEN}Witty Assistant 一键部署系统使用说明${COLOR_RESET}"
   echo "=============================================================================="
   echo -e "${BLUE}使用方式:${COLOR_RESET}"
   echo "  $0 [选项]"
@@ -171,7 +171,7 @@ agent_manager() {
   # 获取主脚本绝对路径并切换到所在目录
   MAIN_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   if [ "${MAIN_DIR}" = "/usr/bin" ]; then
-    cd /usr/lib/openeuler-intelligence/scripts || exit 1
+    cd /usr/lib/witty-assistant/scripts || exit 1
   else
     cd "$MAIN_DIR" || exit 1
   fi
@@ -195,7 +195,7 @@ fi
 # 获取主脚本绝对路径并切换到所在目录
 MAIN_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [ "${MAIN_DIR}" = "/usr/bin" ]; then
-  cd /usr/lib/openeuler-intelligence/scripts || exit 1
+  cd /usr/lib/witty-assistant/scripts || exit 1
 else
   cd "$MAIN_DIR" || exit 1
 fi

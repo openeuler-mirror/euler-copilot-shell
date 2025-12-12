@@ -69,7 +69,7 @@ get_el_version() {
 get_wget_log_filename() {
   local file_path=$1
   # 创建日志目录（如果不存在）
-  mkdir -p "$HOME/.cache/openEuler Intelligence/logs"
+  mkdir -p "$HOME/.cache/witty/logs"
   # 获取开始下载的时间戳
   local timestamp
   timestamp=$(date +%Y%m%d_%H%M%S)
@@ -77,7 +77,7 @@ get_wget_log_filename() {
   local filename
   filename=$(basename "$file_path")
   # 构造日志文件路径
-  local logfile="$HOME/.cache/openEuler Intelligence/logs/${timestamp}_${filename}.log"
+  local logfile="$HOME/.cache/witty/logs/${timestamp}_${filename}.log"
   echo "$logfile"
 }
 # 获取最新的 MinIO RPM 下载地址
@@ -515,7 +515,7 @@ main() {
   systemctl stop dnf-makecache.timer
   # 执行安装
   install_framework || return 1
-  echo -e "${COLOR_SUCCESS}[Success] 安装 openEuler Intelligence 完成！${COLOR_RESET}"
+  echo -e "${COLOR_SUCCESS}[Success] 后端服务安装完成！${COLOR_RESET}"
   return 0
 }
 
