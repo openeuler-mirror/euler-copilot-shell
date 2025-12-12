@@ -1,10 +1,10 @@
-# Simplified Chinese translations for oi-cli package.
+# Simplified Chinese translations for witty-assistant package.
 # Copyright (C) 2025 openEuler Intelligence Project
-# This file is distributed under the same license as the oi-cli package.
+# This file is distributed under the same license as the witty-assistant package.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: oi-cli\n"
+"Project-Id-Version: witty-assistant\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
 "POT-Creation-Date: 2025-11-04 17:48+0800\n"
 "PO-Revision-Date: 2025-10-21 09:40+0800\n"
@@ -1742,9 +1742,9 @@ msgstr "请先运行以下命令切换后端：\n"
 
 #: src/tool/oi_select_agent.py:145
 msgid ""
-"  oi  # 然后按下 Ctrl+S 进入设置界面切换到 Witty Assistant 后端\n"
+"  witty  # 然后按下 Ctrl+S 进入设置界面切换到 Witty Assistant 后端\n"
 msgstr ""
-"  oi  # 然后按下 Ctrl+S 进入设置界面切换到 Witty Assistant 后端\n"
+"  witty  # 然后按下 Ctrl+S 进入设置界面切换到 Witty Assistant 后端\n"
 
 #: src/tool/oi_select_agent.py:163
 #, python-brace-format
@@ -1761,8 +1761,8 @@ msgid "配置文件不存在: {path}"
 msgstr "配置文件不存在: {path}"
 
 #: src/tool/oi_llm_config.py:85
-msgid "请先运行 '(sudo) oi --init' 部署后端服务"
-msgstr "请先运行 '(sudo) oi --init' 部署后端服务"
+msgid "请先运行 '(sudo) witty --init' 部署后端服务"
+msgstr "请先运行 '(sudo) witty --init' 部署后端服务"
 
 #: src/tool/oi_llm_config.py:89 src/tool/oi_llm_config.py:93
 #, python-brace-format
@@ -2077,8 +2077,8 @@ msgid "✗ Error: Witty Assistant URL not configured\n"
 msgstr "✗ 错误: Witty Assistant URL 未配置\n"
 
 #: src/tool/oi_login.py:170
-msgid "Please run deployment initialization first: oi --init\n"
-msgstr "请先运行部署初始化: oi --init\n"
+msgid "Please run deployment initialization first: witty --init\n"
+msgstr "请先运行部署初始化: witty --init\n"
 
 #: src/tool/oi_login.py:181
 msgid "Getting authorization URL from server...\n"

@@ -142,7 +142,7 @@ async def select_agent() -> None:
     if config_manager.get_backend() != Backend.EULERINTELLI:
         sys.stderr.write(_("错误: 智能体功能需要使用 Witty Assistant 后端\n"))
         sys.stderr.write(_("请先运行以下命令切换后端：\n"))
-        sys.stderr.write(_("  oi  # 然后按下 Ctrl+S 进入设置界面切换到 Witty Assistant 后端\n"))
+        sys.stderr.write(_("  witty  # 然后按下 Ctrl+S 进入设置界面切换到 Witty Assistant 后端\n"))
         sys.exit(1)
 
     try:

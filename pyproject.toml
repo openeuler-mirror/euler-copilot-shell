@@ -1,5 +1,5 @@
 [project]
-name = "oi-cli"
+name = "witty-assistant"
 version = "0.10.2"
 description = "智能 Shell 命令行工具"
 readme = "README.md"
@@ -24,7 +24,7 @@ classifiers = [
 Homepage = "https://gitee.com/openeuler/euler-copilot-shell"
 
 [project.scripts]
-oi = "main:main"
+witty = "main:main"
 
 [project.optional-dependencies]
 dev = ["ruff>=0.14.0"]

@@ -1,12 +1,12 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR openEuler Intelligence Project
-# This file is distributed under the same license as the oi-cli package.
+# This file is distributed under the same license as the witty-assistant package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: oi-cli 0.10.2\n"
+"Project-Id-Version: witty-assistant 0.10.2\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
 "POT-Creation-Date: 2025-11-04 17:48+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -1711,7 +1711,7 @@ msgstr ""
 
 #: src/tool/oi_select_agent.py:145
 msgid ""
-"  oi  # 然后按下 Ctrl+S 进入设置界面切换到 Witty Assistant 后端\n"
+"  witty  # 然后按下 Ctrl+S 进入设置界面切换到 Witty Assistant 后端\n"
 msgstr ""
 
 #: src/tool/oi_select_agent.py:163
@@ -1729,7 +1729,7 @@ msgid "配置文件不存在: {path}"
 msgstr ""
 
 #: src/tool/oi_llm_config.py:85
-msgid "请先运行 '(sudo) oi --init' 部署后端服务"
+msgid "请先运行 '(sudo) witty --init' 部署后端服务"
 msgstr ""
 
 #: src/tool/oi_llm_config.py:89 src/tool/oi_llm_config.py:93
@@ -2034,7 +2034,7 @@ msgid "✗ Error: Witty Assistant URL not configured\n"
 msgstr ""
 
 #: src/tool/oi_login.py:170
-msgid "Please run deployment initialization first: oi --init\n"
+msgid "Please run deployment initialization first: witty --init\n"
 msgstr ""
 
 #: src/tool/oi_login.py:181

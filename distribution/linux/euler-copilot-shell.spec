@@ -1,5 +1,5 @@
-%global pypi_name oi-cli
-%global shortcut_name oi
+%global pypi_name witty-assistant
+%global shortcut_name witty
 %global debug_package %{nil}
 
 Name:           euler-copilot-shell
@@ -64,7 +64,7 @@ uv pip install pyinstaller
 # 使用虚拟环境中的 PyInstaller 创建单一可执行文件
 pyinstaller --noconfirm \
             --distpath dist \
-            oi-cli.spec
+            witty-assistant.spec
 
 # 退出虚拟环境
 deactivate
@@ -87,7 +87,7 @@ cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deplo
 chmod -R +x %{buildroot}/usr/lib/openeuler-intelligence/scripts/
 
 # 创建可执行文件的符号链接
-ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/oi-manager
+ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/witty-manager
 
 %files -n openeuler-intelligence-cli
 %license LICENSE
@@ -99,7 +99,7 @@ ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/oi-
 %license LICENSE
 %doc scripts/deploy/安装部署手册.md
 /usr/lib/openeuler-intelligence
-%{_bindir}/oi-manager
+%{_bindir}/witty-manager
 
 %postun -n openeuler-intelligence-cli
 if [ $1 -eq 0 ]; then

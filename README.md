@@ -1,6 +1,6 @@
-# OE-CLI 命令行助手
+# Witty Assistant 命令行助手
 
-OE-CLI 是 openEuler Intelligence 的命令行客户端，提供 AI 驱动的命令行交互体验。支持多种 LLM 后端，集成 MCP 协议，提供现代化的 TUI 界面。
+Witty Assistant 是 openEuler Intelligence 的命令行客户端，提供 AI 驱动的命令行交互体验。支持多种 LLM 后端，集成 MCP 协议，提供现代化的 TUI 界面。
 
 ## 核心特性
 
@@ -37,44 +37,44 @@ OE-CLI 是 openEuler Intelligence 的命令行客户端，提供 AI 驱动的命
 sudo dnf install openeuler-intelligence-cli
 ```
 
-安装完成后，可以使用 `oi` 命令启动应用程序。
+安装完成后，可以使用 `witty` 命令启动应用程序。
 
 ## 使用方法
 
 安装 RPM 包后:
 
 ```sh
-oi
+witty
 ```
 
 查看最新的日志内容:
 
 ```sh
-oi --logs
+witty --logs
 ```
 
 设置日志级别并验证:
 
 ```sh
-oi --log-level INFO
+witty --log-level INFO
 ```
 
 初始化 openEuler Intelligence 后端（仅支持 openEuler 操作系统）:
 
 ```sh
-oi --init
+witty --init
 ```
 
 选择和设置默认智能体（仅适用于 openEuler Intelligence 后端）:
 
 ```sh
-oi --agent
+witty --agent
 ```
 
 通过浏览器登录并自动保存 API Key（需要已配置的 openEuler Intelligence 后端）:
 
 ```sh
-oi --login
+witty --login
 ```
 
 运行前请确保运行环境具备图形界面并能启动默认浏览器；在无图形界面的场景下可使用 X11 转发或直接在目标服务器上执行该命令。
@@ -116,8 +116,8 @@ oi --login
 **注意**:
 
 1. 此命令会自动安装系统服务，请在生产环境使用前仔细评估；
-2. 如果需要重启或卸载 openEuler Intelligence 后端，请以管理员身份运行 `oi-manager` 并根据指引操作；
-3. `oi-manager` 的卸载功能会清空机器上 MongoDB 和 PostgreSQL 的全部数据并重置 nginx 服务，请谨慎操作。
+2. 如果需要重启或卸载 openEuler Intelligence 后端，请以管理员身份运行 `witty-manager` 并根据指引操作；
+3. `witty-manager` 的卸载功能会清空机器上 MongoDB 和 PostgreSQL 的全部数据并重置 nginx 服务，请谨慎操作。
 
 ### `--agent` 命令说明
 
@@ -218,10 +218,10 @@ oi --login
 
 ```sh
 # 切换到中文
-oi --locale zh_CN
+witty --locale zh_CN
 
 # 切换到英文
-oi --locale en_US
+witty --locale en_US
 ```
 
 语言设置会自动保存，下次启动时生效。
@@ -286,7 +286,7 @@ oi --locale en_US
 ##### 方式一：命令行（修改默认配置）
 
 ```sh
-oi --agent
+witty --agent
 ```
 
 通过图形化界面选择默认智能体，选择会自动保存到配置文件。

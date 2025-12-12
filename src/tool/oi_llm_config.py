@@ -82,7 +82,7 @@ class LLMSystemConfig:
             # 检查核心配置文件是否存在（必须存在）
             if not cls.FRAMEWORK_CONFIG_PATH.exists():
                 errors.append(_("配置文件不存在: {path}").format(path=cls.FRAMEWORK_CONFIG_PATH))
-                errors.append(_("请先运行 '(sudo) oi --init' 部署后端服务"))
+                errors.append(_("请先运行 '(sudo) witty --init' 部署后端服务"))
 
             # 检查核心配置文件是否可写（必须可写）
             if cls.FRAMEWORK_CONFIG_PATH.exists() and not os.access(cls.FRAMEWORK_CONFIG_PATH, os.W_OK):

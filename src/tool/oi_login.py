@@ -167,7 +167,7 @@ def _load_config_and_check_url() -> ConfigManager:
     if not base_url:
         sys.stdout.write(
             _("✗ Error: Witty Assistant URL not configured\n")
-            + _("Please run deployment initialization first: oi --init\n"),
+            + _("Please run deployment initialization first: witty --init\n"),
         )
         sys.exit(1)
 
