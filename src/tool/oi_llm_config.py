@@ -1272,7 +1272,7 @@ def check_admin_permission() -> tuple[bool, list[str]]:
     # 检查是否以管理员权限运行
     if os.geteuid() != 0:
         errors.append(_("需要管理员权限才能管理 LLM 配置"))
-        errors.append(_("请使用 'sudo witty --llm-config' 运行"))
+        errors.append(_("请使用 'sudo witty llm' 运行"))
 
     return len(errors) == 0, errors
 
@@ -1281,7 +1281,7 @@ def llm_config() -> None:
     """
     LLM 配置主函数
 
-    --llm-config 参数的入口点。
+    witty llm 子命令的入口点。
     """
     logger.info("启动 LLM 配置工具")
 
