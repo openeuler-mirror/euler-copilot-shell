@@ -4,7 +4,7 @@
 
 Name:           euler-copilot-shell
 Version:        0.10.2
-Release:        7%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
+Release:        8%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
 Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
 URL:            https://gitee.com/openeuler/euler-copilot-shell
@@ -134,6 +134,10 @@ rm -f /usr/lib/openeuler-intelligence/scripts/5-resource/env.*
 fi
 
 %changelog
+* Fri Dec 12 2025 openEuler <contact@openeuler.org> - 0.10.2-8
+- chore: Update project name to "Witty Assistant"
+- chore: Update program short name to "witty"
+
 * Wed Dec 03 2025 openEuler <contact@openeuler.org> - 0.10.2-7
 - cli: Add support for select text in LLM response TUI
 
