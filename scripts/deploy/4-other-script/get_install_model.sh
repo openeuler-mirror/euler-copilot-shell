@@ -139,7 +139,7 @@ main() {
   # 根据用户选择安装附加组件
   install_components || return 1
 
-  echo -e "\n${COLOR_SUCCESS}[Success] 安装 openEuler Intelligence 完成！${COLOR_RESET}"
+  echo -e "\n${COLOR_SUCCESS}[Success] 安装 Witty Assistant 完成！${COLOR_RESET}"
   return 0
 }
 

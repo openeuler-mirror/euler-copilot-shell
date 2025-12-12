@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Uninstaller for openEuler Intelligence
+# Uninstaller for Witty Assistant
 # Run as root or with sudo on openEuler
 
 # Check openEuler environment

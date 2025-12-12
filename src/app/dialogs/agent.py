@@ -25,7 +25,7 @@ class BackendRequiredDialog(ModalScreen):
         yield Container(
             Container(
                 Label(_("智能体功能提示"), id="backend-dialog-title"),
-                Label(_("请选择 openEuler Intelligence 后端来使用智能体功能"), id="backend-dialog-text"),
+                Label(_("请选择 Witty Assistant 后端来使用智能体功能"), id="backend-dialog-text"),
                 Label(_("按任意键关闭"), id="backend-dialog-help"),
                 id="backend-dialog",
             ),

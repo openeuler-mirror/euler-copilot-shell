@@ -858,7 +858,7 @@ main() {
   #分支执行TODO
   install_framework || return 1
   install_components || return 1
-  echo -e "${COLOR_SUCCESS}[Success] 安装 openEuler Intelligence 完成！${COLOR_RESET}"
+  echo -e "${COLOR_SUCCESS}[Success] 安装 Witty Assistant 完成！${COLOR_RESET}"
   return 0
 }
 

@@ -1,7 +1,7 @@
 """
 浏览器登录功能
 
-实现通过浏览器跳转进行 openEuler Intelligence 登录
+实现通过浏览器跳转进行 Witty Assistant 登录
 """
 
 import json
@@ -28,7 +28,7 @@ def get_auth_url(base_url: str) -> tuple[str | None, str | None]:
     从后端获取授权 URL 和登录令牌
 
     Args:
-        base_url: openEuler Intelligence 的基础 URL
+        base_url: Witty Assistant 的基础 URL
 
     Returns:
         (授权 URL, 登录令牌) 元组，如果获取失败则返回 (None, None)
@@ -73,7 +73,7 @@ def poll_login_status(base_url: str, max_attempts: int = 60, interval: int = 2) 
     轮询检查登录状态并获取 session
 
     Args:
-        base_url: openEuler Intelligence 的基础 URL
+        base_url: Witty Assistant 的基础 URL
         max_attempts: 最大尝试次数，默认 60 次（2 分钟）
         interval: 轮询间隔（秒），默认 2 秒
 
@@ -121,7 +121,7 @@ def browser_login() -> None:
     """
     执行浏览器登录流程
 
-    1. 从配置读取 openEuler Intelligence 的地址
+    1. 从配置读取 Witty Assistant 的地址
     2. 获取授权 URL
     3. 启动本地回调服务器
     4. 打开浏览器访问 launcher 页面
@@ -160,18 +160,18 @@ def browser_login() -> None:
 
 
 def _load_config_and_check_url() -> ConfigManager:
-    """加载配置并检查 openEuler Intelligence URL。"""
+    """加载配置并检查 Witty Assistant URL。"""
     config_manager = ConfigManager()
     base_url = config_manager.get_eulerintelli_url()
 
     if not base_url:
         sys.stdout.write(
-            _("✗ Error: openEuler Intelligence URL not configured\n")
-            + _("Please run deployment initialization first: oi --init\n"),
+            _("✗ Error: Witty Assistant URL not configured\n")
+            + _("Please run deployment initialization first: witty --init\n"),
         )
         sys.exit(1)
 
-    logger.info("使用 openEuler Intelligence URL: %s", base_url)
+    logger.info("使用 Witty Assistant URL: %s", base_url)
     return config_manager
 
 

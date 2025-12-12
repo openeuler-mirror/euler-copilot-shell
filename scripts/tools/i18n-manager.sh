@@ -98,7 +98,7 @@ extract() {
         --keyword=_n:1,2 \
         --output="$POT_FILE" \
         --from-code=UTF-8 \
-        --package-name=oi-cli \
+        --package-name=witty-assistant \
         --package-version=0.10.2 \
         --msgid-bugs-address=contact@openeuler.org \
         --copyright-holder="openEuler Intelligence Project" \
@@ -327,8 +327,8 @@ all() {
     print_yellow "📝 下一步:"
     echo "  1. 编辑 .po 文件添加或更新翻译"
     echo "  2. 重新运行 '$0 compile' 编译翻译"
-    echo "  3. 运行 'oi --locale zh_CN' 测试中文"
-    echo "  4. 运行 'oi --locale en_US' 测试英文"
+    echo "  3. 运行 'witty --locale zh_CN' 测试中文"
+    echo "  4. 运行 'witty --locale en_US' 测试英文"
 }
 
 # 主函数

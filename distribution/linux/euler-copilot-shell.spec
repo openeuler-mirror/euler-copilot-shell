@@ -1,11 +1,11 @@
-%global pypi_name oi-cli
-%global shortcut_name oi
+%global pypi_name witty-assistant
+%global shortcut_name witty
 %global debug_package %{nil}
 
 Name:           euler-copilot-shell
 Version:        0.10.2
 Release:        7%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
-Summary:        openEuler Intelligence 智能命令行工具集
+Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
 URL:            https://gitee.com/openeuler/euler-copilot-shell
 Source0:        %{name}-%{version}.tar.gz
@@ -16,29 +16,29 @@ BuildRequires:  python3-devel python3-virtualenv python3-pip
 BuildRequires:  gettext
 
 %description
-openEuler Intelligence 智能命令行工具集，包含智能 Shell 命令行程序和部署安装工具。
+Witty Assistant 智能命令行工具集，包含智能 Shell 命令行程序和部署安装工具。
 
 # 智能命令行工具子包
 %package -n openeuler-intelligence-cli
-Summary:        openEuler Intelligence 智能 Shell 命令行工具
+Summary:        Witty Assistant 智能 Shell 命令行工具
 Requires:       glibc
 # 替换原来的 euler-copilot-shell 包
 Obsoletes:      euler-copilot-shell < %{version}-%{release}
 Provides:       euler-copilot-shell = %{version}-%{release}
 
 %description -n openeuler-intelligence-cli
-openEuler Intelligence 智能 Shell 是一个智能命令行程序。
+Witty Assistant 智能 Shell 是一个智能命令行程序。
 它允许用户输入命令，通过集成大语言模型提供命令建议，帮助用户更高效地使用命令行。
 
 # 部署安装工具子包
 %package -n openeuler-intelligence-installer
-Summary:        openEuler Intelligence 部署安装脚本
+Summary:        Witty Assistant 部署安装脚本
 Requires:       python3-aiohttp
 Requires:       python3-requests
 BuildArch:      noarch
 
 %description -n openeuler-intelligence-installer
-openEuler Intelligence 部署安装工具包，包含部署脚本和相关资源文件。
+Witty Assistant 部署安装工具包，包含部署脚本和相关资源文件。
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -64,7 +64,7 @@ uv pip install pyinstaller
 # 使用虚拟环境中的 PyInstaller 创建单一可执行文件
 pyinstaller --noconfirm \
             --distpath dist \
-            oi-cli.spec
+            witty-assistant.spec
 
 # 退出虚拟环境
 deactivate
@@ -87,7 +87,7 @@ cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deplo
 chmod -R +x %{buildroot}/usr/lib/openeuler-intelligence/scripts/
 
 # 创建可执行文件的符号链接
-ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/oi-manager
+ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/witty-manager
 
 %files -n openeuler-intelligence-cli
 %license LICENSE
@@ -99,7 +99,7 @@ ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/oi-
 %license LICENSE
 %doc scripts/deploy/安装部署手册.md
 /usr/lib/openeuler-intelligence
-%{_bindir}/oi-manager
+%{_bindir}/witty-manager
 
 %postun -n openeuler-intelligence-cli
 if [ $1 -eq 0 ]; then
