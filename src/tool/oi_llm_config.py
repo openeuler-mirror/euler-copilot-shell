@@ -1237,7 +1237,7 @@ class LLMConfigScreen(ModalScreen[bool]):
 class LLMConfigApp(App[bool]):
     """LLM 配置应用"""
 
-    TITLE = "openEuler Intelligence LLM 配置工具"
+    TITLE = "LLM Configurator"
 
     def __init__(self) -> None:
         """初始化应用"""

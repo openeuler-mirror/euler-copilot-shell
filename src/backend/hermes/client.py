@@ -406,7 +406,7 @@ class HermesChatClient(LLMClientBase):
             main_message = _("未配置 Chat 模型")
             hint_prefix = _("配置步骤")
             step1 = _("按 Ctrl+S 打开设置")
-            step2 = _("确认后端为 openEuler Intelligence")
+            step2 = _("确认后端为 sysAgent")
             step3 = _('点击 "更改用户设置" 按钮')
             step4 = _('切换到 "大模型设置" 标签页')
             step5 = _("使用 ↑↓ 键选择模型，空格激活，回车保存")

@@ -515,7 +515,7 @@ main() {
   systemctl stop dnf-makecache.timer
   # 执行安装
   install_framework || return 1
-  echo -e "${COLOR_SUCCESS}[Success] 安装 openEuler Intelligence 完成！${COLOR_RESET}"
+  echo -e "${COLOR_SUCCESS}[Success] 后端服务安装完成！${COLOR_RESET}"
   return 0
 }
 

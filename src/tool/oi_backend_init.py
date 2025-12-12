@@ -36,7 +36,7 @@ def backend_init() -> None:
             """部署 TUI 应用"""
 
             CSS_PATH = css_path
-            TITLE = _("openEuler Intelligence 部署助手")
+            TITLE = _("部署助手")
 
             def on_mount(self) -> None:
                 """启动时先显示初始化模式选择界面"""

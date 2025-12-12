@@ -428,7 +428,7 @@ class SettingsScreen(ModalScreen):
                 self.is_validated = valid
                 self.validation_message = message
             else:
-                # 验证 openEuler Intelligence 配置
+                # 验证 sysAgent 配置
                 valid, message = await validate_oi_connection(base_url, api_key)
                 self.is_validated = valid
                 self.validation_message = message

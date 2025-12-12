@@ -656,7 +656,7 @@ FUNCTION_CALL: get_current_time()
 
 async def validate_oi_connection(base_url: str, access_token: str) -> tuple[bool, str]:  # noqa: PLR0911
     """
-    验证 openEuler Intelligence 服务连接
+    验证 sysAgent 服务连接
 
     Args:
         base_url: 服务 URL
@@ -712,7 +712,7 @@ async def validate_oi_connection(base_url: str, access_token: str) -> tuple[bool
             # 检查 code 字段
             code = response_data.get("code")
             if code == HTTP_OK:
-                logger.info("openEuler Intelligence 服务连接成功")
+                logger.info("sysAgent 服务连接成功")
                 return True, _("连接成功")
 
             return False, _("服务返回错误代码: {code}").format(code=code)
@@ -722,7 +722,7 @@ async def validate_oi_connection(base_url: str, access_token: str) -> tuple[bool
     except httpx.TimeoutException:
         return False, _("连接超时，请检查网络连接或服务状态")
     except Exception as e:
-        logger.exception("验证 openEuler Intelligence 连接时发生异常")
+        logger.exception("验证 sysAgent 连接时发生异常")
         return False, _("连接验证失败: {error}").format(error=str(e))
 
 

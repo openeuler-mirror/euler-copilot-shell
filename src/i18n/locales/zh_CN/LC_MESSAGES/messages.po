@@ -1,5 +1,5 @@
 # Simplified Chinese translations for witty-assistant package.
-# Copyright (C) 2025 openEuler Intelligence Project
+# Copyright (C) 2025 openEuler
 # This file is distributed under the same license as the witty-assistant package.
 #
 msgid ""
@@ -191,8 +191,8 @@ msgid "安装依赖组件"
 msgstr "安装依赖组件"
 
 #: src/app/deployment/service.py:441
-msgid "正在安装 openEuler Intelligence 依赖组件..."
-msgstr "正在安装 openEuler Intelligence 依赖组件..."
+msgid "正在安装后端依赖组件..."
+msgstr "正在安装后端依赖组件..."
 
 #: src/app/deployment/service.py:450
 msgid "依赖安装脚本"
@@ -296,12 +296,12 @@ msgid "✗ Framework 服务状态检查超时失败"
 msgstr "✗ Framework 服务状态检查超时失败"
 
 #: src/app/deployment/service.py:726
-msgid "等待 openEuler Intelligence 服务就绪"
-msgstr "等待 openEuler Intelligence 服务就绪"
+msgid "等待后端服务就绪"
+msgstr "等待后端服务就绪"
 
 #: src/app/deployment/service.py:743
-msgid "✓ openEuler Intelligence 服务已就绪"
-msgstr "✓ openEuler Intelligence 服务已就绪"
+msgid "✓ 后端服务已就绪"
+msgstr "✓ 后端服务已就绪"
 
 #: src/app/deployment/service.py:752
 #, python-brace-format
@@ -314,8 +314,8 @@ msgid "API 连通性检查时发生错误: {error}"
 msgstr "API 连通性检查时发生错误: {error}"
 
 #: src/app/deployment/service.py:759
-msgid "✗ openEuler Intelligence API 服务检查超时失败"
-msgstr "✗ openEuler Intelligence API 服务检查超时失败"
+msgid "✗ 后端 API 服务检查超时失败"
+msgstr "✗ 后端 API 服务检查超时失败"
 
 #: src/app/deployment/service.py:782
 msgid "注册大模型配置"
@@ -326,12 +326,12 @@ msgid "正在检查 sysAgent 服务状态..."
 msgstr "正在检查 sysAgent 服务状态..."
 
 #: src/app/deployment/service.py:794
-msgid "✗ openEuler Intelligence 服务检查失败"
-msgstr "✗ openEuler Intelligence 服务检查失败"
+msgid "✗ 后端服务检查失败"
+msgstr "✗ 后端服务检查失败"
 
 #: src/app/deployment/service.py:797
-msgid "✓ openEuler Intelligence 服务检查通过"
-msgstr "✓ openEuler Intelligence 服务检查通过"
+msgid "✓ 后端服务检查通过"
+msgstr "✓ 后端服务检查通过"
 
 #: src/app/deployment/service.py:811
 msgid "初始化 Agent 服务"
@@ -672,8 +672,8 @@ msgid "退出"
 msgstr "退出"
 
 #: src/app/deployment/components/modes.py:65
-msgid "openEuler Intelligence 初始化"
-msgstr "openEuler Intelligence 初始化"
+msgid "Witty Assistant 初始化"
+msgstr "Witty Assistant 初始化"
 
 #: src/app/deployment/components/modes.py:67
 msgid "请选择您的初始化方式："
@@ -706,12 +706,12 @@ msgid "返回"
 msgstr "返回"
 
 #: src/app/deployment/components/modes.py:162
-msgid "连接现有 openEuler Intelligence 服务"
-msgstr "连接现有 openEuler Intelligence 服务"
+msgid "连接现有后端服务"
+msgstr "连接现有后端服务"
 
 #: src/app/deployment/components/modes.py:164
-msgid "请输入您的 openEuler Intelligence 服务连接信息："
-msgstr "请输入您的 openEuler Intelligence 服务连接信息："
+msgid "请输入您的后端服务连接信息："
+msgstr "请输入您的后端服务连接信息："
 
 #: src/app/deployment/components/modes.py:169
 msgid "服务 URL:"
@@ -1426,8 +1426,8 @@ msgid "按 Ctrl+S 打开设置"
 msgstr "按 Ctrl+S 打开设置"
 
 #: src/backend/hermes/client.py:409
-msgid "确认后端为 openEuler Intelligence"
-msgstr "确认后端为 openEuler Intelligence"
+msgid "确认后端为 sysAgent"
+msgstr "确认后端为 sysAgent"
 
 #: src/backend/hermes/client.py:410
 msgid "点击 \"更改用户设置\" 按钮"
@@ -1482,8 +1482,8 @@ msgid "说明"
 msgstr "说明"
 
 #: src/main.py:27
-msgid "openEuler Intelligence - Intelligent command-line tool"
-msgstr "openEuler Intelligence - 智能命令行助手"
+msgid "Witty Assistant - Intelligent command-line tool"
+msgstr "Witty Assistant - 智能命令行助手"
 
 #: src/main.py:28
 msgid ""
@@ -1534,16 +1534,16 @@ msgid "Configure default settings"
 msgstr "配置默认设置"
 
 #: src/main.py:83
-msgid "Configure default settings for openEuler Intelligence"
-msgstr "配置 openEuler Intelligence 的默认设置"
+msgid "Configure default settings for Witty Assistant"
+msgstr "配置 Witty Assistant 的默认设置"
 
 #: src/main.py:90
 msgid ""
-"Change openEuler Intelligence LLM settings (requires valid local backend "
+"Change Witty Assistant LLM settings (requires valid local backend "
 "service)\n"
 " * Configuration editing requires administrator privileges"
 msgstr ""
-"更改 openEuler Intelligence 大模型设置（需要有效的本地后端服务）\n"
+"更改 Witty Assistant 大模型设置（需要有效的本地后端服务）\n"
 " * 配置编辑操作需要管理员权限"
 
 #: src/main.py:97
@@ -1911,8 +1911,8 @@ msgid "错误：{error}"
 msgstr "错误：{error}"
 
 #: src/tool/oi_backend_init.py:39
-msgid "openEuler Intelligence 部署助手"
-msgstr "openEuler Intelligence 部署助手"
+msgid "部署助手"
+msgstr "部署助手"
 
 #: src/tool/validators.py:135 src/tool/validators.py:584
 #: src/tool/validators.py:647

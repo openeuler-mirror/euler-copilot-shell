@@ -438,7 +438,7 @@ class DeploymentService:
         """运行依赖安装脚本"""
         self.state.current_step = 2
         self.state.current_step_name = _("安装依赖组件")
-        self.state.add_log(_("正在安装 openEuler Intelligence 依赖组件..."))
+        self.state.add_log(_("正在安装后端依赖组件..."))
 
         if progress_callback:
             progress_callback(self.state)
@@ -723,13 +723,13 @@ class DeploymentService:
         check_interval = 5.0  # 5秒
         base_url = f"http://{server_host}:{server_port}"
 
-        self.state.add_log(_("等待 openEuler Intelligence 服务就绪"))
+        self.state.add_log(_("等待后端服务就绪"))
 
         # 创建配置管理器用于保存登录后的 token
         config_manager = ConfigManager()
 
         for attempt in range(1, max_attempts + 1):
-            logger.debug("第 %d 次检查 openEuler Intelligence 服务状态...", attempt)
+            logger.debug("第 %d 次检查后端服务状态...", attempt)
             if progress_callback:
                 progress_callback(self.state)
 
@@ -740,7 +740,7 @@ class DeploymentService:
                     user_info_loaded = await hermes_client.ensure_user_info_loaded()
 
                     if user_info_loaded:
-                        self.state.add_log(_("✓ openEuler Intelligence 服务已就绪"))
+                        self.state.add_log(_("✓ 后端服务已就绪"))
                         return True
 
                 finally:
@@ -756,7 +756,7 @@ class DeploymentService:
             if attempt < max_attempts:
                 await asyncio.sleep(check_interval)
 
-        self.state.add_log(_("✗ openEuler Intelligence API 服务检查超时失败"))
+        self.state.add_log(_("✗ 后端 API 服务检查超时失败"))
         return False
 
     async def _register_llm_models_step(
@@ -791,10 +791,10 @@ class DeploymentService:
 
         # 检查 sysAgent 服务状态
         if not await self._check_framework_service_health(server_host, server_port, progress_callback):
-            self.state.add_log(_("✗ openEuler Intelligence 服务检查失败"))
+            self.state.add_log(_("✗ 后端服务检查失败"))
             return False
 
-        self.state.add_log(_("✓ openEuler Intelligence 服务检查通过"))
+        self.state.add_log(_("✓ 后端服务检查通过"))
 
         # 注册用户配置的 LLM 和 Embedding 模型到后端
         await self._register_llm_models(config, progress_callback)

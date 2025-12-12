@@ -427,8 +427,8 @@ witty-assistant/
     │   ├── factory.py            # 后端工厂类
     │   ├── mcp_handler.py        # MCP 事件处理接口
     │   ├── openai.py             # OpenAI 兼容客户端
-    │   └── hermes/               # openEuler Intelligence 客户端
-    │       ├── client.py         # Hermes API 客户端
+    │   └── hermes/               # sysAgent 客户端
+    │       ├── client.py         # sysAgent API 客户端
     │       ├── constants.py      # 常量定义
     │       ├── exceptions.py     # 异常类定义
     │       ├── mcp_helpers.py    # MCP 事件辅助工具

@@ -1,5 +1,5 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR openEuler Intelligence Project
+# Copyright (C) YEAR openEuler
 # This file is distributed under the same license as the witty-assistant package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
@@ -191,7 +191,7 @@ msgid "安装依赖组件"
 msgstr ""
 
 #: src/app/deployment/service.py:441
-msgid "正在安装 openEuler Intelligence 依赖组件..."
+msgid "正在安装后端依赖组件..."
 msgstr ""
 
 #: src/app/deployment/service.py:450
@@ -296,11 +296,11 @@ msgid "✗ Framework 服务状态检查超时失败"
 msgstr ""
 
 #: src/app/deployment/service.py:726
-msgid "等待 openEuler Intelligence 服务就绪"
+msgid "等待后端服务就绪"
 msgstr ""
 
 #: src/app/deployment/service.py:743
-msgid "✓ openEuler Intelligence 服务已就绪"
+msgid "✓ 后端服务已就绪"
 msgstr ""
 
 #: src/app/deployment/service.py:752
@@ -314,7 +314,7 @@ msgid "API 连通性检查时发生错误: {error}"
 msgstr ""
 
 #: src/app/deployment/service.py:759
-msgid "✗ openEuler Intelligence API 服务检查超时失败"
+msgid "✗ 后端 API 服务检查超时失败"
 msgstr ""
 
 #: src/app/deployment/service.py:782
@@ -326,11 +326,11 @@ msgid "正在检查 sysAgent 服务状态..."
 msgstr ""
 
 #: src/app/deployment/service.py:794
-msgid "✗ openEuler Intelligence 服务检查失败"
+msgid "✗ 后端服务检查失败"
 msgstr ""
 
 #: src/app/deployment/service.py:797
-msgid "✓ openEuler Intelligence 服务检查通过"
+msgid "✓ 后端服务检查通过"
 msgstr ""
 
 #: src/app/deployment/service.py:811
@@ -670,7 +670,7 @@ msgid "退出"
 msgstr ""
 
 #: src/app/deployment/components/modes.py:65
-msgid "openEuler Intelligence 初始化"
+msgid "Witty Assistant 初始化"
 msgstr ""
 
 #: src/app/deployment/components/modes.py:67
@@ -698,11 +698,11 @@ msgid "返回"
 msgstr ""
 
 #: src/app/deployment/components/modes.py:162
-msgid "连接现有 openEuler Intelligence 服务"
+msgid "连接现有后端服务"
 msgstr ""
 
 #: src/app/deployment/components/modes.py:164
-msgid "请输入您的 openEuler Intelligence 服务连接信息："
+msgid "请输入您的后端服务连接信息："
 msgstr ""
 
 #: src/app/deployment/components/modes.py:169
@@ -1414,7 +1414,7 @@ msgid "按 Ctrl+S 打开设置"
 msgstr ""
 
 #: src/backend/hermes/client.py:409
-msgid "确认后端为 openEuler Intelligence"
+msgid "确认后端为 sysAgent"
 msgstr ""
 
 #: src/backend/hermes/client.py:410
@@ -1470,7 +1470,7 @@ msgid "说明"
 msgstr ""
 
 #: src/main.py:27
-msgid "openEuler Intelligence - Intelligent command-line tool"
+msgid "Witty Assistant - Intelligent command-line tool"
 msgstr ""
 
 #: src/main.py:28
@@ -1516,12 +1516,12 @@ msgid "Configure default settings"
 msgstr ""
 
 #: src/main.py:83
-msgid "Configure default settings for openEuler Intelligence"
+msgid "Configure default settings for Witty Assistant"
 msgstr ""
 
 #: src/main.py:90
 msgid ""
-"Change openEuler Intelligence LLM settings (requires valid local backend "
+"Change Witty Assistant LLM settings (requires valid local backend "
 "service)\n"
 " * Configuration editing requires administrator privileges"
 msgstr ""
@@ -1890,7 +1890,7 @@ msgid "错误：{error}"
 msgstr ""
 
 #: src/tool/oi_backend_init.py:39
-msgid "openEuler Intelligence 部署助手"
+msgid "部署助手"
 msgstr ""
 
 #: src/tool/validators.py:135 src/tool/validators.py:584

@@ -62,7 +62,7 @@ class InitializationModeScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
         """组合界面组件"""
         with Container(classes="mode-container"):
-            yield Static(_("openEuler Intelligence 初始化"), classes="mode-title")
+            yield Static(_("Witty Assistant 初始化"), classes="mode-title")
             yield Static(
                 _("请选择您的初始化方式："),
                 classes="mode-description",
@@ -119,7 +119,7 @@ class ConnectExistingServiceScreen(ModalScreen[bool]):
     """
     连接现有服务配置屏幕
 
-    允许用户输入现有 openEuler Intelligence 服务的连接信息。
+    允许用户输入现有后端服务的连接信息。
     """
 
     CSS = """
@@ -159,9 +159,9 @@ class ConnectExistingServiceScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
         """组合界面组件"""
         with Container(classes="connect-container"):
-            yield Static(_("连接现有 openEuler Intelligence 服务"), classes="connect-title")
+            yield Static(_("连接现有后端服务"), classes="connect-title")
             yield Static(
-                _("请输入您的 openEuler Intelligence 服务连接信息："),
+                _("请输入您的后端服务连接信息："),
                 classes="connect-description",
             )
 

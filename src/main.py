@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     """解析命令行参数"""
     parser = argparse.ArgumentParser(
         prog="witty",
-        description=_("openEuler Intelligence - Intelligent command-line tool"),
+        description=_("Witty Assistant - Intelligent command-line tool"),
         epilog=_("""
 For more information and documentation, please visit:
   https://gitee.com/openeuler/euler-copilot-shell/tree/master/docs
@@ -80,14 +80,14 @@ For more information and documentation, please visit:
     set_default_parser = subparsers.add_parser(
         "set-default",
         help=_("Configure default settings"),
-        description=_("Configure default settings for openEuler Intelligence"),
+        description=_("Configure default settings for Witty Assistant"),
         formatter_class=argparse.RawTextHelpFormatter,
     )
     set_default_parser.add_argument(
         "--llm-config",
         action="store_true",
         help=_(
-            "Change openEuler Intelligence LLM settings (requires valid local backend service)\n"
+            "Change Witty Assistant LLM settings (requires valid local backend service)\n"
             " * Configuration editing requires administrator privileges",
         ),
     )

@@ -101,7 +101,7 @@ extract() {
         --package-name=witty-assistant \
         --package-version=2.0.0 \
         --msgid-bugs-address=contact@openeuler.org \
-        --copyright-holder="openEuler Intelligence Project" \
+        --copyright-holder="openEuler" \
         --add-comments=Translators \
         $python_files; then
         print_green "✅ Successfully extracted strings to messages.pot"
