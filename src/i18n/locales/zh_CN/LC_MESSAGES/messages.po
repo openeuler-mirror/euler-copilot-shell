@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: witty-assistant\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
-"POT-Creation-Date: 2025-12-12 16:35+0800\n"
+"POT-Creation-Date: 2025-12-12 16:48+0800\n"
 "PO-Revision-Date: 2025-10-21 09:40+0800\n"
 "Last-Translator: openEuler Intelligence Team\n"
 "Language-Team: Chinese (Simplified)\n"
@@ -1555,13 +1555,29 @@ msgstr "显示帮助并退出"
 msgid "Show program version number and exit"
 msgstr "显示程序版本号并退出"
 
+#: src/main.py:155
+msgid "版本与帮助"
+msgstr "版本与帮助"
+
+#: src/main.py:162
+msgid "初始化与调试"
+msgstr "初始化与调试"
+
 #: src/main.py:164
 msgid "Initialize sysAgent"
 msgstr "初始化 sysAgent"
 
+#: src/main.py:169
+msgid "管理命令"
+msgstr "管理命令"
+
 #: src/main.py:171
 msgid "Manage LLM settings"
 msgstr "管理大模型设置"
+
+#: src/main.py:175
+msgid "设置调整"
+msgstr "设置调整"
 
 #: src/main.py:177
 msgid "Configure default settings"

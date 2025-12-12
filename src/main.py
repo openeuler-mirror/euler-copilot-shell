@@ -152,27 +152,27 @@ def _print_root_help() -> None:
 
     groups: list[tuple[str, list[_CommandInfo]]] = [
         (
-            "版本与帮助",
+            _("版本与帮助"),
             [
                 _CommandInfo("help", "witty help / witty help <command>"),
                 _CommandInfo("version", "witty version"),
             ],
         ),
         (
-            "初始化与调试",
+            _("初始化与调试"),
             [
                 _CommandInfo("init", _("Initialize sysAgent")),
                 _CommandInfo("logs", _("View and manage application logs")),
             ],
         ),
         (
-            "管理命令",
+            _("管理命令"),
             [
                 _CommandInfo("llm", _("Manage LLM settings")),
             ],
         ),
         (
-            "设置调整",
+            _("设置调整"),
             [
                 _CommandInfo("set-default", _("Configure default settings")),
             ],
