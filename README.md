@@ -227,7 +227,7 @@ witty --locale en_US
 
 ## 配置说明
 
-应用程序支持两种后端配置，配置文件会自动保存在 `~/.config/witty/witty-assistant.json`：
+应用程序支持两种后端配置，配置文件会自动保存在 `~/.config/witty/config.json`：
 
 ### 后端类型
 
@@ -275,7 +275,7 @@ witty --agent
 
 ##### 方式二：手动修改配置文件（不推荐）
 
-直接编辑配置文件 `~/.config/witty/witty-assistant.json`，修改 `witty.default_app` 字段的值：
+直接编辑配置文件 `~/.config/witty/config.json`，修改 `witty.default_app` 字段的值：
 
 - 设置为空字符串 `""` 或删除该字段：使用"智能问答"（没有调用工具的能力）
 - 设置为有效的智能体ID：使用指定的智能体作为默认
@@ -283,7 +283,7 @@ witty --agent
 
 ##### 配置详情
 
-- **配置位置**: `~/.config/witty/witty-assistant.json` 中的 `witty.default_app` 字段
+- **配置位置**: `~/.config/witty/config.json` 中的 `witty.default_app` 字段
 - **默认行为**: 如果未设置或为空，将默认使用"智能问答"（通用助手）
 - **自动应用**: 应用启动时会自动加载配置的默认智能体
 - **自动清理**: 如果配置的智能体ID不存在（如服务器数据更改），会自动清理配置并回退到"智能问答"

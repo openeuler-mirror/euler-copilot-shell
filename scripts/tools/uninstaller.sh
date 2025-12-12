@@ -190,7 +190,7 @@ for home in /root /home/*; do
 done
 
 echo "Removing configuration template..."
-rm -f /etc/witty-assistant/witty-assistant-template.json
+rm -f /etc/witty-assistant/config-template.json
 
 echo "Uninstalling built-in MCP servers ..."
 # Check for running systrace-mcpserver services and stop/disable them if present.

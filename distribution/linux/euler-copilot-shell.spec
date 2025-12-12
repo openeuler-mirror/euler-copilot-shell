@@ -123,7 +123,7 @@ for home in /root /home/*; do
         rm -rf "$config_dir"
     fi
 done
-rm -f /etc/witty-assistant/witty-assistant-template.json
+rm -f /etc/witty-assistant/config-template.json
 elif [ $1 -ge 1 ]; then
 # 升级时清理日志
 for home in /root /home/*; do

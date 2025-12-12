@@ -19,11 +19,11 @@ class ConfigManager:
 
     # 全局配置路径（用于部署时创建的模板配置）
     GLOBAL_CONFIG_DIR = Path("/etc/witty-assistant")
-    GLOBAL_CONFIG_PATH = GLOBAL_CONFIG_DIR / "witty-assistant-template.json"
+    GLOBAL_CONFIG_PATH = GLOBAL_CONFIG_DIR / "config-template.json"
 
     # 用户配置目录和文件
     USER_CONFIG_DIR = Path.home() / ".config" / "witty"
-    USER_CONFIG_PATH = USER_CONFIG_DIR / "witty-assistant.json"
+    USER_CONFIG_PATH = USER_CONFIG_DIR / "config.json"
 
     def __init__(self) -> None:
         """

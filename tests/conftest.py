@@ -66,8 +66,8 @@ def temp_config_env(
     user_dir.mkdir()
     global_dir.mkdir()
 
-    user_path = user_dir / "witty-assistant.json"
-    global_path = global_dir / "witty-assistant-template.json"
+    user_path = user_dir / "config.json"
+    global_path = global_dir / "config-template.json"
 
     monkeypatch.setattr(ConfigManager, "USER_CONFIG_DIR", user_dir)
     monkeypatch.setattr(ConfigManager, "USER_CONFIG_PATH", user_path)

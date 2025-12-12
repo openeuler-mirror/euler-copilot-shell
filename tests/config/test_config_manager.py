@@ -42,7 +42,7 @@ def test_init_copies_global_template(
     global_path = global_dir / "template.json"
     user_dir = tmp_path / "user"
     user_dir.mkdir()
-    user_path = user_dir / "witty-assistant.json"
+    user_path = user_dir / "config.json"
 
     template = {
         "openai": {"base_url": "http://demo", "model": "gpt"},
@@ -71,7 +71,7 @@ def test_init_creates_default_when_no_template(
     global_path = global_dir / "template.json"
     user_dir = tmp_path / "user"
     user_dir.mkdir()
-    user_path = user_dir / "witty-assistant.json"
+    user_path = user_dir / "config.json"
 
     _patch_paths(monkeypatch, user_path, global_path)
 
@@ -98,7 +98,7 @@ def test_validate_and_update_config_merges_missing_fields(
     global_path = global_dir / "template.json"
     user_dir = tmp_path / "user"
     user_dir.mkdir()
-    user_path = user_dir / "witty-assistant.json"
+    user_path = user_dir / "config.json"
     user_path.parent.mkdir(parents=True, exist_ok=True)
 
     minimal_config = {"openai": {"base_url": "http://demo"}}
