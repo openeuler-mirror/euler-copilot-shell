@@ -87,16 +87,16 @@ install -m 0755 dist/%{pypi_name} %{buildroot}%{_bindir}/%{pypi_name}
 ln -sf %{pypi_name} %{buildroot}%{_bindir}/%{shortcut_name}
 
 # 安装部署脚本和资源
-mkdir -p %{buildroot}/usr/lib/openeuler-intelligence/{scripts,resources}
+mkdir -p %{buildroot}/usr/lib/witty-assistant/{scripts,resources}
 mkdir -p %{buildroot}%{_bindir}
 
 # 复制部署脚本和资源
-install -m 755 scripts/deploy/deploy.sh %{buildroot}/usr/lib/openeuler-intelligence/scripts/deploy
-cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deploy/2-install-dependency scripts/deploy/3-install-server scripts/deploy/4-other-script scripts/deploy/5-resource %{buildroot}/usr/lib/openeuler-intelligence/scripts/
-chmod -R +x %{buildroot}/usr/lib/openeuler-intelligence/scripts/
+install -m 755 scripts/deploy/deploy.sh %{buildroot}/usr/lib/witty-assistant/scripts/deploy
+cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deploy/2-install-dependency scripts/deploy/3-install-server scripts/deploy/4-other-script scripts/deploy/5-resource %{buildroot}/usr/lib/witty-assistant/scripts/
+chmod -R +x %{buildroot}/usr/lib/witty-assistant/scripts/
 
 # 创建可执行文件的符号链接
-ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/witty-manager
+ln -sf /usr/lib/witty-assistant/scripts/deploy %{buildroot}%{_bindir}/witty-manager
 
 %files -n witty-assistant
 %license LICENSE
@@ -107,7 +107,7 @@ ln -sf /usr/lib/openeuler-intelligence/scripts/deploy %{buildroot}%{_bindir}/wit
 %files -n witty-assistant-installer
 %license LICENSE
 %doc scripts/deploy/安装部署手册.md
-/usr/lib/openeuler-intelligence
+/usr/lib/witty-assistant
 %{_bindir}/witty-manager
 
 %postun -n witty-assistant
@@ -138,8 +138,7 @@ fi
 if [ $1 -eq 0 ]; then
 # 卸载时清理安装器相关文件
 rm -f /etc/euler_Intelligence_install*
-rm -f /usr/lib/openeuler-intelligence/scripts/5-resource/config.*
-rm -f /usr/lib/openeuler-intelligence/scripts/5-resource/env.*
+rm -f /usr/lib/witty-assistant/scripts
 fi
 
 %changelog

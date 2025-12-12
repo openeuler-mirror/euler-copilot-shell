@@ -171,7 +171,7 @@ agent_manager() {
   # 获取主脚本绝对路径并切换到所在目录
   MAIN_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   if [ "${MAIN_DIR}" = "/usr/bin" ]; then
-    cd /usr/lib/openeuler-intelligence/scripts || exit 1
+    cd /usr/lib/witty-assistant/scripts || exit 1
   else
     cd "$MAIN_DIR" || exit 1
   fi
@@ -195,7 +195,7 @@ fi
 # 获取主脚本绝对路径并切换到所在目录
 MAIN_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [ "${MAIN_DIR}" = "/usr/bin" ]; then
-  cd /usr/lib/openeuler-intelligence/scripts || exit 1
+  cd /usr/lib/witty-assistant/scripts || exit 1
 else
   cd "$MAIN_DIR" || exit 1
 fi

@@ -39,7 +39,7 @@ class DeploymentResourceManager:
     """部署资源管理器，管理 RPM 包安装的资源文件"""
 
     # RPM 包安装的资源文件路径
-    INSTALLER_BASE_PATH = Path("/usr/lib/openeuler-intelligence/scripts")
+    INSTALLER_BASE_PATH = Path("/usr/lib/witty-assistant/scripts")
     RESOURCE_PATH = INSTALLER_BASE_PATH / "5-resource"
     DEPLOY_SCRIPT = INSTALLER_BASE_PATH / "deploy"
 
