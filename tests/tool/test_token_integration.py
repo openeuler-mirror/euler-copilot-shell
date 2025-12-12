@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
+from i18n.manager import _
 from tool.validators import validate_oi_connection
 
 
@@ -33,7 +34,7 @@ class TestTokenIntegration:
 
                 # 验证结果
                 assert valid is False, f"应该拒绝无效令牌: {token}"
-                assert "格式无效" in message, f"错误消息应该提示格式无效: {message}"
+                assert _("访问令牌格式无效") in message, f"错误消息应该提示格式无效: {message}"
 
                 # 验证没有发送 HTTP 请求
                 mock_client_instance.get.assert_not_called()
@@ -107,7 +108,7 @@ class TestTokenIntegration:
             valid, message = await validate_oi_connection(base_url, valid_token)
 
             assert valid is True
-            assert "成功" in message
+            assert _("连接成功") in message
 
     async def test_connection_error_handling(self) -> None:
         """测试连接错误处理"""
@@ -122,4 +123,4 @@ class TestTokenIntegration:
             valid, message = await validate_oi_connection(base_url, valid_token)
 
             assert valid is False
-            assert "无法连接" in message or "连接" in message
+            assert _("无法连接到服务，请检查 URL 和网络连接") in message

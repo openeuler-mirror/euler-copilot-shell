@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: witty-assistant\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
-"POT-Creation-Date: 2025-12-10 11:58+0800\n"
+"POT-Creation-Date: 2025-12-12 17:15+0800\n"
 "PO-Revision-Date: 2025-10-20 19:28+0800\n"
 "Last-Translator: openEuler Intelligence Team\n"
 "Language-Team: English\n"
@@ -91,8 +91,7 @@ msgstr ""
 
 #: src/app/deployment/service.py:150
 msgid "缺少 witty-assistant-installer 包，正在尝试安装..."
-msgstr ""
-"Missing witty-assistant-installer package, attempting to install..."
+msgstr "Missing witty-assistant-installer package, attempting to install..."
 
 #: src/app/deployment/service.py:160
 #: src/app/deployment/components/env_check.py:164
@@ -126,8 +125,7 @@ msgstr "✓ witty-assistant-installer installed successfully"
 #: src/app/deployment/service.py:309
 msgid "witty-assistant-installer 安装后资源文件仍然缺失"
 msgstr ""
-"Resource files still missing after witty-assistant-installer "
-"installation"
+"Resource files still missing after witty-assistant-installer installation"
 
 #: src/app/deployment/service.py:312
 msgid "安装 witty-assistant-installer 失败"
@@ -161,13 +159,12 @@ msgstr "✓ openEuler operating system detected"
 #: src/app/deployment/service.py:399
 msgid "✗ 错误: witty-assistant-installer 包未安装或资源缺失"
 msgstr ""
-"✗ Error: witty-assistant-installer package is not installed or "
-"resources are missing"
+"✗ Error: witty-assistant-installer package is not installed or resources are "
+"missing"
 
 #: src/app/deployment/service.py:400
 msgid "请先安装: sudo dnf install -y witty-assistant-installer"
-msgstr ""
-"Please install first: sudo dnf install -y witty-assistant-installer"
+msgstr "Please install first: sudo dnf install -y witty-assistant-installer"
 
 #: src/app/deployment/service.py:402
 msgid "✓ witty-assistant-installer 资源可用"
@@ -340,6 +337,7 @@ msgstr "✗ Backend service check failed"
 #: src/app/deployment/service.py:797
 msgid "✓ 后端服务检查通过"
 msgstr "✓ Backend service check passed"
+
 #: src/app/deployment/service.py:811
 msgid "初始化 Agent 服务"
 msgstr "Initializing Agent service"
@@ -726,8 +724,7 @@ msgstr "Connect to existing backend service"
 
 #: src/app/deployment/components/modes.py:164
 msgid "请输入您的后端服务连接信息："
-msgstr ""
-"Please enter your backend service connection information:"
+msgstr "Please enter your backend service connection information:"
 
 #: src/app/deployment/components/modes.py:169
 msgid "服务 URL:"
@@ -836,349 +833,361 @@ msgstr "Permission check failed: {error}"
 msgid "权限检查异常: {error}"
 msgstr "Permission check exception: {error}"
 
-#: src/app/deployment/agent.py:212
+#: src/app/deployment/agent.py:219
 msgid "[bold blue]开始初始化智能体...[/bold blue]"
 msgstr "[bold blue]Starting agent initialization...[/bold blue]"
 
-#: src/app/deployment/agent.py:221
+#: src/app/deployment/agent.py:228
 msgid "智能体初始化失败"
 msgstr "Agent initialization failed"
 
-#: src/app/deployment/agent.py:248
+#: src/app/deployment/agent.py:255
 msgid "[yellow]停止 sysagent 服务失败，但继续执行[/yellow]"
 msgstr ""
 "[yellow]Failed to stop sysagent service, but continuing execution[/yellow]"
 
-#: src/app/deployment/agent.py:271
+#: src/app/deployment/agent.py:278
 msgid "[yellow]启动 sysagent 服务失败，请手动检查[/yellow]"
 msgstr ""
 "[yellow]Failed to start sysagent service, please check manually[/yellow]"
 
-#: src/app/deployment/agent.py:280
+#: src/app/deployment/agent.py:287
 #, python-brace-format
 msgid "[bold green]智能体初始化完成! 默认 App ID: {app_id}[/bold green]"
 msgstr ""
 "[bold green]Agent initialization completed! Default App ID: {app_id}[/bold "
 "green]"
 
-#: src/app/deployment/agent.py:284
+#: src/app/deployment/agent.py:291
 msgid "[bold yellow]智能体初始化完成，但默认 App 未写入配置[/bold yellow]"
 msgstr ""
 "[bold yellow]Agent initialization completed, but default App was not written "
 "to configuration[/bold yellow]"
 
-#: src/app/deployment/agent.py:299
+#: src/app/deployment/agent.py:306
 msgid "[yellow]未能创建任何智能体[/yellow]"
 msgstr "[yellow]Failed to create any agent[/yellow]"
 
-#: src/app/deployment/agent.py:329
+#: src/app/deployment/agent.py:336
 msgid "[cyan]写入 MCP 配置到文件系统...[/cyan]"
 msgstr "[cyan]Writing MCP configuration to file system...[/cyan]"
 
-#: src/app/deployment/agent.py:359
+#: src/app/deployment/agent.py:370
+#, python-brace-format
+msgid ""
+"检测到重复的 mcpServers 内部键名: {server_id}。多个 MCP 配置不能共用同一个键"
+"名，否则会发生覆盖。请修改 /usr/lib/sysagent/mcp_center/mcp_config 下对应配"
+"置，使其键名唯一。"
+msgstr ""
+"Duplicate mcpServers internal key detected: {server_id}. Multiple MCP configs "
+"must not share the same key; otherwise overwriting will occur. Please update "
+"the corresponding config under /usr/lib/sysagent/mcp_center/mcp_config to make "
+"the key unique."
+
+#: src/app/deployment/agent.py:398
 #, python-brace-format
 msgid "  [red]处理 {name} 失败[/red]"
 msgstr "  [red]Failed to process {name}[/red]"
 
-#: src/app/deployment/agent.py:367
+#: src/app/deployment/agent.py:406
 #, python-brace-format
 msgid "[green]MCP 配置写入完成，成功 {count} 个[/green]"
 msgstr ""
 "[green]MCP configuration written successfully, {count} completed[/green]"
 
-#: src/app/deployment/agent.py:396
+#: src/app/deployment/agent.py:435
 #, python-brace-format
 msgid "  [blue]写入 {name}...[/blue]"
 msgstr "  [blue]Writing {name}...[/blue]"
 
-#: src/app/deployment/agent.py:440
+#: src/app/deployment/agent.py:488
 #, python-brace-format
 msgid "  [red]{name} 写入失败[/red]"
 msgstr "  [red]{name} write failed[/red]"
 
-#: src/app/deployment/agent.py:448
+#: src/app/deployment/agent.py:496
 #, python-brace-format
 msgid "  [green]{name} 写入成功 (MCP ID: {mcp_id}) -> {path}[/green]"
 msgstr ""
 "  [green]{name} written successfully (MCP ID: {mcp_id}) -> {path}[/green]"
 
-#: src/app/deployment/agent.py:656
+#: src/app/deployment/agent.py:704
 msgid "[cyan]写入智能体元数据到文件系统...[/cyan]"
 msgstr "[cyan]Writing agent metadata to file system...[/cyan]"
 
-#: src/app/deployment/agent.py:687
+#: src/app/deployment/agent.py:735
 #, python-brace-format
 msgid "  [red]创建 {name} 元数据失败[/red]"
 msgstr "  [red]Failed to create {name} metadata[/red]"
 
-#: src/app/deployment/agent.py:698
+#: src/app/deployment/agent.py:746
 #, python-brace-format
 msgid "[green]成功创建 {count} 个智能体[/green]"
 msgstr "[green]Successfully created {count} agents[/green]"
 
-#: src/app/deployment/agent.py:730
+#: src/app/deployment/agent.py:778
 #, python-brace-format
 msgid "[magenta]创建智能体元数据: {name}[/magenta]"
 msgstr "[magenta]Creating agent metadata: {name}[/magenta]"
 
-#: src/app/deployment/agent.py:745
+#: src/app/deployment/agent.py:793
 #, python-brace-format
 msgid "  [yellow]警告: 以下 MCP 服务未找到: {services}[/yellow]"
 msgstr ""
 "  [yellow]Warning: The following MCP services were not found: {services}[/"
 "yellow]"
 
-#: src/app/deployment/agent.py:759
+#: src/app/deployment/agent.py:807
 #, python-brace-format
 msgid "  [red]{name} 没有可用的 MCP 服务[/red]"
 msgstr "  [red]{name} has no available MCP services[/red]"
 
-#: src/app/deployment/agent.py:815
+#: src/app/deployment/agent.py:863
 #, python-brace-format
 msgid "  [red]{name} 元数据创建失败[/red]"
 msgstr "  [red]{name} metadata creation failed[/red]"
 
-#: src/app/deployment/agent.py:823
+#: src/app/deployment/agent.py:871
 #, python-brace-format
 msgid "  [green]{name} 元数据创建成功 (ID: {app_id})[/green]"
 msgstr "  [green]{name} metadata created successfully (ID: {app_id})[/green]"
 
-#: src/app/deployment/agent.py:878
+#: src/app/deployment/agent.py:926
 msgid "[cyan]加载应用配置文件...[/cyan]"
 msgstr "[cyan]Loading application configuration file...[/cyan]"
 
-#: src/app/deployment/agent.py:885
+#: src/app/deployment/agent.py:933
 #, python-brace-format
 msgid "[red]应用配置文件不存在: {path}[/red]"
 msgstr "[red]Application configuration file does not exist: {path}[/red]"
 
-#: src/app/deployment/agent.py:931
+#: src/app/deployment/agent.py:979
 msgid "[red]加载应用配置失败[/red]"
 msgstr "[red]Failed to load application configuration[/red]"
 
-#: src/app/deployment/agent.py:939
+#: src/app/deployment/agent.py:987
 #, python-brace-format
 msgid "[green]成功加载 {count} 个应用配置[/green]"
 msgstr "[green]Successfully loaded {count} application configurations[/green]"
 
-#: src/app/deployment/agent.py:954
+#: src/app/deployment/agent.py:1002
 msgid "[cyan]加载 MCP 配置文件...[/cyan]"
 msgstr "[cyan]Loading MCP configuration file...[/cyan]"
 
-#: src/app/deployment/agent.py:964
+#: src/app/deployment/agent.py:1012
 msgid "[yellow]未找到 MCP 配置[/yellow]"
 msgstr "[yellow]MCP configuration not found[/yellow]"
 
-#: src/app/deployment/agent.py:970
+#: src/app/deployment/agent.py:1018
 #, python-brace-format
 msgid "[green]成功加载 {count} 个 MCP 配置[/green]"
 msgstr "[green]Successfully loaded {count} MCP configurations[/green]"
 
-#: src/app/deployment/agent.py:985
+#: src/app/deployment/agent.py:1033
 msgid "[cyan]停止 sysagent 服务...[/cyan]"
 msgstr "[cyan]Stopping sysagent service...[/cyan]"
 
-#: src/app/deployment/agent.py:1003
+#: src/app/deployment/agent.py:1051
 msgid "[yellow]sysagent 服务不存在，跳过停止操作[/yellow]"
 msgstr ""
 "[yellow]sysagent service does not exist, skipping stop operation[/yellow]"
 
-#: src/app/deployment/agent.py:1022
+#: src/app/deployment/agent.py:1070
 msgid "[green]sysagent 服务未运行，无需停止[/green]"
 msgstr "[green]sysagent service is not running, no need to stop[/green]"
 
-#: src/app/deployment/agent.py:1041
+#: src/app/deployment/agent.py:1089
 msgid "[red]停止 sysagent 服务时发生异常[/red]"
 msgstr "[red]Exception occurred while stopping sysagent service[/red]"
 
-#: src/app/deployment/agent.py:1050
+#: src/app/deployment/agent.py:1098
 msgid "[green]sysagent 服务已停止[/green]"
 msgstr "[green]sysagent service has been stopped[/green]"
 
-#: src/app/deployment/agent.py:1059
+#: src/app/deployment/agent.py:1107
 #, python-brace-format
 msgid "[red]停止 sysagent 服务失败: {error}[/red]"
 msgstr "[red]Failed to stop sysagent service: {error}[/red]"
 
-#: src/app/deployment/agent.py:1075
+#: src/app/deployment/agent.py:1123
 msgid "[cyan]启动 sysagent 服务...[/cyan]"
 msgstr "[cyan]Starting sysagent service...[/cyan]"
 
-#: src/app/deployment/agent.py:1093
+#: src/app/deployment/agent.py:1141
 msgid "[yellow]sysagent 服务不存在，跳过启动操作[/yellow]"
 msgstr ""
 "[yellow]sysagent service does not exist, skipping start operation[/yellow]"
 
-#: src/app/deployment/agent.py:1112
+#: src/app/deployment/agent.py:1160
 msgid "[red]启动 sysagent 服务时发生异常[/red]"
 msgstr "[red]Exception occurred while starting sysagent service[/red]"
 
-#: src/app/deployment/agent.py:1121
+#: src/app/deployment/agent.py:1169
 msgid "[green]sysagent 服务已启动[/green]"
 msgstr "[green]sysagent service has been started[/green]"
 
-#: src/app/deployment/agent.py:1132
+#: src/app/deployment/agent.py:1180
 #, python-brace-format
 msgid "[red]启动 sysagent 服务失败: {error}[/red]"
 msgstr "[red]Failed to start sysagent service: {error}[/red]"
 
-#: src/app/deployment/agent.py:1156
+#: src/app/deployment/agent.py:1204
 #, python-brace-format
 msgid "[yellow]服务配置目录不存在: {dir}，跳过{operation}[/yellow]"
 msgstr ""
 "[yellow]Service configuration directory does not exist: {dir}, skipping "
 "{operation}[/yellow]"
 
-#: src/app/deployment/agent.py:1169
+#: src/app/deployment/agent.py:1217
 #, python-brace-format
 msgid "[yellow]未找到服务配置文件，跳过{operation}[/yellow]"
 msgstr ""
 "[yellow]Service configuration file not found, skipping {operation}[/yellow]"
 
-#: src/app/deployment/agent.py:1186
+#: src/app/deployment/agent.py:1234
 msgid "[cyan]安装 systemd 服务文件...[/cyan]"
 msgstr "[cyan]Installing systemd service files...[/cyan]"
 
-#: src/app/deployment/agent.py:1191
+#: src/app/deployment/agent.py:1239
 msgid "服务文件安装"
 msgstr "Service file installation"
 
-#: src/app/deployment/agent.py:1203
+#: src/app/deployment/agent.py:1251
 #, python-brace-format
 msgid "    [red]安装 {file} 时发生异常[/red]"
 msgstr "    [red]Exception occurred while installing {file}[/red]"
 
-#: src/app/deployment/agent.py:1216
+#: src/app/deployment/agent.py:1264
 #, python-brace-format
 msgid "[green]成功安装 {count} 个服务文件[/green]"
 msgstr "[green]Successfully installed {count} service files[/green]"
 
-#: src/app/deployment/agent.py:1237
+#: src/app/deployment/agent.py:1285
 #, python-brace-format
 msgid "  [blue]复制服务文件: {name}[/blue]"
 msgstr "  [blue]Copying service file: {name}[/blue]"
 
-#: src/app/deployment/agent.py:1254
+#: src/app/deployment/agent.py:1302
 #, python-brace-format
 msgid "    [red]复制 {name} 时发生异常[/red]"
 msgstr "    [red]Exception occurred while copying {name}[/red]"
 
-#: src/app/deployment/agent.py:1263
+#: src/app/deployment/agent.py:1311
 #, python-brace-format
 msgid "    [green]{name} 复制成功[/green]"
 msgstr "    [green]{name} copied successfully[/green]"
 
-#: src/app/deployment/agent.py:1272
+#: src/app/deployment/agent.py:1320
 #, python-brace-format
 msgid "    [red]{name} 复制失败: {error}[/red]"
 msgstr "    [red]{name} copy failed: {error}[/red]"
 
-#: src/app/deployment/agent.py:1289
+#: src/app/deployment/agent.py:1337
 msgid "[cyan]重新加载 systemd 配置...[/cyan]"
 msgstr "[cyan]Reloading systemd configuration...[/cyan]"
 
-#: src/app/deployment/agent.py:1306
+#: src/app/deployment/agent.py:1354
 msgid "[red]重新加载 systemd 配置时发生异常[/red]"
 msgstr "[red]Exception occurred while reloading systemd configuration[/red]"
 
-#: src/app/deployment/agent.py:1315
+#: src/app/deployment/agent.py:1363
 msgid "[green]systemd 配置重新加载成功[/green]"
 msgstr "[green]systemd configuration reloaded successfully[/green]"
 
-#: src/app/deployment/agent.py:1324
+#: src/app/deployment/agent.py:1372
 #, python-brace-format
 msgid "[red]systemd 配置重新加载失败: {error}[/red]"
 msgstr "[red]systemd configuration reload failed: {error}[/red]"
 
-#: src/app/deployment/agent.py:1340
+#: src/app/deployment/agent.py:1388
 msgid "[cyan]启动 MCP Server 进程...[/cyan]"
 msgstr "[cyan]Starting MCP Server process...[/cyan]"
 
-#: src/app/deployment/agent.py:1347
+#: src/app/deployment/agent.py:1395
 #, python-brace-format
 msgid "[red]MCP 启动脚本不存在: {path}[/red]"
 msgstr "[red]MCP startup script does not exist: {path}[/red]"
 
-#: src/app/deployment/agent.py:1358
+#: src/app/deployment/agent.py:1406
 msgid "[yellow]清理旧进程时遇到问题，但继续执行启动脚本[/yellow]"
 msgstr ""
 "[yellow]Problem encountered while cleaning old processes, but continuing "
 "with startup script[/yellow]"
 
-#: src/app/deployment/agent.py:1366
+#: src/app/deployment/agent.py:1414
 #, python-brace-format
 msgid "  [blue]执行命令: {cmd}[/blue]"
 msgstr "  [blue]Executing command: {cmd}[/blue]"
 
-#: src/app/deployment/agent.py:1381
+#: src/app/deployment/agent.py:1429
 msgid "执行 MCP Server 启动脚本失败"
 msgstr "Failed to execute MCP Server startup script"
 
-#: src/app/deployment/agent.py:1389
+#: src/app/deployment/agent.py:1437
 msgid "[green]MCP Server 启动脚本执行成功[/green]"
 msgstr "[green]MCP Server startup script executed successfully[/green]"
 
-#: src/app/deployment/agent.py:1397
+#: src/app/deployment/agent.py:1445
 #, python-brace-format
 msgid "[red]MCP Server 启动脚本执行失败 (返回码: {code})[/red]"
 msgstr ""
 "[red]MCP Server startup script execution failed (return code: {code})[/red]"
 
-#: src/app/deployment/agent.py:1456
+#: src/app/deployment/agent.py:1504
 msgid "[cyan]验证 MCP Server 服务状态...[/cyan]"
 msgstr "[cyan]Validating MCP Server service status...[/cyan]"
 
-#: src/app/deployment/agent.py:1461
+#: src/app/deployment/agent.py:1509
 msgid "服务验证"
 msgstr "Service validation"
 
-#: src/app/deployment/agent.py:1477
+#: src/app/deployment/agent.py:1525
 #, python-brace-format
 msgid "    [red]验证 {file} 时发生异常[/red]"
 msgstr "    [red]Exception occurred while validating {file}[/red]"
 
-#: src/app/deployment/agent.py:1488
+#: src/app/deployment/agent.py:1536
 #, python-brace-format
 msgid "[red]关键服务状态异常: {services}，停止初始化[/red]"
 msgstr ""
 "[red]Critical service status abnormal: {services}, stopping initialization[/"
 "red]"
 
-#: src/app/deployment/agent.py:1498
+#: src/app/deployment/agent.py:1546
 msgid "[green]MCP Server 服务验证完成[/green]"
 msgstr "[green]MCP Server service validation completed[/green]"
 
-#: src/app/deployment/agent.py:1518
+#: src/app/deployment/agent.py:1566
 #, python-brace-format
 msgid "    [red]{name} 启动超时 (30秒)[/red]"
 msgstr "    [red]{name} startup timed out (30 seconds)[/red]"
 
-#: src/app/deployment/agent.py:1527
+#: src/app/deployment/agent.py:1575
 #, python-brace-format
 msgid "  [magenta]检查服务状态: {name}[/magenta]"
 msgstr "  [magenta]Checking service status: {name}[/magenta]"
 
-#: src/app/deployment/agent.py:1535
+#: src/app/deployment/agent.py:1583
 #, python-brace-format
 msgid "    [dim]{name} 重新检查状态... (第 {count} 次)[/dim]"
 msgstr "    [dim]{name} rechecking status... (attempt {count})[/dim]"
 
-#: src/app/deployment/agent.py:1556
+#: src/app/deployment/agent.py:1604
 #, python-brace-format
 msgid "    [red]检查 {name} 状态失败[/red]"
 msgstr "    [red]Failed to check {name} status[/red]"
 
-#: src/app/deployment/agent.py:1566
+#: src/app/deployment/agent.py:1614
 #, python-brace-format
 msgid "    [green]{name} 运行正常[/green]"
 msgstr "    [green]{name} is running normally[/green]"
 
-#: src/app/deployment/agent.py:1575
+#: src/app/deployment/agent.py:1623
 #, python-brace-format
 msgid "    [red]{name} 启动失败[/red]"
 msgstr "    [red]{name} startup failed[/red]"
 
-#: src/app/deployment/agent.py:1592
+#: src/app/deployment/agent.py:1640
 #, python-brace-format
 msgid "    [red]{name} 状态异常[/red]"
 msgstr "    [red]{name} status abnormal[/red]"
@@ -1318,8 +1327,8 @@ msgstr "Authentication failed, please check configuration"
 msgid "Error processing command: {error}"
 msgstr "Processing command failed with error: {error}"
 
-#: src/app/tui.py:1232 src/app/tui.py:1258 src/app/tui.py:1456
-#: src/app/tui.py:1658 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
+#: src/app/tui.py:1232 src/app/tui.py:1258 src/app/tui.py:1459
+#: src/app/tui.py:1661 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
 #: src/app/dialogs/agent.py:187 src/app/dialogs/agent.py:207
 #: src/app/dialogs/agent.py:210 src/tool/oi_select_agent.py:67
 #: src/tool/oi_select_agent.py:94
@@ -1330,28 +1339,28 @@ msgstr "Smart Chat"
 msgid "Agent changed, conversation has been reset"
 msgstr "Agent changed, conversation has been reset"
 
-#: src/app/tui.py:1375
+#: src/app/tui.py:1378
 msgid "💡 MCP response sent"
 msgstr "💡 MCP response sent"
 
-#: src/app/tui.py:1378 src/app/tui.py:1406
+#: src/app/tui.py:1381 src/app/tui.py:1409
 msgid "❌ Current client does not support MCP response"
 msgstr "❌ Current client does not support MCP response"
 
-#: src/app/tui.py:1387
+#: src/app/tui.py:1390
 #, python-brace-format
 msgid "❌ Failed to send MCP response: {error}"
 msgstr "❌ Failed to send MCP response: {error}"
 
-#: src/app/tui.py:1445
+#: src/app/tui.py:1448
 msgid "🚫 MCP response cancelled"
 msgstr "🚫 MCP response cancelled"
 
-#: src/app/tui.py:1541
+#: src/app/tui.py:1544
 msgid "Backend configuration validation failed, please check and modify"
 msgstr "Backend configuration validation failed, please check and modify"
 
-#: src/app/tui.py:1542
+#: src/app/tui.py:1545
 msgid "Configuration Error"
 msgstr "Configuration Error"
 
@@ -1521,39 +1530,7 @@ msgstr "Name"
 msgid "说明"
 msgstr "Description"
 
-#: src/main.py:27
-msgid "Witty Assistant - Intelligent command-line tool"
-msgstr "Witty Assistant - Intelligent command-line tool"
-
-#: src/main.py:28
-msgid ""
-"\n"
-"For more information and documentation, please visit:\n"
-"  https://gitee.com/openeuler/euler-copilot-shell/tree/master/docs\n"
-"        "
-msgstr ""
-"\n"
-"For more information and documentation, please visit:\n"
-"  https://gitee.com/openeuler/euler-copilot-shell/tree/master/docs\n"
-"        "
-
-#: src/main.py:41
-msgid "Show program version number and exit"
-msgstr "Show program version number and exit"
-
-#: src/main.py:47
-msgid "Available Commands"
-msgstr "Available Commands"
-
-#: src/main.py:48
-msgid "Use 'witty <command> --help' for more information on a specific command"
-msgstr "Use 'witty <command> --help' for more information on a specific command"
-
-#: src/main.py:55
-msgid "Initialize sysAgent"
-msgstr "Initialize sysAgent"
-
-#: src/main.py:57
+#: src/main.py:46
 msgid ""
 "Initialize sysAgent\n"
 " * Initialization requires administrator privileges and network connection"
@@ -1561,102 +1538,187 @@ msgstr ""
 "Initialize sysAgent\n"
 " * Initialization requires administrator privileges and network connection"
 
-#: src/main.py:66 src/main.py:67
+#: src/main.py:56 src/main.py:165
 msgid "View and manage application logs"
 msgstr "View and manage application logs"
 
-#: src/main.py:76
+#: src/main.py:65
 msgid "Number of log lines to display (default: 1000)"
 msgstr "Number of log lines to display (default: 1000)"
 
-#: src/main.py:82
-msgid "Configure default settings"
-msgstr "Configure default settings"
+#: src/main.py:74
+msgid ""
+"Manage Witty Assistant LLM settings\n"
+" * Configuration editing requires administrator privileges"
+msgstr ""
+"Manage Witty Assistant LLM settings\n"
+" * Configuration editing requires administrator privileges"
 
-#: src/main.py:83
+#: src/main.py:84
+#, python-brace-format
+msgid "Invalid log level: {level}"
+msgstr "Invalid log level: {level}"
+
+#: src/main.py:91 src/main.py:196
 msgid "Configure default settings for Witty Assistant"
 msgstr "Configure default settings for Witty Assistant"
 
-#: src/main.py:90
-msgid ""
-"Change Witty Assistant LLM settings (requires valid local backend "
-"service)\n"
-" * Configuration editing requires administrator privileges"
-msgstr ""
-"Change Witty Assistant LLM settings (requires valid local backend "
-"service)\n"
-" * Configuration editing requires administrator privileges"
-
-#: src/main.py:97
+#: src/main.py:99 src/main.py:100 src/main.py:200
 msgid "Select default agent"
 msgstr "Select default agent"
 
-#: src/main.py:105
+#: src/main.py:107 src/main.py:108 src/main.py:201
+msgid "Set log level"
+msgstr "Set log level"
+
+#: src/main.py:115
+msgid "Log level (DEBUG/INFO/WARNING/ERROR)"
+msgstr "Log level (DEBUG/INFO/WARNING/ERROR)"
+
+#: src/main.py:121 src/main.py:122 src/main.py:202
+msgid "Set display language"
+msgstr "Set display language"
+
+#: src/main.py:131
 #, python-brace-format
-msgid "Set display language (available: {locales})"
-msgstr "Set display language (available: {locales})"
+msgid "Available locales: {locales}"
+msgstr "Available locales: {locales}"
 
-#: src/main.py:111
-msgid "Set log level (available: DEBUG, INFO, WARNING, ERROR)"
-msgstr "Set log level (available: DEBUG, INFO, WARNING, ERROR)"
+#: src/main.py:142
+msgid "Witty Assistant - Intelligent command-line tool"
+msgstr "Witty Assistant - Intelligent command-line tool"
 
-#: src/main.py:140
-#, python-brace-format
-msgid "Failed to retrieve logs: {error}\n"
-msgstr "Failed to retrieve logs: {error}\n"
+#: src/main.py:144 src/main.py:197
+msgid "Usage:\n"
+msgstr "Usage:\n"
 
-#: src/main.py:147
-#, python-brace-format
-msgid "Invalid log level: {level}\n"
-msgstr "Invalid log level: {level}\n"
+#: src/main.py:149
+msgid "Global options:\n"
+msgstr "Global options:\n"
 
-#: src/main.py:156
-#, python-format
-msgid "Log level has been set to: %s"
-msgstr "Log level has been set to: %s"
+#: src/main.py:150
+msgid "Show help and exit"
+msgstr "Show help and exit"
 
-#: src/main.py:157
-msgid "This is a DEBUG level test message"
-msgstr "This is a DEBUG level test message"
+#: src/main.py:151
+msgid "Show program version number and exit"
+msgstr "Show program version number and exit"
 
-#: src/main.py:158
-msgid "This is an INFO level test message"
-msgstr "This is an INFO level test message"
-
-#: src/main.py:159
-msgid "This is a WARNING level test message"
-msgstr "This is a WARNING level test message"
-
-#: src/main.py:160
-msgid "This is an ERROR level test message"
-msgstr "This is an ERROR level test message"
+#: src/main.py:155
+msgid "版本与帮助"
+msgstr "Version & Help"
 
 #: src/main.py:162
+msgid "初始化与调试"
+msgstr "Initialization & Debugging"
+
+#: src/main.py:164
+msgid "Initialize sysAgent"
+msgstr "Initialize sysAgent"
+
+#: src/main.py:169
+msgid "管理命令"
+msgstr "Management"
+
+#: src/main.py:171
+msgid "Manage LLM settings"
+msgstr "Manage LLM settings"
+
+#: src/main.py:175
+msgid "设置调整"
+msgstr "Settings"
+
+#: src/main.py:177
+msgid "Configure default settings"
+msgstr "Configure default settings"
+
+#: src/main.py:182
+msgid "Commands:\n"
+msgstr "Commands:\n"
+
+#: src/main.py:189
+msgid "Run 'witty help <command>' or 'witty <command> -h' for more details.\n"
+msgstr "Run 'witty help <command>' or 'witty <command> -h' for more details.\n"
+
+#: src/main.py:190
+msgid "For more information and documentation, please visit:\n"
+msgstr "For more information and documentation, please visit:\n"
+
+#: src/main.py:199
+msgid "Subcommands:\n"
+msgstr "Subcommands:\n"
+
+#: src/main.py:203
+msgid "Examples:\n"
+msgstr "Examples:\n"
+
+#: src/main.py:254 src/main.py:354
 #, python-brace-format
-msgid "✓ Log level successfully set to: {level}\n"
-msgstr "✓ Log level successfully set to: {level}\n"
+msgid "Unknown command: {cmd}\n"
+msgstr "Unknown command: {cmd}\n"
 
-#: src/main.py:163
-msgid "✓ Logging system initialized\n"
-msgstr "✓ Logging system initialized\n"
+#: src/main.py:297
+msgid "未指定子命令。使用 'witty help set-default' 查看可用选项。\n"
+msgstr ""
+"No subcommand specified. Use 'witty help set-default' for available "
+"options.\n"
 
-#: src/main.py:184
+#: src/main.py:309
 #, python-brace-format
 msgid "✓ Language set to: {locale}\n"
 msgstr "✓ Language set to: {locale}\n"
 
-#: src/main.py:186
+#: src/main.py:311
 #, python-brace-format
 msgid "✗ Unsupported language: {locale}\n"
 msgstr "✗ Unsupported language: {locale}\n"
 
-#: src/main.py:208
-msgid ""
-"No option specified. Use 'witty set-default --help' for available options.\n"
-msgstr ""
-"No option specified. Use 'witty set-default --help' for available options.\n"
+#: src/main.py:321
+#, python-brace-format
+msgid "Unknown subcommand: {cmd}\n"
+msgstr "Unknown subcommand: {cmd}\n"
 
-#: src/main.py:263
+#: src/main.py:380
+#, python-brace-format
+msgid "Failed to retrieve logs: {error}\n"
+msgstr "Failed to retrieve logs: {error}\n"
+
+#: src/main.py:387
+#, python-brace-format
+msgid "Invalid log level: {level}\n"
+msgstr "Invalid log level: {level}\n"
+
+#: src/main.py:396
+#, python-format
+msgid "Log level has been set to: %s"
+msgstr "Log level has been set to: %s"
+
+#: src/main.py:397
+msgid "This is a DEBUG level test message"
+msgstr "This is a DEBUG level test message"
+
+#: src/main.py:398
+msgid "This is an INFO level test message"
+msgstr "This is an INFO level test message"
+
+#: src/main.py:399
+msgid "This is a WARNING level test message"
+msgstr "This is a WARNING level test message"
+
+#: src/main.py:400
+msgid "This is an ERROR level test message"
+msgstr "This is an ERROR level test message"
+
+#: src/main.py:402
+#, python-brace-format
+msgid "✓ Log level successfully set to: {level}\n"
+msgstr "✓ Log level successfully set to: {level}\n"
+
+#: src/main.py:403
+msgid "✓ Logging system initialized\n"
+msgstr "✓ Logging system initialized\n"
+
+#: src/main.py:442
 msgid "Fatal error in Witty Assistant application"
 msgstr "Fatal error in Witty Assistant application"
 
@@ -1687,8 +1749,7 @@ msgid "请先运行以下命令切换后端：\n"
 msgstr "Please run the following command to switch backend:\n"
 
 #: src/tool/oi_select_agent.py:145
-msgid ""
-"  witty  # 然后按下 Ctrl+S 进入设置界面切换到 sysAgent\n"
+msgid "  witty  # 然后按下 Ctrl+S 进入设置界面切换到 sysAgent\n"
 msgstr ""
 "  witty  # Then press Ctrl+S to enter settings and switch to openEuler "
 "sysAgent\n"
@@ -1931,8 +1992,8 @@ msgid "需要管理员权限才能管理 LLM 配置"
 msgstr "Administrator privileges are required to manage LLM configuration"
 
 #: src/tool/oi_llm_config.py:1275
-msgid "请使用 'sudo witty --llm-config' 运行"
-msgstr "Please run with 'sudo witty --llm-config'"
+msgid "请使用 'sudo witty llm' 运行"
+msgstr "Please run with 'sudo witty llm'"
 
 #: src/tool/oi_llm_config.py:1292
 msgid "错误：无法启动 LLM 配置工具"

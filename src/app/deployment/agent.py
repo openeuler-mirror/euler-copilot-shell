@@ -346,12 +346,36 @@ class AgentManager:
             return {}
 
         mcp_service_mapping: dict[str, str] = {}
+        seen_server_ids: set[str] = set()
         total_written = 0
 
         logger.info("开始写入 %d 个 MCP 配置", len(configs))
         for dir_name, config in configs:
             logger.debug("正在处理配置目录: %s, 配置名称: %s", dir_name, config.name)
             try:
+                # 预扫描并校验：mcpServers 内部键名必须全局唯一。
+                # 否则会导致落盘目录冲突、服务覆盖，属于致命配置错误。
+                raw_servers = config.mcp_servers or {}
+                if raw_servers and all(isinstance(cfg, dict) for cfg in raw_servers.values()):
+                    server_entries = raw_servers
+                else:
+                    server_entries = {dir_name: raw_servers if isinstance(raw_servers, dict) else {}}
+
+                if not server_entries:
+                    raise ConfigError(f"MCP 配置 {dir_name} 缺少 mcpServers")
+
+                server_id = next(iter(server_entries.keys()))
+                if server_id in seen_server_ids:
+                    msg = _(
+                        "检测到重复的 mcpServers 内部键名: {server_id}。"
+                        "多个 MCP 配置不能共用同一个键名，否则会发生覆盖。"
+                        "请修改 /usr/lib/sysagent/mcp_center/mcp_config 下对应配置，使其键名唯一。"
+                    ).format(server_id=server_id)
+                    self._report_progress(state, f"[red]{msg}[/red]", callback)
+                    raise ConfigError(msg)
+
+                seen_server_ids.add(server_id)
+
                 mcp_id = await self._write_single_mcp_config(
                     dir_name,
                     config,
@@ -365,6 +389,9 @@ class AgentManager:
                 else:
                     logger.warning("配置 %s 写入失败，未返回 MCP ID", dir_name)
 
+            except ConfigError:
+                # 配置错误属于致命问题，直接上抛让上层失败并提示用户修正配置。
+                raise
             except Exception:
                 self._report_progress(
                     state,

@@ -1,9 +1,13 @@
 """应用入口点"""
 
+from __future__ import annotations
+
 import argparse
 import asyncio
 import atexit
 import sys
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Final
 
 from __version__ import __version__
 from config.manager import ConfigManager
@@ -19,40 +23,25 @@ from log.manager import (
 )
 from tool import backend_init, llm_config, select_agent
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
-def parse_args() -> argparse.Namespace:
-    """解析命令行参数"""
-    parser = argparse.ArgumentParser(
-        prog="witty",
-        description=_("Witty Assistant - Intelligent command-line tool"),
-        epilog=_("""
-For more information and documentation, please visit:
-  https://gitee.com/openeuler/euler-copilot-shell/tree/master/docs
-        """),
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
 
-    # 主命令的版本参数
-    parser.add_argument(
-        "-V",
-        "--version",
-        action="version",
-        version=f"%(prog)s {__version__}",
-        help=_("Show program version number and exit"),
-    )
+DOCS_URL: Final[str] = "https://gitee.com/openeuler/euler-copilot-shell/tree/master/docs"
 
-    # 创建子命令解析器
-    subparsers = parser.add_subparsers(
-        dest="command",
-        title=_("Available Commands"),
-        description=_("Use 'witty <command> --help' for more information on a specific command"),
-        metavar="<command>",
-    )
+_HELP_ALIASES: Final[set[str]] = {"-h", "--help", "help"}
+_VERSION_ALIASES: Final[set[str]] = {"-V", "--version", "version"}
 
-    # init 子命令
-    subparsers.add_parser(
-        "init",
-        help=_("Initialize sysAgent"),
+
+@dataclass(frozen=True, slots=True)
+class _CommandInfo:
+    name: str
+    summary: str
+
+
+def _build_init_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(
+        prog="witty init",
         description=_(
             "Initialize sysAgent\n"
             " * Initialization requires administrator privileges and network connection",
@@ -60,14 +49,14 @@ For more information and documentation, please visit:
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
-    # logs 子命令
-    logs_parser = subparsers.add_parser(
-        "logs",
-        help=_("View and manage application logs"),
+
+def _build_logs_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="witty logs",
         description=_("View and manage application logs"),
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    logs_parser.add_argument(
+    parser.add_argument(
         "-n",
         "--lines",
         type=int,
@@ -75,48 +64,299 @@ For more information and documentation, please visit:
         metavar="N",
         help=_("Number of log lines to display (default: 1000)"),
     )
+    return parser
 
-    # set-default 子命令
-    set_default_parser = subparsers.add_parser(
-        "set-default",
-        help=_("Configure default settings"),
+
+def _build_llm_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(
+        prog="witty llm",
+        description=_(
+            "Manage Witty Assistant LLM settings\n"
+            " * Configuration editing requires administrator privileges",
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+
+
+def _normalize_log_level(value: str) -> str:
+    upper = value.strip().upper()
+    if upper not in {"DEBUG", "INFO", "WARNING", "ERROR"}:
+        raise argparse.ArgumentTypeError(_("Invalid log level: {level}").format(level=value))
+    return upper
+
+
+def _build_set_default_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="witty set-default",
         description=_("Configure default settings for Witty Assistant"),
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    set_default_parser.add_argument(
-        "--llm-config",
-        action="store_true",
-        help=_(
-            "Change Witty Assistant LLM settings (requires valid local backend service)\n"
-            " * Configuration editing requires administrator privileges",
-        ),
-    )
-    set_default_parser.add_argument(
-        "--agent",
-        action="store_true",
+
+    subparsers = parser.add_subparsers(dest="set_default_command", metavar="<subcommand>")
+
+    agent_parser = subparsers.add_parser(
+        "agent",
         help=_("Select default agent"),
+        description=_("Select default agent"),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    agent_parser.set_defaults(_handler="agent")
+
+    log_level_parser = subparsers.add_parser(
+        "log-level",
+        help=_("Set log level"),
+        description=_("Set log level"),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    log_level_parser.add_argument(
+        "level",
+        type=_normalize_log_level,
+        metavar="LEVEL",
+        help=_("Log level (DEBUG/INFO/WARNING/ERROR)"),
+    )
+    log_level_parser.set_defaults(_handler="log-level")
+
+    locale_parser = subparsers.add_parser(
+        "locale",
+        help=_("Set display language"),
+        description=_("Set display language"),
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     locale_choices = list(get_supported_locales().keys())
     locale_names = ", ".join(f"{k} ({v})" for k, v in get_supported_locales().items())
-    set_default_parser.add_argument(
-        "--locale",
+    locale_parser.add_argument(
+        "locale",
         choices=locale_choices,
         metavar="LOCALE",
-        help=_("Set display language (available: {locales})").format(locales=locale_names),
+        help=_("Available locales: {locales}").format(locales=locale_names),
     )
-    set_default_parser.add_argument(
-        "--log-level",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        metavar="LEVEL",
-        help=_("Set log level (available: DEBUG, INFO, WARNING, ERROR)"),
-    )
+    locale_parser.set_defaults(_handler="locale")
+
+    return parser
+
+
+def _print_root_help() -> None:
+    """打印根帮助信息（带命令分组）。"""
+    out = sys.stdout
+
+    out.write(_("Witty Assistant - Intelligent command-line tool") + "\n\n")
+
+    out.write(_("Usage:\n"))
+    out.write("  witty [<command>] [<args>]\n")
+    out.write("  witty help [<command>]\n")
+    out.write("  witty version\n\n")
+
+    out.write(_("Global options:\n"))
+    out.write("  -h, --help     " + _("Show help and exit") + "\n")
+    out.write("  -V, --version  " + _("Show program version number and exit") + "\n\n")
+
+    groups: list[tuple[str, list[_CommandInfo]]] = [
+        (
+            _("版本与帮助"),
+            [
+                _CommandInfo("help", "witty help / witty help <command>"),
+                _CommandInfo("version", "witty version"),
+            ],
+        ),
+        (
+            _("初始化与调试"),
+            [
+                _CommandInfo("init", _("Initialize sysAgent")),
+                _CommandInfo("logs", _("View and manage application logs")),
+            ],
+        ),
+        (
+            _("管理命令"),
+            [
+                _CommandInfo("llm", _("Manage LLM settings")),
+            ],
+        ),
+        (
+            _("设置调整"),
+            [
+                _CommandInfo("set-default", _("Configure default settings")),
+            ],
+        ),
+    ]
+
+    out.write(_("Commands:\n"))
+    for group_title, commands in groups:
+        out.write(f"  {group_title}:\n")
+        for c in commands:
+            out.write(f"    {c.name:<12} {c.summary}\n")
+        out.write("\n")
+
+    out.write(_("Run 'witty help <command>' or 'witty <command> -h' for more details.\n"))
+    out.write(_("For more information and documentation, please visit:\n"))
+    out.write(f"  {DOCS_URL}\n")
+
+
+def _print_set_default_help() -> None:
+    out = sys.stdout
+    out.write(_("Configure default settings for Witty Assistant") + "\n\n")
+    out.write(_("Usage:\n"))
+    out.write("  witty set-default <subcommand> [<args>]\n\n")
+    out.write(_("Subcommands:\n"))
+    out.write(f"  {'agent':<12} " + _("Select default agent") + "\n")
+    out.write(f"  {'log-level':<12} " + _("Set log level") + "\n")
+    out.write(f"  {'locale':<12} " + _("Set display language") + "\n\n")
+    out.write(_("Examples:\n"))
+    out.write("  witty set-default agent\n")
+    out.write("  witty set-default log-level INFO\n")
+    out.write("  witty set-default locale zh_CN\n")
+
+
+def _help_set_default(rest: list[str]) -> None:
+    if not rest:
+        _print_set_default_help()
+        return
+    # 让 argparse 输出子命令帮助（等价于: witty set-default <subcmd> -h）
+    parser = _build_set_default_parser()
+    try:
+        parser.parse_args([rest[0], "-h"])
+    except SystemExit:
+        return
+
+
+def _dispatch_help(path: list[str]) -> bool:
+    """
+    分发帮助命令。
+
+    witty help <command> [<subcommand>].
+    """
+    if not path:
+        _print_root_help()
+        return True
+
+    cmd = path[0]
+    rest = path[1:]
+
+    parser_factories: dict[str, Callable[[], argparse.ArgumentParser]] = {
+        "init": _build_init_parser,
+        "logs": _build_logs_parser,
+        "llm": _build_llm_parser,
+    }
+
+    if cmd == "set-default":
+        _help_set_default(rest)
+        return True
+
+    if cmd == "help":
+        _print_root_help()
+        return True
+
+    if cmd == "version":
+        sys.stdout.write(f"witty {__version__}\n")
+        return True
+
+    factory = parser_factories.get(cmd)
+    if factory is None:
+        sys.stderr.write(_("Unknown command: {cmd}\n").format(cmd=cmd))
+        _print_root_help()
+        raise SystemExit(2)
+
+    factory().print_help()
+    return True
+
+
+def _cmd_help(rest: list[str], _: ConfigManager) -> None:
+    if rest:
+        _dispatch_help(rest)
+        return
+    _print_root_help()
+
+
+def _cmd_version(_: list[str], __: ConfigManager) -> None:
+    sys.stdout.write(f"witty {__version__}\n")
+
+
+def _cmd_init(rest: list[str], _: ConfigManager) -> None:
+    _build_init_parser().parse_args(rest)
+    backend_init()
+
+
+def _cmd_logs(rest: list[str], _: ConfigManager) -> None:
+    args = _build_logs_parser().parse_args(rest)
+    show_logs(max_lines=args.lines)
+
+
+def _cmd_llm(rest: list[str], _: ConfigManager) -> None:
+    _build_llm_parser().parse_args(rest)
+    llm_config()
+
+
+def _cmd_set_default(rest: list[str], config_manager: ConfigManager) -> None:
+    if not rest or rest[0] in {"-h", "--help"}:
+        _print_set_default_help()
+        return
+
+    parser = _build_set_default_parser()
+    args = parser.parse_args(rest)
+    sub = getattr(args, "_handler", "")
+    if not sub:
+        sys.stderr.write(_("未指定子命令。使用 'witty help set-default' 查看可用选项。\n"))
+        raise SystemExit(1)
+
+    def _set_default_agent() -> None:
+        asyncio.run(select_agent())
+
+    def _set_default_log_level() -> None:
+        set_log_level(config_manager, args.level)
+
+    def _set_default_locale() -> None:
+        if set_locale(args.locale):
+            config_manager.set_locale(args.locale)
+            sys.stdout.write(_("✓ Language set to: {locale}\n").format(locale=args.locale))
+            return
+        sys.stderr.write(_("✗ Unsupported language: {locale}\n").format(locale=args.locale))
+        raise SystemExit(1)
+
+    sub_handlers = {
+        "agent": _set_default_agent,
+        "log-level": _set_default_log_level,
+        "locale": _set_default_locale,
+    }
+    sub_handler = sub_handlers.get(sub)
+    if sub_handler is None:
+        sys.stderr.write(_("Unknown subcommand: {cmd}\n").format(cmd=sub))
+        raise SystemExit(2)
+    sub_handler()
+
+
+def _dispatch_cli(argv: list[str], config_manager: ConfigManager) -> bool:
+    """分发 CLI 子命令。"""
+    if not argv:
+        return False
 
     # 注册清理函数，确保在程序异常退出时也能清理空日志文件
     atexit.register(cleanup_empty_logs)
 
-    return parser.parse_args()
+    cmd = argv[0]
+    rest = argv[1:]
 
+    # 将 alias 统一归一化为子命令，减少分支。
+    if cmd in _HELP_ALIASES:
+        cmd = "help"
+    elif cmd in _VERSION_ALIASES:
+        cmd = "version"
 
+    handlers = {
+        "help": _cmd_help,
+        "version": _cmd_version,
+        "init": _cmd_init,
+        "logs": _cmd_logs,
+        "llm": _cmd_llm,
+        "set-default": _cmd_set_default,
+    }
+
+    handler = handlers.get(cmd)
+    if handler is None:
+        sys.stderr.write(_("Unknown command: {cmd}\n").format(cmd=cmd))
+        _print_root_help()
+        raise SystemExit(2)
+
+    handler(rest, config_manager)
+    return True
 def show_logs(max_lines: int = 1000) -> None:
     """
     显示最新的日志内容。
@@ -163,55 +403,6 @@ def set_log_level(config_manager: ConfigManager, level: str) -> None:
     sys.stdout.write(_("✓ Logging system initialized\n"))
 
 
-def handle_set_default(args: argparse.Namespace, config_manager: ConfigManager) -> bool:
-    """
-    处理 set-default 子命令。
-
-    Args:
-        args: 解析后的命令行参数
-        config_manager: 配置管理器实例
-
-    Returns:
-        bool: 是否执行了任何操作
-
-    """
-    handled = False
-
-    # 处理语言设置参数
-    if args.locale:
-        if set_locale(args.locale):
-            config_manager.set_locale(args.locale)
-            sys.stdout.write(_("✓ Language set to: {locale}\n").format(locale=args.locale))
-        else:
-            sys.stderr.write(_("✗ Unsupported language: {locale}\n").format(locale=args.locale))
-            sys.exit(1)
-        handled = True
-
-    # 处理日志级别设置
-    if args.log_level:
-        set_log_level(config_manager, args.log_level)
-        handled = True
-
-    # 处理 LLM 配置
-    if args.llm_config:
-        llm_config()
-        handled = True
-
-    # 处理 agent 选择
-    if args.agent:
-        asyncio.run(select_agent())
-        handled = True
-
-    # 如果没有指定任何参数，显示帮助信息
-    if not handled:
-        sys.stderr.write(
-            _("No option specified. Use 'witty set-default --help' for available options.\n"),
-        )
-        sys.exit(1)
-
-    return handled
-
-
 def main() -> None:
     """主函数"""
     # 首先初始化配置管理器
@@ -230,20 +421,8 @@ def main() -> None:
         detected_locale = get_locale()
         config_manager.set_locale(detected_locale)
 
-    # 解析命令行参数（需要在初始化 i18n 后进行，以支持翻译）
-    args = parse_args()
-
-    # 根据子命令分发处理
-    if args.command == "init":
-        backend_init()
-        return
-
-    if args.command == "logs":
-        show_logs(max_lines=args.lines)
-        return
-
-    if args.command == "set-default":
-        handle_set_default(args, config_manager)
+    # 优先处理 CLI；未指定子命令时进入 TUI
+    if _dispatch_cli(sys.argv[1:], config_manager):
         return
 
     # 没有指定子命令时，启动 TUI
