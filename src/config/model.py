@@ -14,7 +14,7 @@ class Backend(str, Enum):
         """获取后端的可读显示名称"""
         display_names = {
             Backend.OPENAI: "OpenAI 大模型接口",
-            Backend.EULERINTELLI: "openEuler Intelligence",
+            Backend.EULERINTELLI: "Witty Assistant",
         }
         return display_names.get(self, self.value)
 

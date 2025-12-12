@@ -30,14 +30,14 @@ print_step_title() {
 show_header() {
   clear
   echo -e "\n${BOLD}${MAGENTA}$(printf '✧%.0s' $(seq 1 $(tput cols)))${RESET}"
-  echo -e "${BOLD}${WHITE}                  openEuler Intelligence 一键部署系统                  ${RESET}"
+  echo -e "${BOLD}${WHITE}                  Witty Assistant 一键部署系统                  ${RESET}"
   echo -e "${BOLD}${MAGENTA}$(printf '✧%.0s' $(seq 1 $(tput cols)))${RESET}"
 }
 # 结束标志
 show_end() {
   clear
   echo -e "\n${BOLD}${MAGENTA}$(printf '✧%.0s' $(seq 1 $(tput cols)))${RESET}"
-  echo -e "${BOLD}${WHITE}                  openEuler Intelligence 部署完成                     ${RESET}"
+  echo -e "${BOLD}${WHITE}                  Witty Assistant 部署完成                     ${RESET}"
   echo -e "${BOLD}${MAGENTA}$(printf '✧%.0s' $(seq 1 $(tput cols)))${RESET}"
 }
 # 带颜色输出的进度条函数
@@ -146,7 +146,7 @@ start_deployment() {
   # 使用关联数组存储脚本名称
   declare -A step_names=(
     ["../1-check-env/check_env.sh"]="环境检查"
-    ["../2-install-dependency/install_openEulerIntelligence.sh"]="安装 openEuler Intelligence"
+    ["../2-install-dependency/install_openEulerIntelligence.sh"]="安装 Witty Assistant"
     ["../3-install-server/init_config.sh"]="初始化配置"
   )
   MAIN_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

@@ -245,7 +245,7 @@ class IntelligentTerminal(App):
         """初始化应用"""
         super().__init__()
         # 设置应用标题
-        self.title = "openEuler Intelligence"
+        self.title = "Witty Assistant"
         self.sub_title = _("Intelligent CLI Assistant {version}").format(version=__version__)
         self.config_manager = ConfigManager()
         self.processing: bool = False
@@ -1310,7 +1310,7 @@ class IntelligentTerminal(App):
                 return valid
 
             if backend == Backend.EULERINTELLI:
-                # 验证 openEuler Intelligence 配置
+                # 验证 Witty Assistant 配置
                 base_url = self.config_manager.get_eulerintelli_url()
                 api_key = self.config_manager.get_eulerintelli_key()
                 valid, _ = await validate_oi_connection(base_url, api_key)

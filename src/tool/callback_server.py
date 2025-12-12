@@ -64,7 +64,7 @@ class CallbackHandler(BaseHTTPRequestHandler):
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>openEuler Intelligence - 浏览器登录</title>
+            <title>Witty Assistant - 浏览器登录</title>
             <style>
                 body {{
                     font-family: Arial, sans-serif;
@@ -106,7 +106,7 @@ class CallbackHandler(BaseHTTPRequestHandler):
         </head>
         <body>
             <div class="container">
-                <div class="title">openEuler Intelligence 浏览器登录</div>
+                <div class="title">Witty Assistant 浏览器登录</div>
                 <div class="status" id="status">
                     <div class="loading"></div>
                     <p>正在打开登录窗口...</p>

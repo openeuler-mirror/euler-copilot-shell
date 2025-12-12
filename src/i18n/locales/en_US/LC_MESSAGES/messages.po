@@ -143,8 +143,8 @@ msgid "✗ 部署失败"
 msgstr "✗ Deployment failed"
 
 #: src/app/deployment/service.py:347
-msgid "✓ openEuler Intelligence 后端部署完成！"
-msgstr "✓ openEuler Intelligence backend deployment completed!"
+msgid "✓ Witty Assistant 后端部署完成！"
+msgstr "✓ Witty Assistant backend deployment completed!"
 
 #: src/app/deployment/service.py:385
 msgid "正在安装 openeuler-intelligence-installer..."
@@ -277,8 +277,8 @@ msgid "安装依赖组件"
 msgstr "Installing dependency components"
 
 #: src/app/deployment/service.py:597
-msgid "正在安装 openEuler Intelligence 依赖组件..."
-msgstr "Installing openEuler Intelligence dependency components..."
+msgid "正在安装 Witty Assistant 依赖组件..."
+msgstr "Installing Witty Assistant dependency components..."
 
 #: src/app/deployment/service.py:606
 msgid "依赖安装脚本"
@@ -396,12 +396,12 @@ msgid "✗ Framework 服务状态检查超时失败"
 msgstr "✗ Framework service status check timed out"
 
 #: src/app/deployment/service.py:917
-msgid "等待 openEuler Intelligence 服务就绪"
-msgstr "Waiting for openEuler Intelligence service to be ready"
+msgid "等待 Witty Assistant 服务就绪"
+msgstr "Waiting for Witty Assistant service to be ready"
 
 #: src/app/deployment/service.py:929
-msgid "✓ openEuler Intelligence 服务已就绪"
-msgstr "✓ openEuler Intelligence service is ready"
+msgid "✓ Witty Assistant 服务已就绪"
+msgstr "✓ Witty Assistant service is ready"
 
 #: src/app/deployment/service.py:935
 #, python-brace-format
@@ -414,25 +414,25 @@ msgid "API 连通性检查时发生错误: {error}"
 msgstr "Error occurred during API connectivity check: {error}"
 
 #: src/app/deployment/service.py:942
-msgid "✗ openEuler Intelligence API 服务检查超时失败"
-msgstr "✗ openEuler Intelligence API service check timed out"
+msgid "✗ Witty Assistant API 服务检查超时失败"
+msgstr "✗ Witty Assistant API service check timed out"
 
 #: src/app/deployment/service.py:952
 msgid "初始化 Agent 服务"
 msgstr "Initializing Agent service"
 
 #: src/app/deployment/service.py:953
-msgid "正在检查 openEuler Intelligence 后端服务状态..."
-msgstr "Checking openEuler Intelligence backend service status..."
+msgid "正在检查 Witty Assistant 后端服务状态..."
+msgstr "Checking Witty Assistant backend service status..."
 
 #: src/app/deployment/service.py:964
-msgid "✗ openEuler Intelligence 服务检查失败"
-msgstr "✗ openEuler Intelligence service check failed"
+msgid "✗ Witty Assistant 服务检查失败"
+msgstr "✗ Witty Assistant service check failed"
 
 #: src/app/deployment/service.py:967
-msgid "✓ openEuler Intelligence 服务检查通过，开始初始化 Agent..."
+msgid "✓ Witty Assistant 服务检查通过，开始初始化 Agent..."
 msgstr ""
-"✓ openEuler Intelligence service check passed, starting Agent "
+"✓ Witty Assistant service check passed, starting Agent "
 "initialization..."
 
 #: src/app/deployment/service.py:977
@@ -778,8 +778,8 @@ msgid "退出"
 msgstr "Exit"
 
 #: src/app/deployment/components/modes.py:68
-msgid "openEuler Intelligence 初始化"
-msgstr "openEuler Intelligence initialization"
+msgid "Witty Assistant 初始化"
+msgstr "Witty Assistant initialization"
 
 #: src/app/deployment/components/modes.py:70
 msgid "请选择您的初始化方式："
@@ -812,13 +812,13 @@ msgid "返回"
 msgstr "Back"
 
 #: src/app/deployment/components/modes.py:174
-msgid "连接现有 openEuler Intelligence 服务"
-msgstr "Connect to existing openEuler Intelligence service"
+msgid "连接现有 Witty Assistant 服务"
+msgstr "Connect to existing Witty Assistant service"
 
 #: src/app/deployment/components/modes.py:176
-msgid "请输入您的 openEuler Intelligence 服务连接信息："
+msgid "请输入您的 Witty Assistant 服务连接信息："
 msgstr ""
-"Please enter your openEuler Intelligence service connection information:"
+"Please enter your Witty Assistant service connection information:"
 
 #: src/app/deployment/components/modes.py:181
 msgid "服务 URL:"
@@ -846,7 +846,7 @@ msgid ""
 "• 服务 URL 通常以 http:// 或 https:// 开头\n"
 "• 访问令牌为可选项，如果服务无需认证可留空\n"
 "• 输入服务 URL 后，可点击 '获取' 按钮通过浏览器获取访问令牌\n"
-"• 也可以从 openEuler Intelligence Web 界面手动获取并填入\n"
+"• 也可以从 Witty Assistant Web 界面手动获取并填入\n"
 "• 系统会自动验证连接并保存配置"
 msgstr ""
 "Tips:\n"
@@ -855,7 +855,7 @@ msgstr ""
 "authentication\n"
 "• After entering service URL, click 'Get' button to obtain access token "
 "through browser\n"
-"• You can also manually obtain from openEuler Intelligence Web interface and "
+"• You can also manually obtain from Witty Assistant Web interface and "
 "fill in\n"
 "• System will automatically validate connection and save configuration"
 
@@ -1549,8 +1549,8 @@ msgid "智能体功能提示"
 msgstr "Agent Feature Notification"
 
 #: src/app/dialogs/agent.py:28
-msgid "请选择 openEuler Intelligence 后端来使用智能体功能"
-msgstr "Please select openEuler Intelligence backend to use agent features"
+msgid "请选择 Witty Assistant 后端来使用智能体功能"
+msgstr "Please select Witty Assistant backend to use agent features"
 
 #: src/app/dialogs/agent.py:29
 msgid "按任意键关闭"
@@ -1607,8 +1607,8 @@ msgid "说明"
 msgstr "Description"
 
 #: src/main.py:27
-msgid "openEuler Intelligence - Intelligent command-line tool"
-msgstr "openEuler Intelligence - Command-line Client"
+msgid "Witty Assistant - Intelligent command-line tool"
+msgstr "Witty Assistant - Command-line Client"
 
 #: src/main.py:28
 msgid ""
@@ -1644,25 +1644,25 @@ msgstr "Backend Configuration Options"
 
 #: src/main.py:58
 msgid ""
-"For initializing and configuring openEuler Intelligence backend services"
+"For initializing and configuring Witty Assistant backend services"
 msgstr ""
-"For initializing and configuring openEuler Intelligence backend services"
+"For initializing and configuring Witty Assistant backend services"
 
 #: src/main.py:64
 msgid ""
-"Initialize openEuler Intelligence backend\n"
+"Initialize Witty Assistant backend\n"
 " * Initialization requires administrator privileges and network connection"
 msgstr ""
-"Initialize openEuler Intelligence backend\n"
+"Initialize Witty Assistant backend\n"
 " * Initialization requires administrator privileges and network connection"
 
 #: src/main.py:72
 msgid ""
-"Change openEuler Intelligence LLM settings (requires valid local backend "
+"Change Witty Assistant LLM settings (requires valid local backend "
 "service)\n"
 " * Configuration editing requires administrator privileges"
 msgstr ""
-"Change openEuler Intelligence LLM settings (requires valid local backend "
+"Change Witty Assistant LLM settings (requires valid local backend "
 "service)\n"
 " * Configuration editing requires administrator privileges"
 
@@ -1792,8 +1792,8 @@ msgid "已取消选择\n"
 msgstr "Selection cancelled\n"
 
 #: src/tool/oi_select_agent.py:143
-msgid "错误: 智能体功能需要使用 openEuler Intelligence 后端\n"
-msgstr "Error: Agent functionality requires openEuler Intelligence backend\n"
+msgid "错误: 智能体功能需要使用 Witty Assistant 后端\n"
+msgstr "Error: Agent functionality requires Witty Assistant backend\n"
 
 #: src/tool/oi_select_agent.py:144
 msgid "请先运行以下命令切换后端：\n"
@@ -1801,7 +1801,7 @@ msgstr "Please run the following command to switch backend:\n"
 
 #: src/tool/oi_select_agent.py:145
 msgid ""
-"  oi  # 然后按下 Ctrl+S 进入设置界面切换到 openEuler Intelligence 后端\n"
+"  oi  # 然后按下 Ctrl+S 进入设置界面切换到 Witty Assistant 后端\n"
 msgstr ""
 "  oi  # Then press Ctrl+S to enter settings and switch to openEuler "
 "Intelligence backend\n"
@@ -1812,9 +1812,9 @@ msgid "错误: {error}\n"
 msgstr "Error: {error}\n"
 
 #: src/tool/oi_llm_config.py:77
-msgid "需要管理员权限才能修改 openEuler Intelligence 配置文件"
+msgid "需要管理员权限才能修改 Witty Assistant 配置文件"
 msgstr ""
-"Administrator privileges are required to modify openEuler Intelligence "
+"Administrator privileges are required to modify Witty Assistant "
 "configuration files"
 
 #: src/tool/oi_llm_config.py:84
@@ -1849,8 +1849,8 @@ msgstr ""
 "please run as administrator"
 
 #: src/tool/oi_backend_init.py:39
-msgid "openEuler Intelligence 部署助手"
-msgstr "openEuler Intelligence Deployment Assistant"
+msgid "Witty Assistant 部署助手"
+msgstr "Witty Assistant Deployment Assistant"
 
 #: src/tool/validators.py:165 src/tool/validators.py:614
 #: src/tool/validators.py:677
@@ -2142,8 +2142,8 @@ msgstr ""
 "✗ An error occurred during login: {error}\n"
 
 #: src/tool/oi_login.py:169
-msgid "✗ Error: openEuler Intelligence URL not configured\n"
-msgstr "✗ Error: openEuler Intelligence URL not configured\n"
+msgid "✗ Error: Witty Assistant URL not configured\n"
+msgstr "✗ Error: Witty Assistant URL not configured\n"
 
 #: src/tool/oi_login.py:170
 msgid "Please run deployment initialization first: oi --init\n"

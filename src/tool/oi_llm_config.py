@@ -74,7 +74,7 @@ class LLMSystemConfig:
 
         # 检查是否以管理员权限运行
         if os.geteuid() != 0:
-            errors.append(_("需要管理员权限才能修改 openEuler Intelligence 配置文件"))
+            errors.append(_("需要管理员权限才能修改 Witty Assistant 配置文件"))
             # 如果没有管理员权限，直接返回，避免后续的文件操作引发权限错误
             return False, errors
 
@@ -996,7 +996,7 @@ class LLMConfigApp(App[bool]):
     """LLM 配置应用"""
 
     CSS_PATH = str(Path(__file__).parent.parent / "app" / "css" / "styles.tcss")
-    TITLE = "openEuler Intelligence LLM 配置工具"
+    TITLE = "Witty Assistant LLM 配置工具"
 
     def __init__(self) -> None:
         """初始化应用"""
