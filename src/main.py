@@ -23,7 +23,7 @@ from tool import backend_init, browser_login, llm_config, select_agent
 def parse_args() -> argparse.Namespace:
     """解析命令行参数"""
     parser = argparse.ArgumentParser(
-        prog="oi",
+        prog="witty",
         description=_("Witty Assistant - Intelligent command-line tool"),
         epilog=_("""
 For more information and documentation, please visit:
