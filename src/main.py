@@ -43,8 +43,7 @@ def _build_init_parser() -> argparse.ArgumentParser:
     return argparse.ArgumentParser(
         prog="witty init",
         description=_(
-            "Initialize sysAgent\n"
-            " * Initialization requires administrator privileges and network connection",
+            "Initialize sysAgent\n * Initialization requires administrator privileges and network connection",
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -71,8 +70,7 @@ def _build_llm_parser() -> argparse.ArgumentParser:
     return argparse.ArgumentParser(
         prog="witty llm",
         description=_(
-            "Manage Witty Assistant LLM settings\n"
-            " * Configuration editing requires administrator privileges",
+            "Manage Witty Assistant LLM settings\n * Configuration editing requires administrator privileges",
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -357,6 +355,8 @@ def _dispatch_cli(argv: list[str], config_manager: ConfigManager) -> bool:
 
     handler(rest, config_manager)
     return True
+
+
 def show_logs(max_lines: int = 1000) -> None:
     """
     显示最新的日志内容。
