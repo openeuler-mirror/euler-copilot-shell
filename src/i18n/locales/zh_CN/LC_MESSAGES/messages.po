@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: witty-assistant\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
-"POT-Creation-Date: 2025-12-12 17:15+0800\n"
+"POT-Creation-Date: 2025-12-18 11:14+0800\n"
 "PO-Revision-Date: 2025-10-21 09:40+0800\n"
 "Last-Translator: openEuler Intelligence Team\n"
 "Language-Team: Chinese (Simplified)\n"
@@ -447,7 +447,7 @@ msgstr "开始部署"
 
 #: src/app/deployment/ui.py:149 src/app/settings.py:65
 #: src/app/dialogs/user.py:180 src/app/dialogs/common.py:27
-#: src/tool/oi_llm_config.py:538 src/tool/oi_llm_config.py:782
+#: src/tool/oi_llm_config.py:577 src/tool/oi_llm_config.py:821
 msgid "取消"
 msgstr "取消"
 
@@ -456,7 +456,7 @@ msgid "大语言模型配置"
 msgstr "大语言模型配置"
 
 #: src/app/deployment/ui.py:161 src/app/deployment/ui.py:227
-#: src/tool/oi_llm_config.py:469
+#: src/tool/oi_llm_config.py:508
 msgid "API 端点:"
 msgstr "API 端点:"
 
@@ -465,12 +465,12 @@ msgid "例如：http://localhost:11434/v1"
 msgstr "例如：http://localhost:11434/v1"
 
 #: src/app/deployment/ui.py:169 src/app/deployment/ui.py:235
-#: src/tool/oi_llm_config.py:478
+#: src/tool/oi_llm_config.py:517
 msgid "API 密钥:"
 msgstr "API 密钥:"
 
 #: src/app/deployment/ui.py:178 src/app/deployment/ui.py:244
-#: src/tool/oi_llm_config.py:488
+#: src/tool/oi_llm_config.py:527
 msgid "模型名称:"
 msgstr "模型名称:"
 
@@ -492,7 +492,7 @@ msgid "最大输出令牌数:"
 msgstr "最大输出令牌数:"
 
 #: src/app/deployment/ui.py:198 src/app/deployment/ui.py:256
-#: src/tool/oi_llm_config.py:502
+#: src/tool/oi_llm_config.py:541
 msgid "上下文长度:"
 msgstr "上下文长度:"
 
@@ -667,7 +667,7 @@ msgstr "确定"
 #: src/app/deployment/components/modes.py:149
 #: src/app/deployment/components/modes.py:199
 #: src/app/deployment/components/env_check.py:105
-#: src/tool/oi_select_agent.py:29 src/tool/oi_llm_config.py:969
+#: src/tool/oi_select_agent.py:29 src/tool/oi_llm_config.py:1009
 msgid "退出"
 msgstr "退出"
 
@@ -1162,7 +1162,7 @@ msgid "设置"
 msgstr "设置"
 
 #: src/app/settings.py:64 src/app/dialogs/user.py:179
-#: src/tool/oi_llm_config.py:535 src/tool/oi_llm_config.py:781
+#: src/tool/oi_llm_config.py:574 src/tool/oi_llm_config.py:820
 msgid "保存"
 msgstr "保存"
 
@@ -1292,7 +1292,7 @@ msgid "Error processing command: {error}"
 msgstr "处理命令时出错: {error}"
 
 #: src/app/tui.py:1232 src/app/tui.py:1258 src/app/tui.py:1459
-#: src/app/tui.py:1661 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
+#: src/app/tui.py:1663 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
 #: src/app/dialogs/agent.py:187 src/app/dialogs/agent.py:207
 #: src/app/dialogs/agent.py:210 src/tool/oi_select_agent.py:67
 #: src/tool/oi_select_agent.py:94
@@ -1320,11 +1320,11 @@ msgstr "❌ 发送 MCP 响应失败: {error}"
 msgid "🚫 MCP response cancelled"
 msgstr "🚫 MCP 响应被取消"
 
-#: src/app/tui.py:1544
+#: src/app/tui.py:1546
 msgid "Backend configuration validation failed, please check and modify"
 msgstr "后端配置验证失败，请检查并修改配置"
 
-#: src/app/tui.py:1545
+#: src/app/tui.py:1547
 msgid "Configuration Error"
 msgstr "配置错误"
 
@@ -1372,7 +1372,7 @@ msgstr "加载模型失败"
 msgid "加载中..."
 msgstr "加载中..."
 
-#: src/app/dialogs/user.py:219 src/tool/oi_llm_config.py:1092
+#: src/app/dialogs/user.py:219 src/tool/oi_llm_config.py:1132
 msgid "暂无可用模型"
 msgstr "暂无可用模型"
 
@@ -1420,35 +1420,35 @@ msgstr "OS 智能助手"
 msgid "使用上下键选择，回车确认，ESC取消 | ✓ 表示当前选中"
 msgstr "使用上下键选择，回车确认，ESC取消 | ✓ 表示当前选中"
 
-#: src/backend/hermes/client.py:330
+#: src/backend/hermes/client.py:351
 msgid "无法确定会话 ID，请重试当前请求"
 msgstr "无法确定会话 ID，请重试当前请求"
 
-#: src/backend/hermes/client.py:406
+#: src/backend/hermes/client.py:427
 msgid "未配置 Chat 模型"
 msgstr "未配置 Chat 模型"
 
-#: src/backend/hermes/client.py:407
+#: src/backend/hermes/client.py:428
 msgid "配置步骤"
 msgstr "配置步骤"
 
-#: src/backend/hermes/client.py:408
+#: src/backend/hermes/client.py:429
 msgid "按 Ctrl+S 打开设置"
 msgstr "按 Ctrl+S 打开设置"
 
-#: src/backend/hermes/client.py:409
+#: src/backend/hermes/client.py:430
 msgid "确认后端为 sysAgent"
 msgstr "确认后端为 sysAgent"
 
-#: src/backend/hermes/client.py:410
+#: src/backend/hermes/client.py:431
 msgid "点击 \"更改用户设置\" 按钮"
 msgstr "点击 \"更改用户设置\" 按钮"
 
-#: src/backend/hermes/client.py:411
+#: src/backend/hermes/client.py:432
 msgid "切换到 \"大模型设置\" 标签页"
 msgstr "切换到 \"大模型设置\" 标签页"
 
-#: src/backend/hermes/client.py:412
+#: src/backend/hermes/client.py:433
 msgid "使用 ↑↓ 键选择模型，空格激活，回车保存"
 msgstr "使用 ↑↓ 键选择模型，空格激活，回车保存"
 
@@ -1500,15 +1500,15 @@ msgstr ""
 "初始化 sysAgent\n"
 " * 初始化操作需要管理员权限和网络连接"
 
-#: src/main.py:56 src/main.py:165
+#: src/main.py:55 src/main.py:163
 msgid "View and manage application logs"
 msgstr "查看和管理应用日志"
 
-#: src/main.py:65
+#: src/main.py:64
 msgid "Number of log lines to display (default: 1000)"
 msgstr "显示的日志行数 (默认: 1000)"
 
-#: src/main.py:74
+#: src/main.py:73
 msgid ""
 "Manage Witty Assistant LLM settings\n"
 " * Configuration editing requires administrator privileges"
@@ -1516,124 +1516,124 @@ msgstr ""
 "管理 Witty Assistant 大模型设置\n"
 " * 配置编辑操作需要管理员权限"
 
-#: src/main.py:84
+#: src/main.py:82
 #, python-brace-format
 msgid "Invalid log level: {level}"
 msgstr "无效的日志级别: {level}"
 
-#: src/main.py:91 src/main.py:196
+#: src/main.py:89 src/main.py:194
 msgid "Configure default settings for Witty Assistant"
 msgstr "配置 Witty Assistant 的默认设置"
 
-#: src/main.py:99 src/main.py:100 src/main.py:200
+#: src/main.py:97 src/main.py:98 src/main.py:198
 msgid "Select default agent"
 msgstr "选择默认智能体"
 
-#: src/main.py:107 src/main.py:108 src/main.py:201
+#: src/main.py:105 src/main.py:106 src/main.py:199
 msgid "Set log level"
 msgstr "设置日志级别"
 
-#: src/main.py:115
+#: src/main.py:113
 msgid "Log level (DEBUG/INFO/WARNING/ERROR)"
 msgstr "日志级别 (DEBUG/INFO/WARNING/ERROR)"
 
-#: src/main.py:121 src/main.py:122 src/main.py:202
+#: src/main.py:119 src/main.py:120 src/main.py:200
 msgid "Set display language"
 msgstr "设置显示语言"
 
-#: src/main.py:131
+#: src/main.py:129
 #, python-brace-format
 msgid "Available locales: {locales}"
 msgstr "可用语言: {locales}"
 
-#: src/main.py:142
+#: src/main.py:140
 msgid "Witty Assistant - Intelligent command-line tool"
 msgstr "Witty Assistant - 智能命令行助手"
 
-#: src/main.py:144 src/main.py:197
+#: src/main.py:142 src/main.py:195
 msgid "Usage:\n"
 msgstr "用法:\n"
 
-#: src/main.py:149
+#: src/main.py:147
 msgid "Global options:\n"
 msgstr "全局选项:\n"
 
-#: src/main.py:150
+#: src/main.py:148
 msgid "Show help and exit"
 msgstr "显示帮助并退出"
 
-#: src/main.py:151
+#: src/main.py:149
 msgid "Show program version number and exit"
 msgstr "显示程序版本号并退出"
 
-#: src/main.py:155
+#: src/main.py:153
 msgid "版本与帮助"
 msgstr "版本与帮助"
 
-#: src/main.py:162
+#: src/main.py:160
 msgid "初始化与调试"
 msgstr "初始化与调试"
 
-#: src/main.py:164
+#: src/main.py:162
 msgid "Initialize sysAgent"
 msgstr "初始化 sysAgent"
 
-#: src/main.py:169
+#: src/main.py:167
 msgid "管理命令"
 msgstr "管理命令"
 
-#: src/main.py:171
+#: src/main.py:169
 msgid "Manage LLM settings"
 msgstr "管理大模型设置"
 
-#: src/main.py:175
+#: src/main.py:173
 msgid "设置调整"
 msgstr "设置调整"
 
-#: src/main.py:177
+#: src/main.py:175
 msgid "Configure default settings"
 msgstr "配置默认设置"
 
-#: src/main.py:182
+#: src/main.py:180
 msgid "Commands:\n"
 msgstr "命令:\n"
 
-#: src/main.py:189
+#: src/main.py:187
 msgid "Run 'witty help <command>' or 'witty <command> -h' for more details.\n"
 msgstr "运行 'witty help <command>' 或 'witty <command> -h' 获取更多详情。\n"
 
-#: src/main.py:190
+#: src/main.py:188
 msgid "For more information and documentation, please visit:\n"
 msgstr "更多信息和使用文档请访问:\n"
 
-#: src/main.py:199
+#: src/main.py:197
 msgid "Subcommands:\n"
 msgstr "子命令:\n"
 
-#: src/main.py:203
+#: src/main.py:201
 msgid "Examples:\n"
 msgstr "示例:\n"
 
-#: src/main.py:254 src/main.py:354
+#: src/main.py:252 src/main.py:352
 #, python-brace-format
 msgid "Unknown command: {cmd}\n"
 msgstr "未知命令: {cmd}\n"
 
-#: src/main.py:297
+#: src/main.py:295
 msgid "未指定子命令。使用 'witty help set-default' 查看可用选项。\n"
 msgstr "未指定子命令。使用 'witty help set-default' 查看可用选项。\n"
 
-#: src/main.py:309
+#: src/main.py:307
 #, python-brace-format
 msgid "✓ Language set to: {locale}\n"
 msgstr "✓ 语言已设置为: {locale}\n"
 
-#: src/main.py:311
+#: src/main.py:309
 #, python-brace-format
 msgid "✗ Unsupported language: {locale}\n"
 msgstr "✗ 不支持的语言: {locale}\n"
 
-#: src/main.py:321
+#: src/main.py:319
 #, python-brace-format
 msgid "Unknown subcommand: {cmd}\n"
 msgstr "未知子命令: {cmd}\n"
@@ -1717,257 +1717,276 @@ msgstr "  witty  # 然后按下 Ctrl+S 进入设置界面切换到 sysAgent\n"
 msgid "错误: {error}\n"
 msgstr "错误: {error}\n"
 
-#: src/tool/oi_llm_config.py:398 src/tool/oi_llm_config.py:967
+#: src/tool/oi_llm_config.py:67
+msgid "未找到 systemctl，跳过重启后端服务"
+msgstr "未找到 systemctl，跳过重启后端服务"
+
+#: src/tool/oi_llm_config.py:78
+#, python-brace-format
+msgid "重启后端失败: {error}"
+msgstr "重启后端失败: {error}"
+
+#: src/tool/oi_llm_config.py:81
+msgid "已重启后端服务"
+msgstr "已重启后端服务"
+
+#: src/tool/oi_llm_config.py:87
+#, python-brace-format
+msgid "重启后端失败: {details}"
+msgstr "重启后端失败: {details}"
+
+#: src/tool/oi_llm_config.py:437 src/tool/oi_llm_config.py:1007
 msgid "新建模型"
 msgstr "新建模型"
 
-#: src/tool/oi_llm_config.py:398
+#: src/tool/oi_llm_config.py:437
 #, python-brace-format
 msgid "编辑模型: {id}"
 msgstr "编辑模型: {id}"
 
-#: src/tool/oi_llm_config.py:416
+#: src/tool/oi_llm_config.py:455
 msgid "基本信息"
 msgstr "基本信息"
 
-#: src/tool/oi_llm_config.py:419
+#: src/tool/oi_llm_config.py:458
 msgid "模型 ID:"
 msgstr "模型 ID:"
 
-#: src/tool/oi_llm_config.py:422
+#: src/tool/oi_llm_config.py:461
 msgid "唯一标识符，如 gpt-4o"
 msgstr "唯一标识符，如 gpt-4o"
 
-#: src/tool/oi_llm_config.py:428
+#: src/tool/oi_llm_config.py:467
 msgid "描述:"
 msgstr "描述:"
 
-#: src/tool/oi_llm_config.py:431
+#: src/tool/oi_llm_config.py:470
 msgid "模型描述信息"
 msgstr "模型描述信息"
 
-#: src/tool/oi_llm_config.py:439
+#: src/tool/oi_llm_config.py:478
 msgid "模型能力"
 msgstr "模型能力"
 
-#: src/tool/oi_llm_config.py:442
+#: src/tool/oi_llm_config.py:481
 msgid "类型:"
 msgstr "类型:"
 
-#: src/tool/oi_llm_config.py:453
+#: src/tool/oi_llm_config.py:492
 msgid "API 配置"
 msgstr "API 配置"
 
-#: src/tool/oi_llm_config.py:456
+#: src/tool/oi_llm_config.py:495
 msgid "提供商:"
 msgstr "提供商:"
 
-#: src/tool/oi_llm_config.py:472
-msgid "如 http://localhost:11434/v1"
-msgstr "如 http://localhost:11434/v1"
+#: src/tool/oi_llm_config.py:511
+#, python-brace-format
+msgid "如 {url}"
+msgstr "如 {url}"
 
-#: src/tool/oi_llm_config.py:481
+#: src/tool/oi_llm_config.py:520
 msgid "可选"
 msgstr "可选"
 
-#: src/tool/oi_llm_config.py:491
+#: src/tool/oi_llm_config.py:530
 msgid "用于调用 API 的模型名称"
 msgstr "用于调用 API 的模型名称"
 
-#: src/tool/oi_llm_config.py:499
+#: src/tool/oi_llm_config.py:538
 msgid "参数配置"
 msgstr "参数配置"
 
-#: src/tool/oi_llm_config.py:511
+#: src/tool/oi_llm_config.py:550
 msgid "最大输出:"
 msgstr "最大输出:"
 
-#: src/tool/oi_llm_config.py:522
+#: src/tool/oi_llm_config.py:561
 msgid "扩展配置 (JSON)"
 msgstr "扩展配置 (JSON)"
 
-#: src/tool/oi_llm_config.py:523
+#: src/tool/oi_llm_config.py:562
 msgid "有效的 JSON"
 msgstr "有效的 JSON"
 
-#: src/tool/oi_llm_config.py:537
+#: src/tool/oi_llm_config.py:576
 msgid "删除"
 msgstr "删除"
 
-#: src/tool/oi_llm_config.py:577
+#: src/tool/oi_llm_config.py:616
 msgid "空（将使用 null）"
 msgstr "空（将使用 null）"
 
-#: src/tool/oi_llm_config.py:583
+#: src/tool/oi_llm_config.py:622
 msgid "✓ JSON 格式正确"
 msgstr "✓ JSON 格式正确"
 
-#: src/tool/oi_llm_config.py:586
+#: src/tool/oi_llm_config.py:625
 #, python-brace-format
 msgid "✗ JSON 错误: {error}"
 msgstr "✗ JSON 错误: {error}"
 
-#: src/tool/oi_llm_config.py:628
+#: src/tool/oi_llm_config.py:667
 msgid "模型 ID 不能为空"
 msgstr "模型 ID 不能为空"
 
-#: src/tool/oi_llm_config.py:634
+#: src/tool/oi_llm_config.py:673
 #, python-brace-format
 msgid "JSON 格式错误: {error}"
 msgstr "JSON 格式错误: {error}"
 
-#: src/tool/oi_llm_config.py:638
+#: src/tool/oi_llm_config.py:677
 #, python-brace-format
 msgid "收集配置失败: {error}"
 msgstr "收集配置失败: {error}"
 
-#: src/tool/oi_llm_config.py:737 src/tool/oi_llm_config.py:742
+#: src/tool/oi_llm_config.py:776 src/tool/oi_llm_config.py:781
 msgid "（不设置）"
 msgstr "（不设置）"
 
-#: src/tool/oi_llm_config.py:753
+#: src/tool/oi_llm_config.py:792
 msgid "设置默认模型"
 msgstr "设置默认模型"
 
-#: src/tool/oi_llm_config.py:756
+#: src/tool/oi_llm_config.py:795
 msgid "Function 模型:"
 msgstr "Function 模型:"
 
-#: src/tool/oi_llm_config.py:766
+#: src/tool/oi_llm_config.py:805
 msgid "Embedding 模型:"
 msgstr "Embedding 模型:"
 
-#: src/tool/oi_llm_config.py:776
+#: src/tool/oi_llm_config.py:815
 msgid "Function 模型用于智能体的函数调用，Embedding 模型用于向量嵌入。"
 msgstr "Function 模型用于智能体的函数调用，Embedding 模型用于向量嵌入。"
 
-#: src/tool/oi_llm_config.py:807
+#: src/tool/oi_llm_config.py:846
 #, python-brace-format
 msgid "获取配置失败: {error}"
 msgstr "获取配置失败: {error}"
 
-#: src/tool/oi_llm_config.py:953
+#: src/tool/oi_llm_config.py:993
 msgid "大模型配置管理"
 msgstr "大模型配置管理"
 
-#: src/tool/oi_llm_config.py:956
+#: src/tool/oi_llm_config.py:996
 msgid "正在加载模型列表..."
 msgstr "正在加载模型列表..."
 
-#: src/tool/oi_llm_config.py:961
+#: src/tool/oi_llm_config.py:1001
 msgid "快捷键: [N] 新建  [Enter] 编辑  [D] 删除  [R] 刷新  [Esc] 退出"
 msgstr "快捷键: [N] 新建  [Enter] 编辑  [D] 删除  [R] 刷新  [Esc] 退出"
 
-#: src/tool/oi_llm_config.py:968
+#: src/tool/oi_llm_config.py:1008
 msgid "刷新列表"
 msgstr "刷新列表"
 
-#: src/tool/oi_llm_config.py:970
+#: src/tool/oi_llm_config.py:1010
 msgid "设置默认"
 msgstr "设置默认"
 
-#: src/tool/oi_llm_config.py:986
+#: src/tool/oi_llm_config.py:1026
 msgid "未配置后端服务地址"
 msgstr "未配置后端服务地址"
 
-#: src/tool/oi_llm_config.py:993
+#: src/tool/oi_llm_config.py:1033
 msgid "登录失败，无法获取用户信息"
 msgstr "登录失败，无法获取用户信息"
 
-#: src/tool/oi_llm_config.py:997
+#: src/tool/oi_llm_config.py:1037
 msgid "当前用户不是管理员，无法管理模型"
 msgstr "当前用户不是管理员，无法管理模型"
 
-#: src/tool/oi_llm_config.py:1004
+#: src/tool/oi_llm_config.py:1044
 #, python-brace-format
 msgid "初始化失败: {error}"
 msgstr "初始化失败: {error}"
 
-#: src/tool/oi_llm_config.py:1017
+#: src/tool/oi_llm_config.py:1057
 #, python-brace-format
 msgid "加载模型列表失败: {error}"
 msgstr "加载模型列表失败: {error}"
 
-#: src/tool/oi_llm_config.py:1049
+#: src/tool/oi_llm_config.py:1089
 msgid "暂无模型，点击「新建模型」添加"
 msgstr "暂无模型，点击「新建模型」添加"
 
-#: src/tool/oi_llm_config.py:1063
+#: src/tool/oi_llm_config.py:1103
 #, python-brace-format
 msgid "共 {count} 个模型"
 msgstr "共 {count} 个模型"
 
-#: src/tool/oi_llm_config.py:1080
+#: src/tool/oi_llm_config.py:1120
 msgid "正在刷新..."
 msgstr "正在刷新..."
 
-#: src/tool/oi_llm_config.py:1115
+#: src/tool/oi_llm_config.py:1155
 msgid "默认模型设置已保存"
 msgstr "默认模型设置已保存"
 
-#: src/tool/oi_llm_config.py:1118
+#: src/tool/oi_llm_config.py:1158
 #, python-brace-format
 msgid "保存默认模型设置失败: {error}"
 msgstr "保存默认模型设置失败: {error}"
 
-#: src/tool/oi_llm_config.py:1135 src/tool/oi_llm_config.py:1200
+#: src/tool/oi_llm_config.py:1175 src/tool/oi_llm_config.py:1241
 msgid "请先选择一个模型"
 msgstr "请先选择一个模型"
 
-#: src/tool/oi_llm_config.py:1147
+#: src/tool/oi_llm_config.py:1187
 #, python-brace-format
 msgid "编辑模型失败: {error}"
 msgstr "编辑模型失败: {error}"
 
-#: src/tool/oi_llm_config.py:1162
+#: src/tool/oi_llm_config.py:1202
 #, python-brace-format
 msgid "获取模型配置失败: {error}"
 msgstr "获取模型配置失败: {error}"
 
-#: src/tool/oi_llm_config.py:1188
+#: src/tool/oi_llm_config.py:1228
 msgid "模型保存成功"
 msgstr "模型保存成功"
 
-#: src/tool/oi_llm_config.py:1193
+#: src/tool/oi_llm_config.py:1234
 #, python-brace-format
 msgid "保存模型失败: {error}"
 msgstr "保存模型失败: {error}"
 
-#: src/tool/oi_llm_config.py:1213 src/tool/oi_llm_config.py:1228
+#: src/tool/oi_llm_config.py:1254 src/tool/oi_llm_config.py:1270
 #, python-brace-format
 msgid "删除模型失败: {error}"
 msgstr "删除模型失败: {error}"
 
-#: src/tool/oi_llm_config.py:1223
+#: src/tool/oi_llm_config.py:1264
 #, python-brace-format
 msgid "模型已删除: {id}"
 msgstr "模型已删除: {id}"
 
-#: src/tool/oi_llm_config.py:1274
+#: src/tool/oi_llm_config.py:1316
 msgid "需要管理员权限才能管理 LLM 配置"
 msgstr "需要管理员权限才能管理 LLM 配置"
 
-#: src/tool/oi_llm_config.py:1275
+#: src/tool/oi_llm_config.py:1317
 msgid "请使用 'sudo witty llm' 运行"
 msgstr "请使用 'sudo witty llm' 运行"
 
-#: src/tool/oi_llm_config.py:1292
+#: src/tool/oi_llm_config.py:1334
 msgid "错误：无法启动 LLM 配置工具"
 msgstr "错误：无法启动 LLM 配置工具"
 
-#: src/tool/oi_llm_config.py:1303
+#: src/tool/oi_llm_config.py:1352
 msgid "✓ LLM 配置管理完成"
 msgstr "✓ LLM 配置管理完成"
 
-#: src/tool/oi_llm_config.py:1305
+#: src/tool/oi_llm_config.py:1354
 msgid "LLM 配置管理已退出"
 msgstr "LLM 配置管理已退出"
 
-#: src/tool/oi_llm_config.py:1308
+#: src/tool/oi_llm_config.py:1357
 msgid "配置已取消"
 msgstr "配置已取消"
 
-#: src/tool/oi_llm_config.py:1312
+#: src/tool/oi_llm_config.py:1361
 #, python-brace-format
 msgid "错误：{error}"
 msgstr "错误：{error}"

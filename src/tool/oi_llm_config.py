@@ -10,6 +10,8 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from typing import Any, ClassVar
@@ -46,6 +48,43 @@ logger = get_logger(__name__)
 DEFAULT_LLM_CTX_LENGTH = 128000
 DEFAULT_EMBEDDING_CTX_LENGTH = 8192
 DEFAULT_MAX_TOKENS = 8192
+
+
+def restart_sysagent_service() -> tuple[bool, str]:
+    """
+    重启后端服务使配置生效。
+
+    说明：
+        - 仅在系统存在 systemctl 时尝试重启。
+        - 重启失败不会抛异常，返回 (False, message) 便于上层输出。
+
+    Returns:
+        tuple[bool, str]: (是否成功, 说明/错误信息)
+
+    """
+    systemctl = shutil.which("systemctl")
+    if not systemctl:
+        return False, _("未找到 systemctl，跳过重启后端服务")
+
+    try:
+        result = subprocess.run(  # noqa: S603
+            [systemctl, "restart", "sysagent"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except Exception as e:
+        logger.exception("重启后端服务失败")
+        return False, _("重启后端失败: {error}").format(error=str(e))
+
+    if result.returncode == 0:
+        return True, _("已重启后端服务")
+
+    stderr = (result.stderr or "").strip()
+    stdout = (result.stdout or "").strip()
+    details = stderr or stdout or str(result.returncode)
+    logger.warning("systemctl restart sysagent 失败: %s", details)
+    return False, _("重启后端失败: {details}").format(details=details)
 
 
 # ============================================================================
@@ -469,7 +508,7 @@ class ModelEditScreen(ModalScreen[EditableModelConfig | None]):
                 yield Label(_("API 端点:"), classes="form-label")
                 yield Input(
                     value=self.config.base_url,
-                    placeholder=_("如 http://localhost:11434/v1"),
+                    placeholder=_("如 {url}").format(url="http://localhost:11434/v1"),
                     id="base_url",
                     classes="form-input",
                 )
@@ -945,6 +984,7 @@ class LLMConfigScreen(ModalScreen[bool]):
         self._client: HermesChatClient | None = None
         self._models: list[ModelInfo] = []
         self._is_loading = True
+        self._changed = False
 
     def compose(self) -> ComposeResult:
         """组合界面组件"""
@@ -1120,7 +1160,7 @@ class LLMConfigScreen(ModalScreen[bool]):
     @on(Button.Pressed, "#quit-btn")
     def action_quit(self) -> None:
         """退出"""
-        self.dismiss(result=True)
+        self.dismiss(result=self._changed)
 
     @on(ListView.Selected, "#model-list")
     def action_edit_model(self, event: ListView.Selected | None = None) -> None:
@@ -1186,6 +1226,7 @@ class LLMConfigScreen(ModalScreen[bool]):
             await self._client.model_manager.create_or_update_model(hermes_config)
 
             self.notify(_("模型保存成功"), severity="information")
+            self._changed = True
             self.action_refresh()
 
         except Exception as e:
@@ -1221,6 +1262,7 @@ class LLMConfigScreen(ModalScreen[bool]):
         try:
             await self._client.model_manager.delete_model(llm_id)
             self.notify(_("模型已删除: {id}").format(id=llm_id), severity="information")
+            self._changed = True
             self.action_refresh()
 
         except Exception as e:
@@ -1300,6 +1342,13 @@ def llm_config() -> None:
 
         # 输出结果
         if app.config_result:
+            # 变更已发生：重启 sysagent 使配置生效
+            ok_restart, message = restart_sysagent_service()
+            if ok_restart:
+                sys.stdout.write(f"{message}\n")
+            else:
+                # 不阻断正常退出，但要提示用户
+                sys.stderr.write(f"{message}\n")
             sys.stdout.write(_("✓ LLM 配置管理完成") + "\n")
         else:
             sys.stdout.write(_("LLM 配置管理已退出") + "\n")
