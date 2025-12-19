@@ -290,8 +290,7 @@ install_pgvector() {
 }
 # 安装scws服务
 install_scws() {
-  local scws_url="http://www.xunsearch.com/scws/down/scws-1.2.3.tar.bz2"
-  local scws_tar="/opt/scws-1.2.3.tar.bz2"
+  local scws_tar="../5-resource/pg-plugin/scws-1.2.3.tar.bz2"
   local scws_dir="/opt/scws"
   local scws_installed_marker="/usr/local/lib/libscws.la" # SCWS安装后的标志性文件
 
@@ -301,17 +300,12 @@ install_scws() {
     echo -e "${COLOR_INFO}[Info] SCWS已安装，跳过安装过程${COLOR_RESET}"
     return 0
   fi
-  # 2. 检查并下载SCWS安装包
+  # 2. 检查本地SCWS安装包
   if [ -f "$scws_tar" ]; then
-    echo -e "${COLOR_INFO}[Info] SCWS安装包已存在，跳过下载${COLOR_RESET}"
+    echo -e "${COLOR_INFO}[Info] SCWS安装包已存在${COLOR_RESET}"
   else
-    echo -e "${COLOR_INFO} 正在下载SCWS...${COLOR_RESET}"
-    local logfile
-    logfile=$(get_wget_log_filename "$scws_tar")
-    if ! wget "$scws_url" --no-check-certificate -O "$scws_tar" -o "$logfile"; then
-      echo -e "${COLOR_ERROR}[Error] SCWS下载失败${COLOR_RESET}"
-      return 1
-    fi
+    echo -e "${COLOR_ERROR}[Error] SCWS本地安装包不存在: $scws_tar${COLOR_RESET}"
+    return 1
   fi
 
   # 3. 创建目标目录
