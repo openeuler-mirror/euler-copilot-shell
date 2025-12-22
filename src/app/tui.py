@@ -14,6 +14,7 @@ from textual.widgets import Footer, Input, Markdown, Static
 
 from __version__ import __version__
 from app.dialogs import AgentSelectionDialog, BackendRequiredDialog, ExitDialog
+from app.logo import WittyLogo
 from app.mcp_widgets import MCPConfirmResult, MCPConfirmWidget, MCPParameterResult, MCPParameterWidget
 from app.settings import SettingsScreen
 from app.tui_header import OIHeader
@@ -299,11 +300,14 @@ class IntelligentTerminal(App):
         self._current_waiting_block: MCPWaitingBlock | None = None
         self._mcp_cluster_active: bool = False
         self._mcp_step_blocks: dict[str, MCPProgressBlock] = {}
+        # LOGO 显示状态
+        self._has_conversation: bool = False
 
     def compose(self) -> ComposeResult:
         """构建界面"""
         yield OIHeader()
-        yield FocusableContainer(id="output-container")
+        with FocusableContainer(id="output-container"):
+            yield WittyLogo()
         with Container(id="input-container", classes="normal-mode"):
             yield CommandInput()
         yield Footer(show_command_palette=False)
@@ -334,6 +338,9 @@ class IntelligentTerminal(App):
         output_container.remove_children()
         # 清理 MCP 状态
         self._reset_mcp_state()
+        # 重新显示 LOGO
+        self._has_conversation = False
+        output_container.mount(WittyLogo())
 
     def action_choose_agent(self) -> None:
         """选择智能体的动作"""
@@ -514,6 +521,11 @@ class IntelligentTerminal(App):
         user_input = event.value.strip()
         if not user_input or self.processing:
             return
+
+        # 首次对话时移除 LOGO
+        if not self._has_conversation:
+            self._remove_logo()
+            self._has_conversation = True
 
         # 清空输入框
         input_widget = self.query_one(CommandInput)
@@ -1633,6 +1645,15 @@ class IntelligentTerminal(App):
                 await self._update_agent_name_from_list()
         except Exception:
             self.logger.exception("设置智能体时发生错误")
+
+    def _remove_logo(self) -> None:
+        """移除 LOGO 组件"""
+        try:
+            logo = self.query_one("#witty-logo", WittyLogo)
+            logo.remove()
+        except Exception:
+            # LOGO 可能已经被移除或不存在
+            self.logger.exception("移除 LOGO 组件时发生错误")
 
     async def _update_agent_name_from_list(self) -> None:
         """从智能体列表中更新当前智能体的名称"""
