@@ -9,7 +9,7 @@ from rich.text import Text
 from textual.color import Gradient
 from textual.widgets import Static
 
-MINIMAL_WINDOW_THRESHOLD = 80
+MINIMAL_WINDOW_THRESHOLD = 72
 NARROW_WINDOW_THRESHOLD = 117
 
 # 长 LOGO（单行显示，需要宽度 >= 117）
@@ -89,8 +89,11 @@ class WittyLogo(Static):
             gradient = Gradient.from_colors("#AF5FFF", "#00AFFF", "#AFFFFF")
             gradient_text = Text()
 
-            # 按行处理，每行独立应用横向渐变
+            # 分割行并计算整个 LOGO 的最大宽度
             lines = logo_text.split("\n")
+            max_width = max(len(line) for line in lines) if lines else 1
+
+            # 按行处理，基于整个 LOGO 的横向坐标应用渐变
             for line_idx, line in enumerate(lines):
                 if line_idx > 0:
                     gradient_text.append("\n")
@@ -99,12 +102,11 @@ class WittyLogo(Static):
                     gradient_text.append(line)
                     continue
 
-                # 为当前行的每个字符应用从左到右的渐变
-                line_length = len(line)
+                # 为当前行的每个字符基于全局横向位置应用渐变
                 for char_idx, char in enumerate(line):
                     if char.strip():
-                        # 计算当前字符在行内的位置比例（横向）
-                        progress = char_idx / max(line_length - 1, 1)
+                        # 计算字符在整个 LOGO 横向的位置比例
+                        progress = char_idx / max(max_width - 1, 1)
                         rich_color = gradient.get_rich_color(progress)
                         gradient_text.append(char, style=Style(color=rich_color))
                     else:
