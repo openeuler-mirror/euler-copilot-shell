@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
 from textual import on
@@ -180,6 +181,12 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
     # 这里用一个非常小的正值来模拟“下一次事件循环/下一帧”再应用更新，从而合并高频流式更新。
     _RENDER_DEBOUNCE_DELAY_SECONDS: ClassVar[float] = 0.01
 
+    # 自适应降频：根据“上一帧真实渲染耗时”动态调整去抖延迟。
+    _RENDER_DEBOUNCE_MIN_SECONDS: ClassVar[float] = 0.01
+    _RENDER_DEBOUNCE_MAX_SECONDS: ClassVar[float] = 0.5
+    _RENDER_TIME_TO_DEBOUNCE_MULTIPLIER: ClassVar[float] = 2.0
+    RENDER_TIME_EMA_ALPHA: ClassVar[float] = 0.2
+
     def __init__(self, markdown_content: str = "") -> None:
         """初始化 Markdown 输出组件"""
         super().__init__(markdown_content)
@@ -187,6 +194,11 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
         # 去抖渲染：在高频流式更新下合并渲染任务，避免 Markdown 解析/布局事件堆积
         self._pending_markdown: str | None = None
         self._render_timer: Timer | None = None
+        # generation gating：用于屏蔽取消/退出后已排队的回调“余震”
+        self._scheduled_generation: int | None = None
+        # EMA 的平均渲染耗时（秒），以及下一次的去抖延迟（秒）
+        self._render_time_ema_seconds: float | None = None
+        self._adaptive_debounce_seconds: float = self._RENDER_DEBOUNCE_DELAY_SECONDS
         self.add_class("llm-output")
         self.can_focus = True
 
@@ -211,6 +223,9 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
             self._apply_pending_markdown()
             return
 
+        # 记录本次调度的 generation，用于后续回调执行时校验是否已被取消/退出
+        self._scheduled_generation = self._get_app_render_generation()
+
         # 取消旧的未执行渲染，仅保留最新一次
         if self._render_timer is not None:
             try:
@@ -221,12 +236,16 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
                     self.app.log("[TUI] Failed to stop markdown render timer")
                 self._render_timer = None
 
-        # 延迟到一个非常短的时间片后再更新，合并同一段时间内的多次更新
-        self._render_timer = self.set_timer(self._RENDER_DEBOUNCE_DELAY_SECONDS, self._apply_pending_markdown)
+        # 延迟到一个时间片后再更新（自适应），合并同一段时间内的多次更新
+        delay = self._adaptive_debounce_seconds
+        if delay <= 0:
+            delay = self._RENDER_DEBOUNCE_MIN_SECONDS
+        self._render_timer = self.set_timer(delay, self._apply_pending_markdown)
 
     def cancel_pending_render(self) -> None:
         """取消尚未执行的渲染（用于取消/退出时阻断后续 UI 更新）。"""
         self._pending_markdown = None
+        self._scheduled_generation = None
         if self._render_timer is not None:
             try:
                 self._render_timer.stop()
@@ -241,11 +260,71 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
         try:
             if self._pending_markdown is None:
                 return
+
+            # generation gating：如果 App 已经进入新一代（取消/退出），则跳过渲染
+            current_generation = self._get_app_render_generation()
+            if (
+                current_generation is not None
+                and self._scheduled_generation is not None
+                and current_generation != self._scheduled_generation
+            ):
+                return
+
             # 这里调用 update 会触发 Markdown 解析与布局，必须保证已经做过节流/去抖
+            start = time.perf_counter()
             self.update(self._pending_markdown)
+            duration = time.perf_counter() - start
+            self._record_render_duration(duration)
         finally:
             self._pending_markdown = None
             self._render_timer = None
+            self._scheduled_generation = None
+
+    def _get_app_render_generation(self) -> int | None:
+        """从 App 获取当前 render generation（若可用）。"""
+        app = self.app
+        if app is None:
+            return None
+
+        getter = getattr(app, "_get_render_generation", None)
+        if callable(getter):
+            try:
+                return cast("int", getter())
+            except (AttributeError, RuntimeError, ValueError, TypeError):
+                return None
+
+        # 兼容兜底：直接读取属性（不建议外部依赖）
+        generation = getattr(app, "_render_generation", None)
+        return cast("int | None", generation)
+
+    def _record_render_duration(self, duration_seconds: float) -> None:
+        """记录一次真实渲染耗时，并据此更新自适应去抖延迟。"""
+        if duration_seconds <= 0:
+            return
+
+        if self._render_time_ema_seconds is None:
+            ema = duration_seconds
+        else:
+            alpha = self.RENDER_TIME_EMA_ALPHA
+            ema = (alpha * duration_seconds) + ((1 - alpha) * self._render_time_ema_seconds)
+        self._render_time_ema_seconds = ema
+
+        target_delay = self._RENDER_TIME_TO_DEBOUNCE_MULTIPLIER * ema
+        # 夹逼范围，防止过度降低实时性或完全卡住
+        self._adaptive_debounce_seconds = max(
+            self._RENDER_DEBOUNCE_MIN_SECONDS,
+            min(self._RENDER_DEBOUNCE_MAX_SECONDS, target_delay),
+        )
+
+        # 将渲染耗时上报给 App（用于流式 flush 的自适应降频）
+        app = self.app
+        reporter = getattr(app, "_report_markdown_render_duration", None) if app is not None else None
+        if callable(reporter):
+            try:
+                reporter(duration_seconds)
+            except (AttributeError, RuntimeError, ValueError, TypeError):
+                # 上报失败不影响主流程
+                return
 
 
 class MCPProgressBlock(MarkdownOutput):
@@ -351,14 +430,14 @@ class IntelligentTerminal(App):
         self.processing: bool = False
         # 添加保存任务的集合到类属性
         self.background_tasks: set[asyncio.Task] = set()
+        # 创建日志实例
+        self.logger = get_logger(__name__)
         # 创建并保持单一的 LLM 客户端实例以维持对话历史
         self._llm_client: LLMClientBase | None = None
         # 当前选择的智能体 - 根据配置的 default_app 初始化
         self.current_agent: tuple[str, str] = self._get_initial_agent()
         # MCP 状态
         self._mcp_mode: str = "normal"  # "normal", "confirm", "parameter"
-        # 创建日志实例
-        self.logger = get_logger(__name__)
         # MCP 进度展示状态
         self._current_progress_block: MCPProgressBlock | None = None
         self._current_waiting_block: MCPWaitingBlock | None = None
@@ -366,6 +445,10 @@ class IntelligentTerminal(App):
         self._mcp_step_blocks: dict[str, MCPProgressBlock] = {}
         # LOGO 显示状态
         self._has_conversation: bool = False
+        # generation gating：取消/退出时 bump，用于屏蔽已经排队的 UI 更新回调（timer/call_after_refresh）
+        self._render_generation: int = 0
+        # 全局统计 Markdown 渲染耗时 EMA（用于动态调整 flush 频率）
+        self._markdown_render_ema_seconds: float | None = None
 
     def compose(self) -> ComposeResult:
         """构建界面"""
@@ -447,6 +530,9 @@ class IntelligentTerminal(App):
         """取消当前正在进行的操作（命令执行或AI问答）"""
         if self.processing:
             self.logger.info("用户请求取消当前操作")
+
+            # generation gating：先 bump，屏蔽已排队的回调
+            self._bump_render_generation("cancel")
 
             # 先清理可能排队的 Markdown 渲染任务，避免 Ctrl+C 后仍持续刷新
             self._cancel_pending_output_renders()
@@ -564,6 +650,8 @@ class IntelligentTerminal(App):
 
     def exit(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         """退出应用前取消所有后台任务"""
+        # generation gating：退出前 bump，避免退出过程中仍有 UI 回调试图执行
+        self._bump_render_generation("exit")
         # 取消所有正在运行的后台任务
         for task in self.background_tasks:
             if not task.done():
@@ -840,6 +928,29 @@ class IntelligentTerminal(App):
 
         return False
 
+    def _get_render_generation(self) -> int:
+        """获取当前 render generation。"""
+        return self._render_generation
+
+    def _bump_render_generation(self, reason: str) -> None:
+        """进入新一代渲染周期，用于取消/退出时阻断“余震”回调。"""
+        self._render_generation += 1
+        self.logger.debug("[TUI] Bump render generation to %d (%s)", self._render_generation, reason)
+
+    def _report_markdown_render_duration(self, duration_seconds: float) -> None:
+        """接收 Markdown 组件上报的渲染耗时，用于流式刷新自适应降频。"""
+        if duration_seconds <= 0:
+            return
+
+        if self._markdown_render_ema_seconds is None:
+            self._markdown_render_ema_seconds = duration_seconds
+            return
+
+        alpha = MarkdownOutput.RENDER_TIME_EMA_ALPHA
+        self._markdown_render_ema_seconds = (alpha * duration_seconds) + (
+            (1 - alpha) * self._markdown_render_ema_seconds
+        )
+
     def _cancel_pending_output_renders(self) -> None:
         """取消输出区域内所有 Markdown 组件的待渲染任务。"""
         try:
@@ -921,7 +1032,7 @@ class IntelligentTerminal(App):
         stream_state["current_content"] = cast("str", stream_state.get("current_content", "")) + content
         stream_state["pending_chars"] = cast("int", stream_state.get("pending_chars", 0)) + len(content)
 
-        if not self._should_flush_ui(stream_state, current_time):
+        if not self._should_flush_ui(stream_state, current_time, is_markdown=isinstance(current_line, MarkdownOutput)):
             return False
 
         self._flush_current_line(current_line, stream_state)
@@ -929,15 +1040,26 @@ class IntelligentTerminal(App):
         stream_state["pending_chars"] = 0
         return True
 
-    def _should_flush_ui(self, stream_state: dict, current_time: float) -> bool:
-        """判断是否应刷新 UI（Markdown 全量重渲染是主要开销点，需节流）"""
+    def _should_flush_ui(self, stream_state: dict, current_time: float, *, is_markdown: bool) -> bool:
+        """判断是否应刷新 UI（Markdown 全量重渲染是主要开销点，需节流）。"""
         last_flush_time = cast("float", stream_state.get("last_ui_flush_time", 0.0))
         pending_chars = cast("int", stream_state.get("pending_chars", 0))
         params = self.STREAM_UI_FLUSH
 
-        if pending_chars >= params.flush_char_threshold:
+        flush_interval = params.flush_interval
+        flush_char_threshold = params.flush_char_threshold
+
+        # 若 Markdown 渲染真实耗时变大，则动态降低刷新频率，避免超大表格触发雪崩
+        if is_markdown and self._markdown_render_ema_seconds is not None:
+            # 至少为 base，最多 0.8s，目标约为 2x 平均渲染耗时
+            flush_interval = max(flush_interval, min(0.8, 2.0 * self._markdown_render_ema_seconds))
+            # 同步提高字符阈值，减少刷新次数（上限 64k）
+            scaled = int(flush_char_threshold * (1.0 + (self._markdown_render_ema_seconds / 0.05)))
+            flush_char_threshold = min(65536, max(flush_char_threshold, scaled))
+
+        if pending_chars >= flush_char_threshold:
             return True
-        return (current_time - last_flush_time) >= params.flush_interval
+        return (current_time - last_flush_time) >= flush_interval
 
     def _flush_current_line(self, current_line: OutputLine | MarkdownOutput, stream_state: dict) -> None:
         """将累计内容写回 UI 组件"""
@@ -954,8 +1076,15 @@ class IntelligentTerminal(App):
             return
         stream_state["last_scroll_time"] = current_time
 
-        # 使用 call_after_refresh 合并滚动到下一次 UI 刷新周期
-        self.call_after_refresh(lambda: output_container.scroll_end(animate=False))
+        # 使用 call_after_refresh 合并滚动到下一次 UI 刷新周期（并做 generation gating）
+        generation = self._render_generation
+
+        def _do_scroll() -> None:
+            if self._render_generation != generation:
+                return
+            output_container.scroll_end(animate=False)
+
+        self.call_after_refresh(_do_scroll)
 
     def _try_handle_llm_stats_chunk(
         self,
@@ -1318,8 +1447,15 @@ class IntelligentTerminal(App):
             # 显示错误信息
             output_container.mount(OutputLine(f"❌ {error_msg}", command=False))
 
-            # 滚动到底部以确保用户看到错误信息
-            self.call_after_refresh(lambda: output_container.scroll_end(animate=False))
+            # 滚动到底部以确保用户看到错误信息（并做 generation gating）
+            generation = self._render_generation
+
+            def _do_scroll() -> None:
+                if self._render_generation != generation:
+                    return
+                output_container.scroll_end(animate=False)
+
+            self.call_after_refresh(_do_scroll)
 
         except Exception:
             # 如果UI显示失败，至少记录错误日志
@@ -1362,8 +1498,15 @@ class IntelligentTerminal(App):
         """滚动到容器底部的辅助方法"""
         # 获取输出容器
         output_container = self.query_one("#output-container")
-        # 合并到刷新周期，避免频繁滚动导致额外重排
-        self.call_after_refresh(lambda: output_container.scroll_end(animate=False))
+        # 合并到刷新周期，避免频繁滚动导致额外重排（并做 generation gating）
+        generation = self._render_generation
+
+        def _do_scroll() -> None:
+            if self._render_generation != generation:
+                return
+            output_container.scroll_end(animate=False)
+
+        self.call_after_refresh(_do_scroll)
         # 让出事件循环，避免阻塞键盘事件
         await asyncio.sleep(0)
 
