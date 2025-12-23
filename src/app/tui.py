@@ -39,6 +39,7 @@ from tool.validators import APIValidator
 
 if TYPE_CHECKING:
     from textual.events import Key as KeyEvent
+    from textual.timer import Timer
     from textual.visual import VisualType
     from textual.widget import Widget
 
@@ -179,6 +180,9 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
         """初始化 Markdown 输出组件"""
         super().__init__(markdown_content)
         self.current_content = markdown_content
+        # 去抖渲染：在高频流式更新下合并渲染任务，避免 Markdown 解析/布局事件堆积
+        self._pending_markdown: str | None = None
+        self._render_timer: Timer | None = None
         self.add_class("llm-output")
         self.can_focus = True
 
@@ -189,14 +193,50 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
         if self.current_content:
             self.app.copy_to_clipboard(self.current_content)
 
-    def update_markdown(self, markdown_content: str) -> None:
-        """更新 Markdown 内容"""
-        self.current_content = markdown_content
-        self.update(markdown_content)
-
     def get_content(self) -> str:
         """获取当前 Markdown 原始内容"""
         return self.current_content
+
+    def update_markdown(self, markdown_content: str) -> None:
+        """更新 Markdown 内容"""
+        self.current_content = markdown_content
+        self._pending_markdown = markdown_content
+
+        # 取消旧的未执行渲染，仅保留最新一次
+        if self._render_timer is not None:
+            try:
+                self._render_timer.stop()
+            except (AttributeError, RuntimeError):
+                # Timer 偶发异常不应影响主流程
+                if self.app is not None:
+                    self.app.log("[TUI] Failed to stop markdown render timer")
+                self._render_timer = None
+
+        # 延迟到下一个 tick 再更新，合并同一轮事件循环内的多次更新
+        self._render_timer = self.set_timer(0, self._apply_pending_markdown)
+
+    def cancel_pending_render(self) -> None:
+        """取消尚未执行的渲染（用于取消/退出时阻断后续 UI 更新）。"""
+        self._pending_markdown = None
+        if self._render_timer is not None:
+            try:
+                self._render_timer.stop()
+            except (AttributeError, RuntimeError):
+                if self.app is not None:
+                    self.app.log("[TUI] Failed to stop markdown render timer")
+            finally:
+                self._render_timer = None
+
+    def _apply_pending_markdown(self) -> None:
+        """将最新的 pending Markdown 应用到组件。"""
+        try:
+            if self._pending_markdown is None:
+                return
+            # 这里调用 update 会触发 Markdown 解析与布局，必须保证已经做过节流/去抖
+            self.update(self._pending_markdown)
+        finally:
+            self._pending_markdown = None
+            self._render_timer = None
 
 
 class MCPProgressBlock(MarkdownOutput):
@@ -398,6 +438,9 @@ class IntelligentTerminal(App):
         """取消当前正在进行的操作（命令执行或AI问答）"""
         if self.processing:
             self.logger.info("用户请求取消当前操作")
+
+            # 先清理可能排队的 Markdown 渲染任务，避免 Ctrl+C 后仍持续刷新
+            self._cancel_pending_output_renders()
 
             # 取消当前所有的后台任务
             interrupted_count = 0
@@ -787,6 +830,19 @@ class IntelligentTerminal(App):
             return True
 
         return False
+
+    def _cancel_pending_output_renders(self) -> None:
+        """取消输出区域内所有 Markdown 组件的待渲染任务。"""
+        try:
+            output_container = self.query_one("#output-container")
+            for widget in output_container.query(MarkdownOutput):
+                try:
+                    widget.cancel_pending_render()
+                except (AttributeError, RuntimeError, ValueError):
+                    # 单个组件异常不影响整体取消
+                    self.logger.debug("[TUI] Cancel pending render failed", exc_info=True)
+        except (AttributeError, RuntimeError, ValueError):
+            self.logger.debug("[TUI] Failed to cancel pending renders", exc_info=True)
 
     async def _process_stream_content(
         self,
