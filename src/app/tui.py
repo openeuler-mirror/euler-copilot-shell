@@ -176,6 +176,10 @@ class OutputLine(SelectionCopyMixin, Static):
 class MarkdownOutput(SelectionCopyMixin, Markdown):
     """Markdown 输出组件"""
 
+    # Textual Timer 不接受 0 秒 delay（会在定时器内部产生除零风险，且可能导致渲染永远不触发）。
+    # 这里用一个非常小的正值来模拟“下一次事件循环/下一帧”再应用更新，从而合并高频流式更新。
+    _RENDER_DEBOUNCE_DELAY_SECONDS: ClassVar[float] = 0.01
+
     def __init__(self, markdown_content: str = "") -> None:
         """初始化 Markdown 输出组件"""
         super().__init__(markdown_content)
@@ -202,6 +206,11 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
         self.current_content = markdown_content
         self._pending_markdown = markdown_content
 
+        # 允许在未挂载到 App 的场景下（例如单元测试/构造阶段）直接应用，避免 set_timer 依赖消息循环。
+        if self.app is None:
+            self._apply_pending_markdown()
+            return
+
         # 取消旧的未执行渲染，仅保留最新一次
         if self._render_timer is not None:
             try:
@@ -212,8 +221,8 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
                     self.app.log("[TUI] Failed to stop markdown render timer")
                 self._render_timer = None
 
-        # 延迟到下一个 tick 再更新，合并同一轮事件循环内的多次更新
-        self._render_timer = self.set_timer(0, self._apply_pending_markdown)
+        # 延迟到一个非常短的时间片后再更新，合并同一段时间内的多次更新
+        self._render_timer = self.set_timer(self._RENDER_DEBOUNCE_DELAY_SECONDS, self._apply_pending_markdown)
 
     def cancel_pending_render(self) -> None:
         """取消尚未执行的渲染（用于取消/退出时阻断后续 UI 更新）。"""
