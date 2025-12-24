@@ -12,60 +12,12 @@ missing_pkgs=()
 pkgs=(
   "postgresql"
   "libpq-devel"
-  "minio"
 )
 
 # 清理函数（在中断或退出时调用）
 cleanup() {
   echo -e "${COLOR_ERROR}[Error] 检测到中断，停止执行${COLOR_RESET}"
   return 1
-}
-
-# 卸载 MinIO（处理 RPM 和旧版本二进制文件）
-uninstall_minio() {
-  echo -e "${COLOR_INFO}[Info] 开始卸载 MinIO...${COLOR_RESET}"
-  local minio_uninstalled=false
-
-  # 1. 尝试卸载 RPM 包
-  if rpm -q minio >/dev/null 2>&1; then
-    echo -e "${COLOR_INFO}[Info] 检测到 MinIO RPM 包，正在卸载...${COLOR_RESET}"
-    if dnf remove -y minio >/dev/null 2>&1; then
-      echo -e "${COLOR_SUCCESS}[Success] MinIO RPM 包卸载成功${COLOR_RESET}"
-      minio_uninstalled=true
-    else
-      echo -e "${COLOR_ERROR}[Error] MinIO RPM 包卸载失败${COLOR_RESET}"
-      return 1
-    fi
-  else
-    echo -e "${COLOR_INFO}[Info] 未检测到 MinIO RPM 包${COLOR_RESET}"
-  fi
-
-  # 2. 检查并清理可能存在的二进制文件（旧版本或手动安装）
-  local minio_binary="/usr/local/bin/minio"
-  if [ -f "$minio_binary" ]; then
-    echo -e "${COLOR_INFO}[Info] 检测到 MinIO 二进制文件，正在删除...${COLOR_RESET}"
-    if rm -f "$minio_binary"; then
-      echo -e "${COLOR_SUCCESS}[Success] MinIO 二进制文件删除成功${COLOR_RESET}"
-      minio_uninstalled=true
-    else
-      echo -e "${COLOR_ERROR}[Error] MinIO 二进制文件删除失败${COLOR_RESET}"
-      return 1
-    fi
-  fi
-
-  # 3. 清理 MinIO 配置和数据目录（在 delete_dir 中处理 /opt/minio）
-  if [ -d "/etc/minio" ]; then
-    echo -e "${COLOR_INFO}[Info] 清理 MinIO 配置目录...${COLOR_RESET}"
-    rm -rf /etc/minio
-  fi
-
-  if [ "$minio_uninstalled" = true ]; then
-    echo -e "${COLOR_SUCCESS}[Success] MinIO 卸载完成${COLOR_RESET}"
-  else
-    echo -e "${COLOR_INFO}[Info] MinIO 未安装，跳过卸载${COLOR_RESET}"
-  fi
-
-  return 0
 }
 
 uninstall_dependency() {
@@ -77,15 +29,6 @@ uninstall_dependency() {
     # 解析包名和备用包名（使用冒号分隔）
     IFS=':' read -ra pkg_names <<<"$pkg_spec"
     local primary_pkg="${pkg_names[0]}"
-
-    # MinIO 使用专门的卸载函数处理
-    if [ "$primary_pkg" = "minio" ]; then
-      uninstall_minio || {
-        uninstall_success=false
-        missing_pkgs+=("$primary_pkg")
-      }
-      continue
-    fi
 
     # 尝试检查并卸载主包名或备用包名
     local pkg_found=false
@@ -125,7 +68,6 @@ delete_dir() {
   # 基础目录和子目录定义
   local BASE_PWD="/opt"
   local dirs=(
-    "minio"
     "pgvector"
     "scws*"
     "zhparser"

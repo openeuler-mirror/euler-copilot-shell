@@ -225,7 +225,6 @@ check_framework_pkg() {
 
 # 安装过程需要访问的站点列表
 REQUIRED_URLS=(
-  "dl.min.io:443"            # MinIO 下载
   "www.xunsearch.com:80"     # SCWS 分词库下载
   "repo.huaweicloud.com:443" # pip 华为云镜像源
 )

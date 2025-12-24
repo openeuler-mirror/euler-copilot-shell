@@ -80,105 +80,7 @@ get_wget_log_filename() {
   local logfile="$HOME/.cache/witty/logs/${timestamp}_${filename}.log"
   echo "$logfile"
 }
-# 获取最新的 MinIO RPM 下载地址
-get_latest_minio_rpm_url() {
-  local arch=$1
-  local base_url
 
-  case "$arch" in
-  x86_64 | i386 | i686)
-    base_url="https://dl.min.io/server/minio/release/linux-amd64/archive/"
-    ;;
-  aarch64 | arm64)
-    base_url="https://dl.min.io/server/minio/release/linux-arm64/archive/"
-    ;;
-  *)
-    echo -e "${COLOR_ERROR}[Error] 不支持的架构: $arch${COLOR_RESET}" >&2
-    return 1
-    ;;
-  esac
-
-  # 获取目录列表并解析最新的 RPM 文件
-  # 使用兼容 macOS 和 Linux 的 grep 选项
-  local rpm_file
-  rpm_file=$(curl -sL "$base_url" | grep -o 'minio-[0-9][^"]*\.rpm' | sort -V | tail -1)
-
-  if [ -z "$rpm_file" ]; then
-    echo -e "${COLOR_ERROR}[Error] 无法获取最新的 MinIO RPM 文件名${COLOR_RESET}" >&2
-    return 1
-  fi
-
-  # 只输出 URL 到 stdout（作为函数返回值）
-  echo "${base_url}${rpm_file}"
-  return 0
-}
-
-# 安装MinIO
-install_minio() {
-  echo -e "${COLOR_INFO}[Info] 开始安装MinIO...${COLOR_RESET}"
-  local minio_dir="/opt/minio"
-  local arch
-  arch=$(uname -m)
-
-  if ! mkdir -p "$minio_dir"; then
-    echo -e "${COLOR_ERROR}[Error] 创建目录失败: $minio_dir${COLOR_RESET}"
-    return 1
-  fi
-
-  # 根据架构选择不同的安装方式
-  case "$arch" in
-  x86_64 | i386 | i686 | aarch64 | arm64)
-    # 首先检查缓存目录中是否已存在 MinIO RPM 文件（任何版本）
-    local existing_rpm
-    existing_rpm=$(find "$minio_dir" -name "minio-*.rpm" -type f 2>/dev/null | head -1)
-
-    if [ -n "$existing_rpm" ]; then
-      # 找到已存在的 RPM 文件，直接使用
-      echo -e "${COLOR_INFO}[Info] 发现已存在的 MinIO RPM 文件: $(basename "$existing_rpm")${COLOR_RESET}"
-      echo -e "${COLOR_INFO}[Info] 使用缓存的 RPM 文件，跳过下载${COLOR_RESET}"
-      local minio_file="$existing_rpm"
-    else
-      # 没有找到已存在的 RPM，获取最新版本并下载
-      echo -e "${COLOR_INFO}[Info] 未找到缓存的 MinIO RPM，准备下载最新版本...${COLOR_RESET}"
-      echo -e "${COLOR_INFO}[Info] 获取最新的 MinIO RPM 下载地址（$arch）...${COLOR_RESET}"
-
-      local minio_url
-      minio_url=$(get_latest_minio_rpm_url "$arch")
-      if [ $? -ne 0 ] || [ -z "$minio_url" ]; then
-        echo -e "${COLOR_ERROR}[Error] 获取 MinIO 下载地址失败${COLOR_RESET}"
-        return 1
-      fi
-
-      local rpm_filename
-      rpm_filename=$(basename "$minio_url")
-      local minio_file="$minio_dir/$rpm_filename"
-
-      echo -e "${COLOR_INFO}[Info] 最新版本: $rpm_filename${COLOR_RESET}"
-      echo -e "${COLOR_INFO}[Info] 正在下载MinIO软件包...${COLOR_RESET}"
-
-      local logfile
-      logfile=$(get_wget_log_filename "$minio_file")
-      if ! wget "$minio_url" --no-check-certificate -O "$minio_file" -o "$logfile"; then
-        echo -e "${COLOR_ERROR}[Error] MinIO下载失败${COLOR_RESET}"
-        return 1
-      fi
-    fi
-
-    # 安装 RPM 文件
-    dnf install -y "$minio_file" || {
-      echo -e "${COLOR_ERROR}[Error] MinIO安装失败${COLOR_RESET}"
-      return 1
-    }
-    echo -e "${COLOR_SUCCESS}[Success] MinIO安装成功${COLOR_RESET}"
-    return 0
-    ;;
-  *)
-    echo -e "${COLOR_ERROR}[Error] 不支持的架构: $arch${COLOR_RESET}"
-    echo -e "${COLOR_ERROR}[Error] 仅支持 x86_64、aarch64 架构${COLOR_RESET}"
-    return 1
-    ;;
-  esac
-}
 # 智能安装函数
 # 参数: 包名 或 "包名:备用包名1:备用包名2"
 smart_install() {
@@ -490,9 +392,6 @@ install_framework() {
   install_pgvector || return 1
   cd "$SCRIPT_DIR" || return 1
   install_zhparser || return 1
-  # 安装 MinIO 对象存储
-  cd "$SCRIPT_DIR" || return 1
-  install_minio || return 1
   cd "$SCRIPT_DIR" || return 1
   check_pip_framework || return 1
 }

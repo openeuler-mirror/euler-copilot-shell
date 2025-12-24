@@ -84,24 +84,8 @@ uninstall_full() {
         echo "MongoDB not installed, skipping..."
     fi
 
-    # Uninstall MinIO
-    if rpm -q minio >/dev/null 2>&1; then
-        echo "Removing MinIO via dnf..."
-        dnf remove -y minio || true
-    else
-        echo "Stopping MinIO service..."
-        if systemctl is-active --quiet minio; then
-            systemctl stop minio || true
-        fi
-        echo "Removing MinIO files and directories..."
-        rm -rf /etc/systemd/system/minio.service
-        rm -rf /etc/default/minio
-        rm -rf /var/lib/minio
-        rm -rf /usr/local/bin/minio
-    fi
-
     # Remove additional directories
-    rm -rf /opt/aops /opt/authhub /opt/minio /opt/mongodb /opt/pgvector /opt/scws* /opt/zhparser
+    rm -rf /opt/aops /opt/authhub /opt/mongodb /opt/pgvector /opt/scws* /opt/zhparser
     rm -rf /usr/lib/euler-copilot-rag /var/log/openEulerIntelligence /etc/euler-copilot-rag
     rm -rf /etc/nginx/conf.d/authhub.nginx.conf.bak
     rm -rf /etc/systemd/system/sysagent.service /etc/systemd/system/multi-user.target.wants/sysagent.service
