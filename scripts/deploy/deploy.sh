@@ -153,7 +153,6 @@ show_help() {
   echo "  无参数        进入交互式菜单"
   echo "  --h          显示本帮助信息"
   echo "  --help       同 --h"
-  echo "  --a          进入 Agent 初始化模式，详见部署文档"
   echo ""
   echo -e "${BLUE}服务部署手册查看位置:${COLOR_RESET}"
   echo "  1. 在线文档: https://atomgit.com/openeuler/euler-copilot-shell/blob/dev/scripts/deploy/安装部署手册.md"
@@ -167,29 +166,9 @@ show_help() {
   exit 0
 }
 
-agent_manager() {
-  # 获取主脚本绝对路径并切换到所在目录
-  MAIN_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-  if [ "${MAIN_DIR}" = "/usr/bin" ]; then
-    cd /usr/lib/witty-assistant/scripts || exit 1
-  else
-    cd "$MAIN_DIR" || exit 1
-  fi
-
-  # 将所有接收的参数传递给 Python 脚本
-  python3 4-other-script/agent_manager.py "$@"
-  return 0
-}
-
 # 检查帮助参数
 if [[ "$1" == "--h" || "$1" == "--help" ]]; then
   show_help
-fi
-
-# 检查是否进入 Agent 初始化模式
-if [[ "$1" == "--a" ]]; then
-  agent_manager "${@:2}"
-  exit 0
 fi
 
 # 获取主脚本绝对路径并切换到所在目录
