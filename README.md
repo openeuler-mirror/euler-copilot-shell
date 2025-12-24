@@ -116,7 +116,7 @@ witty --login
 
 1. 此命令会自动安装系统服务，请在生产环境使用前仔细评估；
 2. 如果需要重启或卸载 sysAgent，请以管理员身份运行 `witty-manager` 并根据指引操作；
-3. `witty-manager` 的卸载功能会清空机器上 MongoDB 和 PostgreSQL 的全部数据并重置 nginx 服务，请谨慎操作。
+3. `witty-manager` 的卸载功能会清空机器上 PostgreSQL 的全部数据并重置 nginx 服务，请谨慎操作。
 
 ### `--agent` 命令说明
 

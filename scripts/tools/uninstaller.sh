@@ -35,24 +35,8 @@ uninstall_full() {
     # Uninstall additional dependency packages
     dnf remove -y nginx redis mysql java-17-openjdk postgresql libpq-devel || true
 
-    # Uninstall MongoDB
-    if rpm -q mongodb-org-server >/dev/null 2>&1; then
-        echo "Stopping MongoDB..."
-        if systemctl is-active --quiet mongod; then
-            systemctl stop mongod || true
-        fi
-        echo "Removing MongoDB packages..."
-        dnf remove -y mongodb-org-server mongodb-mongosh || true
-        echo "Removing MongoDB data and logs..."
-        rm -rf /var/lib/mongo
-        rm -rf /var/log/mongodb
-        rm -f /etc/mongod.conf
-    else
-        echo "MongoDB not installed, skipping..."
-    fi
-
     # Remove additional directories
-    rm -rf /opt/mongodb /opt/pgvector /opt/scws* /opt/zhparser
+    rm -rf /opt/pgvector /opt/scws* /opt/zhparser
     rm -rf /usr/lib/euler-copilot-rag /var/log/openEulerIntelligence /etc/euler-copilot-rag
     rm -rf /etc/systemd/system/sysagent.service /etc/systemd/system/multi-user.target.wants/sysagent.service
     rm -rf /etc/systemd/system/oi-runtime.service /etc/systemd/system/multi-user.target.wants/oi-runtime.service # 兼容旧版本
