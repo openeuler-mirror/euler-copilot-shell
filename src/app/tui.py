@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
 from textual import on
@@ -39,6 +40,7 @@ from tool.validators import APIValidator
 
 if TYPE_CHECKING:
     from textual.events import Key as KeyEvent
+    from textual.timer import Timer
     from textual.visual import VisualType
     from textual.widget import Widget
 
@@ -52,6 +54,14 @@ class ContentChunkParams(NamedTuple):
     is_llm_output: bool
     current_content: str
     is_first_content: bool
+
+
+class StreamUIFlushParams(NamedTuple):
+    """流式输出 UI 刷新节流参数"""
+
+    flush_interval: float
+    flush_char_threshold: int
+    scroll_interval: float
 
 
 class SelectionCopyMixin:
@@ -167,10 +177,28 @@ class OutputLine(SelectionCopyMixin, Static):
 class MarkdownOutput(SelectionCopyMixin, Markdown):
     """Markdown 输出组件"""
 
+    # Textual Timer 不接受 0 秒 delay（会在定时器内部产生除零风险，且可能导致渲染永远不触发）。
+    # 这里用一个非常小的正值来模拟“下一次事件循环/下一帧”再应用更新，从而合并高频流式更新。
+    _RENDER_DEBOUNCE_DELAY_SECONDS: ClassVar[float] = 0.01
+
+    # 自适应降频：根据“上一帧真实渲染耗时”动态调整去抖延迟。
+    _RENDER_DEBOUNCE_MIN_SECONDS: ClassVar[float] = 0.01
+    _RENDER_DEBOUNCE_MAX_SECONDS: ClassVar[float] = 0.5
+    _RENDER_TIME_TO_DEBOUNCE_MULTIPLIER: ClassVar[float] = 2.0
+    RENDER_TIME_EMA_ALPHA: ClassVar[float] = 0.2
+
     def __init__(self, markdown_content: str = "") -> None:
         """初始化 Markdown 输出组件"""
         super().__init__(markdown_content)
         self.current_content = markdown_content
+        # 去抖渲染：在高频流式更新下合并渲染任务，避免 Markdown 解析/布局事件堆积
+        self._pending_markdown: str | None = None
+        self._render_timer: Timer | None = None
+        # generation gating：用于屏蔽取消/退出后已排队的回调“余震”
+        self._scheduled_generation: int | None = None
+        # EMA 的平均渲染耗时（秒），以及下一次的去抖延迟（秒）
+        self._render_time_ema_seconds: float | None = None
+        self._adaptive_debounce_seconds: float = self._RENDER_DEBOUNCE_DELAY_SECONDS
         self.add_class("llm-output")
         self.can_focus = True
 
@@ -181,14 +209,122 @@ class MarkdownOutput(SelectionCopyMixin, Markdown):
         if self.current_content:
             self.app.copy_to_clipboard(self.current_content)
 
-    def update_markdown(self, markdown_content: str) -> None:
-        """更新 Markdown 内容"""
-        self.current_content = markdown_content
-        self.update(markdown_content)
-
     def get_content(self) -> str:
         """获取当前 Markdown 原始内容"""
         return self.current_content
+
+    def update_markdown(self, markdown_content: str) -> None:
+        """更新 Markdown 内容"""
+        self.current_content = markdown_content
+        self._pending_markdown = markdown_content
+
+        # 允许在未挂载到 App 的场景下（例如单元测试/构造阶段）直接应用，避免 set_timer 依赖消息循环。
+        if self.app is None:
+            self._apply_pending_markdown()
+            return
+
+        # 记录本次调度的 generation，用于后续回调执行时校验是否已被取消/退出
+        self._scheduled_generation = self._get_app_render_generation()
+
+        # 取消旧的未执行渲染，仅保留最新一次
+        if self._render_timer is not None:
+            try:
+                self._render_timer.stop()
+            except (AttributeError, RuntimeError):
+                # Timer 偶发异常不应影响主流程
+                if self.app is not None:
+                    self.app.log("[TUI] Failed to stop markdown render timer")
+                self._render_timer = None
+
+        # 延迟到一个时间片后再更新（自适应），合并同一段时间内的多次更新
+        delay = self._adaptive_debounce_seconds
+        if delay <= 0:
+            delay = self._RENDER_DEBOUNCE_MIN_SECONDS
+        self._render_timer = self.set_timer(delay, self._apply_pending_markdown)
+
+    def cancel_pending_render(self) -> None:
+        """取消尚未执行的渲染（用于取消/退出时阻断后续 UI 更新）。"""
+        self._pending_markdown = None
+        self._scheduled_generation = None
+        if self._render_timer is not None:
+            try:
+                self._render_timer.stop()
+            except (AttributeError, RuntimeError):
+                if self.app is not None:
+                    self.app.log("[TUI] Failed to stop markdown render timer")
+            finally:
+                self._render_timer = None
+
+    def _apply_pending_markdown(self) -> None:
+        """将最新的 pending Markdown 应用到组件。"""
+        try:
+            if self._pending_markdown is None:
+                return
+
+            # generation gating：如果 App 已经进入新一代（取消/退出），则跳过渲染
+            current_generation = self._get_app_render_generation()
+            if (
+                current_generation is not None
+                and self._scheduled_generation is not None
+                and current_generation != self._scheduled_generation
+            ):
+                return
+
+            # 这里调用 update 会触发 Markdown 解析与布局，必须保证已经做过节流/去抖
+            start = time.perf_counter()
+            self.update(self._pending_markdown)
+            duration = time.perf_counter() - start
+            self._record_render_duration(duration)
+        finally:
+            self._pending_markdown = None
+            self._render_timer = None
+            self._scheduled_generation = None
+
+    def _get_app_render_generation(self) -> int | None:
+        """从 App 获取当前 render generation（若可用）。"""
+        app = self.app
+        if app is None:
+            return None
+
+        getter = getattr(app, "_get_render_generation", None)
+        if callable(getter):
+            try:
+                return cast("int", getter())
+            except (AttributeError, RuntimeError, ValueError, TypeError):
+                return None
+
+        # 兼容兜底：直接读取属性（不建议外部依赖）
+        generation = getattr(app, "_render_generation", None)
+        return cast("int | None", generation)
+
+    def _record_render_duration(self, duration_seconds: float) -> None:
+        """记录一次真实渲染耗时，并据此更新自适应去抖延迟。"""
+        if duration_seconds <= 0:
+            return
+
+        if self._render_time_ema_seconds is None:
+            ema = duration_seconds
+        else:
+            alpha = self.RENDER_TIME_EMA_ALPHA
+            ema = (alpha * duration_seconds) + ((1 - alpha) * self._render_time_ema_seconds)
+        self._render_time_ema_seconds = ema
+
+        target_delay = self._RENDER_TIME_TO_DEBOUNCE_MULTIPLIER * ema
+        # 夹逼范围，防止过度降低实时性或完全卡住
+        self._adaptive_debounce_seconds = max(
+            self._RENDER_DEBOUNCE_MIN_SECONDS,
+            min(self._RENDER_DEBOUNCE_MAX_SECONDS, target_delay),
+        )
+
+        # 将渲染耗时上报给 App（用于流式 flush 的自适应降频）
+        app = self.app
+        reporter = getattr(app, "_report_markdown_render_duration", None) if app is not None else None
+        if callable(reporter):
+            try:
+                reporter(duration_seconds)
+            except (AttributeError, RuntimeError, ValueError, TypeError):
+                # 上报失败不影响主流程
+                return
 
 
 class MCPProgressBlock(MarkdownOutput):
@@ -252,6 +388,13 @@ class IntelligentTerminal(App):
 
     CSS_PATH = "css/styles.tcss"
 
+    # 流式渲染节流参数：降低 Markdown 全量重渲染频率，避免大输出时阻塞事件循环
+    STREAM_UI_FLUSH: ClassVar[StreamUIFlushParams] = StreamUIFlushParams(
+        flush_interval=0.08,
+        flush_char_threshold=4096,
+        scroll_interval=0.12,
+    )
+
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding(key="ctrl+q", action="request_quit", description=_("Quit")),
         Binding(key="ctrl+s", action="settings", description=_("Settings")),
@@ -287,14 +430,14 @@ class IntelligentTerminal(App):
         self.processing: bool = False
         # 添加保存任务的集合到类属性
         self.background_tasks: set[asyncio.Task] = set()
+        # 创建日志实例
+        self.logger = get_logger(__name__)
         # 创建并保持单一的 LLM 客户端实例以维持对话历史
         self._llm_client: LLMClientBase | None = None
         # 当前选择的智能体 - 根据配置的 default_app 初始化
         self.current_agent: tuple[str, str] = self._get_initial_agent()
         # MCP 状态
         self._mcp_mode: str = "normal"  # "normal", "confirm", "parameter"
-        # 创建日志实例
-        self.logger = get_logger(__name__)
         # MCP 进度展示状态
         self._current_progress_block: MCPProgressBlock | None = None
         self._current_waiting_block: MCPWaitingBlock | None = None
@@ -302,6 +445,10 @@ class IntelligentTerminal(App):
         self._mcp_step_blocks: dict[str, MCPProgressBlock] = {}
         # LOGO 显示状态
         self._has_conversation: bool = False
+        # generation gating：取消/退出时 bump，用于屏蔽已经排队的 UI 更新回调（timer/call_after_refresh）
+        self._render_generation: int = 0
+        # 全局统计 Markdown 渲染耗时 EMA（用于动态调整 flush 频率）
+        self._markdown_render_ema_seconds: float | None = None
 
     def compose(self) -> ComposeResult:
         """构建界面"""
@@ -383,6 +530,12 @@ class IntelligentTerminal(App):
         """取消当前正在进行的操作（命令执行或AI问答）"""
         if self.processing:
             self.logger.info("用户请求取消当前操作")
+
+            # generation gating：先 bump，屏蔽已排队的回调
+            self._bump_render_generation("cancel")
+
+            # 先清理可能排队的 Markdown 渲染任务，避免 Ctrl+C 后仍持续刷新
+            self._cancel_pending_output_renders()
 
             # 取消当前所有的后台任务
             interrupted_count = 0
@@ -497,6 +650,8 @@ class IntelligentTerminal(App):
 
     def exit(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         """退出应用前取消所有后台任务"""
+        # generation gating：退出前 bump，避免退出过程中仍有 UI 回调试图执行
+        self._bump_render_generation("exit")
         # 取消所有正在运行的后台任务
         for task in self.background_tasks:
             if not task.done():
@@ -708,6 +863,10 @@ class IntelligentTerminal(App):
             "timeout_seconds": None,  # 无总体超时限制，支持超长时间任务
             "last_content_time": start_time,
             "no_content_timeout": 1800.0,  # 30分钟无内容超时
+            # UI 刷新节流状态
+            "last_ui_flush_time": start_time,
+            "pending_chars": 0,
+            "last_scroll_time": start_time,
         }
 
     async def _process_stream(
@@ -731,15 +890,20 @@ class IntelligentTerminal(App):
                 break
 
             # 处理内容
-            await self._process_stream_content(
+            did_update_ui = await self._process_stream_content(
                 content,
                 stream_state,
                 output_container,
                 is_llm_output=is_llm_output,
+                current_time=current_time,
             )
 
-            # 滚动到底部
-            await self._scroll_to_end()
+            # 合并滚动：仅在 UI 真正更新时、且按间隔节流滚动到底部
+            if did_update_ui:
+                self._maybe_scroll_to_end(output_container, stream_state, current_time)
+
+            # 让出事件循环，确保键盘事件（如 Ctrl+C）有机会被处理
+            await asyncio.sleep(0)
 
         return stream_state["received_any_content"]
 
@@ -764,6 +928,42 @@ class IntelligentTerminal(App):
 
         return False
 
+    def _get_render_generation(self) -> int:
+        """获取当前 render generation。"""
+        return self._render_generation
+
+    def _bump_render_generation(self, reason: str) -> None:
+        """进入新一代渲染周期，用于取消/退出时阻断“余震”回调。"""
+        self._render_generation += 1
+        self.logger.debug("[TUI] Bump render generation to %d (%s)", self._render_generation, reason)
+
+    def _report_markdown_render_duration(self, duration_seconds: float) -> None:
+        """接收 Markdown 组件上报的渲染耗时，用于流式刷新自适应降频。"""
+        if duration_seconds <= 0:
+            return
+
+        if self._markdown_render_ema_seconds is None:
+            self._markdown_render_ema_seconds = duration_seconds
+            return
+
+        alpha = MarkdownOutput.RENDER_TIME_EMA_ALPHA
+        self._markdown_render_ema_seconds = (alpha * duration_seconds) + (
+            (1 - alpha) * self._markdown_render_ema_seconds
+        )
+
+    def _cancel_pending_output_renders(self) -> None:
+        """取消输出区域内所有 Markdown 组件的待渲染任务。"""
+        try:
+            output_container = self.query_one("#output-container")
+            for widget in output_container.query(MarkdownOutput):
+                try:
+                    widget.cancel_pending_render()
+                except (AttributeError, RuntimeError, ValueError):
+                    # 单个组件异常不影响整体取消
+                    self.logger.debug("[TUI] Cancel pending render failed", exc_info=True)
+        except (AttributeError, RuntimeError, ValueError):
+            self.logger.debug("[TUI] Failed to cancel pending renders", exc_info=True)
+
     async def _process_stream_content(
         self,
         content: str,
@@ -771,56 +971,169 @@ class IntelligentTerminal(App):
         output_container: Container,
         *,
         is_llm_output: bool,
-    ) -> None:
-        """处理流式内容"""
-        params = ContentChunkParams(
-            content=content,
-            is_llm_output=is_llm_output,
-            current_content=stream_state["current_content"],
-            is_first_content=stream_state["is_first_content"],
-        )
-
-        is_llm_stats_chunk = content.startswith(LLM_STATS_PREFIX)
-
-        processed_line = await self._process_content_chunk(
-            params,
-            stream_state["current_line"],
+        current_time: float,
+    ) -> bool:
+        """处理流式内容，返回本次调用是否发生可见 UI 更新（mount/update）。"""
+        stats_handled = self._try_handle_llm_stats_chunk(
+            content,
+            stream_state,
             output_container,
+            is_llm_output=is_llm_output,
         )
+        if stats_handled is not None:
+            return stats_handled
 
-        # 检查是否是 MCP 消息处理（返回值为 None 表示是 MCP 消息）
-        tag_info, _cleaned_content = extract_mcp_tag(content)
-        is_mcp_detected = processed_line is None and tag_info is not None
+        mcp_handled, content = self._try_handle_mcp_progress(content, output_container)
+        if mcp_handled:
+            return True
 
-        # 只有当返回值不为None时才更新current_line
-        if processed_line is not None:
-            stream_state["current_line"] = processed_line
+        current_line = cast("OutputLine | MarkdownOutput | None", stream_state.get("current_line"))
+        current_kind = (
+            "markdown"
+            if isinstance(current_line, MarkdownOutput)
+            else "text"
+            if isinstance(current_line, OutputLine)
+            else None
+        )
+        incoming_kind = "markdown" if is_llm_output else "text"
 
-        if processed_line is not None and not is_mcp_detected:
+        # 若输出类型切换，在创建新组件前强制 flush 旧组件（把未刷新的累计内容推到 UI）
+        if (
+            current_line is not None
+            and current_kind is not None
+            and current_kind != incoming_kind
+            and cast("int", stream_state.get("pending_chars", 0)) > 0
+        ):
+            self._flush_current_line(current_line, stream_state)
+            stream_state["last_ui_flush_time"] = current_time
+            stream_state["pending_chars"] = 0
+
+        # 第一段内容或类型切换：创建适当的输出组件
+        if (
+            cast("bool", stream_state.get("is_first_content", True))
+            or current_line is None
+            or current_kind != incoming_kind
+        ):
+            stream_state["is_first_content"] = False
+            stream_state["current_content"] = content
+            stream_state["pending_chars"] = 0
+            stream_state["last_ui_flush_time"] = current_time
+
+            new_line: OutputLine | MarkdownOutput = MarkdownOutput(content) if is_llm_output else OutputLine(content)
+            output_container.mount(new_line)
+            stream_state["current_line"] = new_line
+
             # 任意非 MCP 输出都会结束当前进度块序列
             self._mcp_cluster_active = False
             self._current_progress_block = None
+            return True
 
-        # 更新状态 - 但是不要让 MCP 消息影响流状态
-        if is_llm_stats_chunk:
-            stream_state["is_first_content"] = False
-            current_line_widget = stream_state.get("current_line")
-            if isinstance(current_line_widget, MarkdownOutput):
-                stream_state["current_content"] = current_line_widget.get_content()
+        # 后续内容：累计到 current_content，并按阈值节流刷新 UI
+        stream_state["current_content"] = cast("str", stream_state.get("current_content", "")) + content
+        stream_state["pending_chars"] = cast("int", stream_state.get("pending_chars", 0)) + len(content)
+
+        if not self._should_flush_ui(stream_state, current_time, is_markdown=isinstance(current_line, MarkdownOutput)):
+            return False
+
+        self._flush_current_line(current_line, stream_state)
+        stream_state["last_ui_flush_time"] = current_time
+        stream_state["pending_chars"] = 0
+        return True
+
+    def _should_flush_ui(self, stream_state: dict, current_time: float, *, is_markdown: bool) -> bool:
+        """判断是否应刷新 UI（Markdown 全量重渲染是主要开销点，需节流）。"""
+        last_flush_time = cast("float", stream_state.get("last_ui_flush_time", 0.0))
+        pending_chars = cast("int", stream_state.get("pending_chars", 0))
+        params = self.STREAM_UI_FLUSH
+
+        flush_interval = params.flush_interval
+        flush_char_threshold = params.flush_char_threshold
+
+        # 若 Markdown 渲染真实耗时变大，则动态降低刷新频率，避免超大表格触发雪崩
+        if is_markdown and self._markdown_render_ema_seconds is not None:
+            # 至少为 base，最多 0.8s，目标约为 2x 平均渲染耗时
+            flush_interval = max(flush_interval, min(0.8, 2.0 * self._markdown_render_ema_seconds))
+            # 同步提高字符阈值，减少刷新次数（上限 64k）
+            scaled = int(flush_char_threshold * (1.0 + (self._markdown_render_ema_seconds / 0.05)))
+            flush_char_threshold = min(65536, max(flush_char_threshold, scaled))
+
+        if pending_chars >= flush_char_threshold:
+            return True
+        return (current_time - last_flush_time) >= flush_interval
+
+    def _flush_current_line(self, current_line: OutputLine | MarkdownOutput, stream_state: dict) -> None:
+        """将累计内容写回 UI 组件"""
+        current_content = cast("str", stream_state.get("current_content", ""))
+        if isinstance(current_line, MarkdownOutput):
+            current_line.update_markdown(current_content)
+        else:
+            current_line.update(current_content)
+
+    def _maybe_scroll_to_end(self, output_container: Container, stream_state: dict, current_time: float) -> None:
+        """按间隔节流滚动到底部，避免每个 chunk 触发滚动与重排"""
+        last_scroll_time = cast("float", stream_state.get("last_scroll_time", 0.0))
+        if (current_time - last_scroll_time) < self.STREAM_UI_FLUSH.scroll_interval:
             return
+        stream_state["last_scroll_time"] = current_time
 
-        if not is_mcp_detected:
-            if stream_state["is_first_content"]:
-                stream_state["is_first_content"] = False
-                # 第一次内容直接设置为当前内容，不需要累积
-                if is_llm_output:
-                    stream_state["current_content"] = content
-                else:
-                    # 非LLM输出，重置累积内容
-                    stream_state["current_content"] = ""
-            elif isinstance(stream_state["current_line"], MarkdownOutput) and is_llm_output:
-                # 只有在LLM输出且有有效的 MarkdownOutput 时才累积
-                stream_state["current_content"] += content
+        # 使用 call_after_refresh 合并滚动到下一次 UI 刷新周期（并做 generation gating）
+        generation = self._render_generation
+
+        def _do_scroll() -> None:
+            if self._render_generation != generation:
+                return
+            output_container.scroll_end(animate=False)
+
+        self.call_after_refresh(_do_scroll)
+
+    def _try_handle_llm_stats_chunk(
+        self,
+        content: str,
+        stream_state: dict,
+        output_container: Container,
+        *,
+        is_llm_output: bool,
+    ) -> bool | None:
+        """若为 LLM 统计段落则处理并返回 True/False；否则返回 None。"""
+        if not (is_llm_output and content.startswith(LLM_STATS_PREFIX)):
+            return None
+
+        stats_payload = content[len(LLM_STATS_PREFIX) :].strip()
+        if not stats_payload:
+            return False
+
+        processed = self._append_llm_stats_block(
+            stats_payload,
+            cast("OutputLine | MarkdownOutput | None", stream_state.get("current_line")),
+            output_container,
+        )
+        if processed is not None:
+            stream_state["current_line"] = processed
+            stream_state["current_content"] = processed.get_content()
+        stream_state["is_first_content"] = False
+
+        # 统计段属于普通输出，结束 MCP 进度块序列
+        self._mcp_cluster_active = False
+        self._current_progress_block = None
+        return True
+
+    def _try_handle_mcp_progress(self, content: str, output_container: Container) -> tuple[bool, str]:
+        """若为 MCP 进度消息则处理并返回 (True, cleaned_content)；否则返回 (False, cleaned_content)。"""
+        tag_info, cleaned_content = extract_mcp_tag(content)
+        replace_tag_info: MCPTagInfo | None = None
+        mcp_tag_info: MCPTagInfo | None = None
+        if tag_info:
+            if MCPTags.REPLACE_PREFIX in content:
+                replace_tag_info = tag_info
+            elif MCPTags.MCP_PREFIX in content:
+                mcp_tag_info = tag_info
+
+        step_tag = replace_tag_info or mcp_tag_info
+        if step_tag is not None and is_mcp_message(content):
+            self._handle_mcp_progress_message(cleaned_content, step_tag, output_container)
+            return True, cleaned_content
+
+        return False, cleaned_content
 
     def _handle_timeout_error(self, output_container: Container, stream_state: dict) -> bool:
         """处理超时错误"""
@@ -1134,8 +1447,15 @@ class IntelligentTerminal(App):
             # 显示错误信息
             output_container.mount(OutputLine(f"❌ {error_msg}", command=False))
 
-            # 滚动到底部以确保用户看到错误信息
-            self.call_after_refresh(lambda: output_container.scroll_end(animate=False))
+            # 滚动到底部以确保用户看到错误信息（并做 generation gating）
+            generation = self._render_generation
+
+            def _do_scroll() -> None:
+                if self._render_generation != generation:
+                    return
+                output_container.scroll_end(animate=False)
+
+            self.call_after_refresh(_do_scroll)
 
         except Exception:
             # 如果UI显示失败，至少记录错误日志
@@ -1178,10 +1498,17 @@ class IntelligentTerminal(App):
         """滚动到容器底部的辅助方法"""
         # 获取输出容器
         output_container = self.query_one("#output-container")
-        # 使用同步方法滚动，确保UI更新
-        output_container.scroll_end(animate=False)
-        # 等待一个小的延迟，确保UI有时间更新
-        await asyncio.sleep(0.01)
+        # 合并到刷新周期，避免频繁滚动导致额外重排（并做 generation gating）
+        generation = self._render_generation
+
+        def _do_scroll() -> None:
+            if self._render_generation != generation:
+                return
+            output_container.scroll_end(animate=False)
+
+        self.call_after_refresh(_do_scroll)
+        # 让出事件循环，避免阻塞键盘事件
+        await asyncio.sleep(0)
 
     async def _ensure_hermes_user_info(self) -> None:
         """确保 Hermes 用户信息已加载并同步 personalToken 到配置"""
@@ -1445,15 +1772,18 @@ class IntelligentTerminal(App):
                 is_llm_output = tag_info is None
 
                 # 处理内容
-                await self._process_stream_content(
+                did_update_ui = await self._process_stream_content(
                     content,
                     stream_state,
                     output_container,
                     is_llm_output=is_llm_output,
+                    current_time=current_time,
                 )
 
-                # 滚动到底部
-                await self._scroll_to_end()
+                if did_update_ui:
+                    self._maybe_scroll_to_end(output_container, stream_state, current_time)
+
+                await asyncio.sleep(0)
 
             return stream_state["received_any_content"]
         except asyncio.CancelledError:
