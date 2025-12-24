@@ -275,7 +275,7 @@ install_framework() {
 
   # 3. 获取本机IP
   local ip_address
-  config_toml_path="../5-resource/config.toml"
+  config_toml_path="../resources/config.toml"
   # 提取 domain 的值，支持多种 TOML 字符串格式（双引号、单引号、无引号）
   if [ ! -f "$config_toml_path" ]; then
     echo -e "${COLOR_ERROR}[Error] 配置文件不存在: $config_toml_path${COLOR_RESET}"
@@ -300,7 +300,7 @@ install_framework() {
   unset http_proxy https_proxy
 
   # 5. 配置文件处理
-  local framework_file="../5-resource/config.toml"
+  local framework_file="../resources/config.toml"
   local framework_target="/etc/sysagent/config.toml"
 
   # 检查源文件是否存在
@@ -366,7 +366,7 @@ main() {
   SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   cd "$SCRIPT_DIR" || return 1
 
-  config_toml_file="$SCRIPT_DIR/../5-resource/config.toml"
+  config_toml_file="$SCRIPT_DIR/../resources/config.toml"
   PGSQL_PASSWORD=$(generate_random_password)
 
   update_password || return 1

@@ -25,7 +25,7 @@ cleanup_mysql_authhub() {
         return
     fi
     # Read password from mysql_temp file
-    local mysql_temp_file="/usr/lib/witty-assistant/scripts/5-resource/mysql_temp"
+    local mysql_temp_file="/usr/lib/witty-assistant/scripts/resources/mysql_temp"
     if [ ! -f "$mysql_temp_file" ]; then
         echo "MySQL temp file not found: $mysql_temp_file, skipping MySQL cleanup."
         return
@@ -153,8 +153,8 @@ rm -rf /opt/tika
 rm -f /etc/systemd/system/tika.service
 # Remove installation files
 rm -f /etc/euler_Intelligence_install*
-rm -f /usr/lib/witty-assistant/scripts/5-resource/config.*
-rm -f /usr/lib/witty-assistant/scripts/5-resource/env.*
+rm -f /usr/lib/witty-assistant/scripts/resources/config.*
+rm -f /usr/lib/witty-assistant/scripts/resources/env.*
 # Remove PostgreSQL data
 rm -rf /var/lib/pgsql/data
 rm -f /var/lib/pgsql/*.log

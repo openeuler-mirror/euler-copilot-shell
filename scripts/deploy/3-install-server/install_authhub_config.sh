@@ -3,7 +3,7 @@
 # 配置参数
 CONFIG_DIR="/etc/aops/conf.d"
 CONFIG_FILE="${CONFIG_DIR}/authhub.yml"
-mysql_temp="../5-resource/mysql_temp"
+mysql_temp="../resources/mysql_temp"
 
 # 检查并创建目录
 ensure_config_dir() {

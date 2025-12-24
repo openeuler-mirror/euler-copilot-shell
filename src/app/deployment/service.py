@@ -40,7 +40,7 @@ class DeploymentResourceManager:
 
     # RPM 包安装的资源文件路径
     INSTALLER_BASE_PATH = Path("/usr/lib/witty-assistant/scripts")
-    RESOURCE_PATH = INSTALLER_BASE_PATH / "5-resource"
+    RESOURCE_PATH = INSTALLER_BASE_PATH / "resources"
     DEPLOY_SCRIPT = INSTALLER_BASE_PATH / "deploy"
 
     # 配置文件模板路径

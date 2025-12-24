@@ -22,7 +22,7 @@ class TestDeploymentResourceFiles:
         """获取脚本资源目录路径"""
         # 从项目根目录查找资源目录
         project_root = Path(__file__).parent.parent.parent.parent
-        return project_root / "scripts" / "deploy" / "5-resource"
+        return project_root / "scripts" / "deploy" / "resources"
 
     def test_script_resource_directory_exists(self, script_resource_dir: Path) -> None:
         """测试脚本资源目录是否存在"""
@@ -76,7 +76,7 @@ class TestDeploymentConfiguration:
     def script_resource_dir(self) -> Path:
         """获取脚本资源目录路径"""
         project_root = Path(__file__).parent.parent.parent.parent
-        return project_root / "scripts" / "deploy" / "5-resource"
+        return project_root / "scripts" / "deploy" / "resources"
 
     def test_config_toml_exists(self, script_resource_dir: Path) -> None:
         """测试 config.toml 配置文件是否存在"""

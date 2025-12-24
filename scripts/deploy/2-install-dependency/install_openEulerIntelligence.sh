@@ -98,7 +98,7 @@ install_and_verify() {
 # 安装pgvector服务
 install_pgvector() {
   local pgvector_dir="/opt/pgvector"
-  local pgvector_tar="../5-resource/pg-plugin/pgvector-0.8.1.tar.gz"
+  local pgvector_tar="../resources/pg-plugin/pgvector-0.8.1.tar.gz"
   local pgvector_installed_marker="/usr/share/pgsql/extension/vector.control" # pgvector安装后的标志文件
 
   echo -e "${COLOR_INFO}[Info] 开始安装pgvector...${COLOR_RESET}"
@@ -137,7 +137,7 @@ install_pgvector() {
 }
 # 安装scws服务
 install_scws() {
-  local scws_tar="../5-resource/pg-plugin/scws-1.2.3.tar.bz2"
+  local scws_tar="../resources/pg-plugin/scws-1.2.3.tar.bz2"
   local scws_dir="/opt/scws"
   local scws_installed_marker="/usr/local/lib/libscws.la" # SCWS安装后的标志性文件
 
@@ -196,7 +196,7 @@ install_scws() {
 # 安装zhparser服务
 install_zhparser() {
   local zhparser_dir="/opt/zhparser"
-  local zhparser_tar="../5-resource/pg-plugin/zhparser-2.3.tar.gz"
+  local zhparser_tar="../resources/pg-plugin/zhparser-2.3.tar.gz"
   local zhparser_installed_marker="/usr/share/pgsql/extension/zhparser.control" # zhparser安装后的标志文件
 
   echo -e "${COLOR_INFO}[Info] 开始安装zhparser...${COLOR_RESET}"
