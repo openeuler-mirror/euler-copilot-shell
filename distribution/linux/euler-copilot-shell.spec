@@ -7,7 +7,7 @@ Version:        2.0.0
 Release:        3%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
 Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
-URL:            https://gitee.com/openeuler/euler-copilot-shell
+URL:            https://atomgit.com/openeuler/euler-copilot-shell
 Source0:        %{name}-%{version}.tar.gz
 
 ExclusiveArch:  x86_64 aarch64 riscv64 loongarch64

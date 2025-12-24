@@ -156,7 +156,7 @@ show_help() {
   echo "  --a          进入 Agent 初始化模式，详见部署文档"
   echo ""
   echo -e "${BLUE}服务部署手册查看位置:${COLOR_RESET}"
-  echo "  1. 在线文档: https://gitee.com/openeuler/euler-copilot-shell/blob/dev/scripts/deploy/安装部署手册.md"
+  echo "  1. 在线文档: https://atomgit.com/openeuler/euler-copilot-shell/blob/dev/scripts/deploy/安装部署手册.md"
   echo ""
   echo -e "${BLUE}常见问题:${COLOR_RESET}"
   echo "  - 服务启动失败排查: journalctl -xe -u [服务名称] --all"

@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-DOCS_URL: Final[str] = "https://gitee.com/openeuler/euler-copilot-shell/tree/master/docs"
+DOCS_URL: Final[str] = "https://atomgit.com/openeuler/euler-copilot-shell/tree/master/docs"
 
 _HELP_ALIASES: Final[set[str]] = {"-h", "--help", "help"}
 _VERSION_ALIASES: Final[set[str]] = {"-V", "--version", "version"}
