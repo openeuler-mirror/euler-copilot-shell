@@ -10,61 +10,6 @@ declare -a installed_pkgs=()
 install_success=true
 missing_pkgs=()
 
-# 检查系统版本并返回兼容的 el 版本
-get_el_version() {
-  # 首先检查是否为 openEuler 系统
-  if [ -f "/etc/openEuler-release" ]; then
-    local openeuler_version
-    openeuler_version=$(grep -Eo 'openEuler release [0-9]+\.[0-9]+' /etc/openEuler-release | awk '{print $3}' | tail -n 1)
-
-    if [ -n "$openeuler_version" ]; then
-      # 将版本号转换为可比较的数字格式（如 22.03 -> 2203）
-      local major minor
-      major=$(echo "$openeuler_version" | cut -d'.' -f1)
-      minor=$(echo "$openeuler_version" | cut -d'.' -f2)
-
-      if [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ ]]; then
-        local version_num=$((10#$major * 100 + 10#$minor))
-
-        # openEuler 22.03 及之前使用 el8，24.03 及之后使用 el9
-        if [ $version_num -le 2203 ]; then
-          echo "8"
-          return 0
-        else
-          echo "9"
-          return 0
-        fi
-      fi
-    fi
-  fi
-
-  # 如果不是标准的 openEuler 或无法获取版本，则检查内核版本
-  echo -e "${COLOR_WARNING}[Warning] 非标准 openEuler 系统，基于内核版本判断 el 版本${COLOR_RESET}" >&2
-  local kernel_version
-  kernel_version=$(uname -r | cut -d'.' -f1,2)
-
-  # 将版本号转换为可比较的数字格式
-  local major minor
-  major=$(echo "$kernel_version" | cut -d'.' -f1)
-  minor=$(echo "$kernel_version" | cut -d'.' -f2)
-
-  if [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ ]]; then
-    local version_num=$((10#$major * 100 + 10#$minor))
-
-    # 内核版本 < 5.14 使用 el8，>= 5.14 使用 el9
-    if [ $version_num -lt 514 ]; then
-      echo "8"
-      return 0
-    else
-      echo "9"
-      return 0
-    fi
-  fi
-
-  echo -e "${COLOR_ERROR}[Error] 无法确定兼容的 el 版本，请检查系统信息${COLOR_RESET}" >&2
-  return 1
-}
-
 # 获取 wget 日志文件名
 get_wget_log_filename() {
   local file_path=$1
