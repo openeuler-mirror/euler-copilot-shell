@@ -205,55 +205,18 @@ check_packages() {
 check_framework_pkg() {
   local pkgs=(
     "euler-copilot-framework"
-    "git"
     "make"
     "gcc"
     "gcc-c++"
     "clang"
     "llvm"
     "tar"
-    "python3-pip"
     "postgresql"
     "postgresql-server"
     "postgresql-server-devel"
     "libpq-devel"
   )
   if ! check_packages "${pkgs[@]}"; then
-    return 1
-  fi
-}
-
-# 安装过程需要访问的站点列表
-REQUIRED_URLS=(
-  "www.xunsearch.com:80"     # SCWS 分词库下载
-  "repo.huaweicloud.com:443" # pip 华为云镜像源
-)
-
-function check_network {
-  echo -e "${COLOR_INFO}[Info] 检查网络连接...${COLOR_RESET}"
-
-  local failed_sites=()
-  local timeout_seconds=5
-
-  for site in "${REQUIRED_URLS[@]}"; do
-    local host="${site%%:*}"
-    local port="${site##*:}"
-
-    printf "  %-35s" "检测: $host"
-    if timeout $timeout_seconds bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
-      echo -e "${COLOR_SUCCESS}[OK]${COLOR_RESET}"
-    else
-      echo -e "${COLOR_ERROR}[FAIL]${COLOR_RESET}"
-      failed_sites+=("$host")
-    fi
-  done
-
-  if [ ${#failed_sites[@]} -eq 0 ]; then
-    echo -e "${COLOR_SUCCESS}[Success] 所有必要站点均可访问${COLOR_RESET}"
-    return 0
-  else
-    echo -e "${COLOR_WARNING}[Warning] 以下站点不可访问: ${failed_sites[*]}${COLOR_RESET}"
-    echo -e "${COLOR_INFO}[Info] 安装过程中相关功能可能失败，请检查网络或配置代理${COLOR_RESET}"
     return 1
   fi
 }
