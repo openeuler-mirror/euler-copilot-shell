@@ -20,6 +20,7 @@ from .services import (
     HermesAgentManager,
     HermesConversationManager,
     HermesHttpManager,
+    HermesMCPManager,
     HermesModelManager,
     HermesUserManager,
 )
@@ -62,6 +63,7 @@ class HermesChatClient(LLMClientBase):
         self._model_manager: HermesModelManager | None = None
         self._agent_manager: HermesAgentManager | None = None
         self._conversation_manager: HermesConversationManager | None = None
+        self._mcp_manager: HermesMCPManager | None = None
         self._stream_processor: HermesStreamProcessor | None = None
 
         # MCP 事件处理器（可选）
@@ -102,6 +104,13 @@ class HermesChatClient(LLMClientBase):
         if self._conversation_manager is None:
             self._conversation_manager = HermesConversationManager(self.http_manager)
         return self._conversation_manager
+
+    @property
+    def mcp_manager(self) -> HermesMCPManager:
+        """获取 MCP 管理器（延迟初始化）"""
+        if self._mcp_manager is None:
+            self._mcp_manager = HermesMCPManager(self.http_manager)
+        return self._mcp_manager
 
     @property
     def stream_processor(self) -> HermesStreamProcessor:
@@ -188,6 +197,18 @@ class HermesChatClient(LLMClientBase):
         if self._user_info is None:
             return False
         return self._user_info.get("isAdmin", False)
+
+    async def activate_all_mcp_services(self) -> None:
+        """
+        激活当前用户的所有 MCP 服务
+
+        调用 MCP 管理器的激活方法，确保所有 MCP 服务处于激活状态。
+
+        Raises:
+            HermesAPIError: 当激活过程出现错误时
+
+        """
+        await self.mcp_manager.activate_all_mcp()
 
     async def update_user_info(self, *, auto_execute: bool) -> bool:
         """

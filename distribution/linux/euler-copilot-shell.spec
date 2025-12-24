@@ -4,7 +4,7 @@
 
 Name:           euler-copilot-shell
 Version:        2.0.0
-Release:        2%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
+Release:        3%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
 Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
 URL:            https://gitee.com/openeuler/euler-copilot-shell
@@ -142,6 +142,10 @@ rm -f /usr/lib/witty-assistant/scripts
 fi
 
 %changelog
+* Tue Dec 23 2025 openEuler <contact@openeuler.org> - 2.0.0-3
+- feat: Add Witty Assistant welcome screen & LOGO
+- refactor: Improve Markdown rendering performance in TUI
+
 * Fri Dec 12 2025 openEuler <contact@openeuler.org> - 2.0.0-2
 - chore: Update project name to "Witty Assistant"
 - chore: Update program short name to "witty"
@@ -164,7 +168,7 @@ fi
 - Feature: Add login through browser (requires proper desktop environment)
 
 * Wed Oct 29 2025 openEuler <contact@openeuler.org> - 0.10.2-3
-- Fix issue where failing to fetch mcp when creating agent with witty-manager
+- Fix issue where failing to fetch mcp when creating agent with oi-manager
 
 * Sat Oct 25 2025 openEuler <contact@openeuler.org> - 0.10.2-2
 - Add internationalization support (currently supports English and Simplified Chinese)
@@ -189,7 +193,7 @@ fi
 
 * Wed Sep 10 2025 openEuler <contact@openeuler.org> - 0.10.1-1
 - 支持切换 MCP 自动执行模式
-- 简化安装器命令为 witty-manager
+- 简化安装器命令为 oi-manager
 
 * Tue Sep 09 2025 openEuler <contact@openeuler.org> - 0.10.0-4
 - 优化安装脚本：添加内核版本检查和架构支持，优化 MongoDB 和 MinIO 安装逻辑
