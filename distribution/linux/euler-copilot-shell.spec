@@ -92,7 +92,7 @@ mkdir -p %{buildroot}%{_bindir}
 
 # 复制部署脚本和资源
 install -m 755 scripts/deploy/deploy.sh %{buildroot}/usr/lib/witty-assistant/scripts/deploy
-cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deploy/2-install-dependency scripts/deploy/3-install-server scripts/deploy/4-other-script scripts/deploy/resources %{buildroot}/usr/lib/witty-assistant/scripts/
+cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deploy/2-install-dependency scripts/deploy/3-install-server scripts/deploy/resources %{buildroot}/usr/lib/witty-assistant/scripts/
 chmod -R +x %{buildroot}/usr/lib/witty-assistant/scripts/
 
 # 创建可执行文件的符号链接
