@@ -38,23 +38,49 @@ LOCAL_DEPLOYMENT_HOST = "127.0.0.1"
 class DeploymentResourceManager:
     """部署资源管理器，管理 RPM 包安装的资源文件"""
 
-    # RPM 包安装的资源文件路径
-    INSTALLER_BASE_PATH = Path("/usr/lib/witty-assistant/scripts")
-    RESOURCE_PATH = INSTALLER_BASE_PATH / "5-resource"
-    DEPLOY_SCRIPT = INSTALLER_BASE_PATH / "deploy"
+    CANDIDATE_INSTALLER_BASE_PATHS: tuple[Path, ...] = (
+        Path("/usr/lib/witty-assistant/scripts"),
+    )
 
-    # 配置文件模板路径
-    CONFIG_TEMPLATE = RESOURCE_PATH / "config.toml"
+    def __init__(self) -> None:
+        """初始化资源管理器，并缓存已解析的安装器资源路径。"""
+        self._resolved_installer_base_path: Path | None = None
 
-    @classmethod
-    def check_installer_available(cls) -> bool:
-        """检查安装器是否可用"""
-        return (
-            cls.INSTALLER_BASE_PATH.exists()
-            and cls.RESOURCE_PATH.exists()
-            and cls.DEPLOY_SCRIPT.exists()
-            and cls.CONFIG_TEMPLATE.exists()
-        )
+    @property
+    def installer_base_path(self) -> Path:
+        """返回已解析的安装器 base path（优先使用已通过检查的路径）。"""
+        if self._resolved_installer_base_path is not None:
+            return self._resolved_installer_base_path
+        # 未解析时返回首选路径（避免到处判断 None）；调用方应先通过 check_installer_available。
+        return self.CANDIDATE_INSTALLER_BASE_PATHS[0]
+
+    @property
+    def resource_path(self) -> Path:
+        """返回安装器 resources 目录路径。"""
+        return self.installer_base_path / "resources"
+
+    @property
+    def deploy_script(self) -> Path:
+        """返回安装器 deploy 入口脚本路径。"""
+        return self.installer_base_path / "deploy"
+
+    @property
+    def config_template(self) -> Path:
+        """返回安装器的配置模板文件路径（config.toml）。"""
+        return self.resource_path / "config.toml"
+
+    def check_installer_available(self) -> bool:
+        """检查安装器是否可用，并缓存实际可用的资源路径。"""
+        for base_path in self.CANDIDATE_INSTALLER_BASE_PATHS:
+            resource_path = base_path / "resources"
+            deploy_script = base_path / "deploy"
+            config_template = resource_path / "config.toml"
+
+            if base_path.exists() and resource_path.exists() and deploy_script.exists() and config_template.exists():
+                self._resolved_installer_base_path = base_path
+                return True
+
+        return False
 
     @classmethod
     def get_template_content(cls, template_path: Path) -> str:
@@ -423,7 +449,7 @@ class DeploymentService:
             progress_callback(self.state)
 
         try:
-            script_path = self.resource_manager.INSTALLER_BASE_PATH / "1-check-env" / "check_env.sh"
+            script_path = self.resource_manager.installer_base_path / "1-check-env" / "check_env.sh"
             return await self._run_script(script_path, _("环境检查脚本"), progress_callback)
         except Exception as e:
             self.state.add_log(_("✗ 环境检查失败: {error}").format(error=e))
@@ -445,7 +471,7 @@ class DeploymentService:
 
         try:
             script_path = (
-                self.resource_manager.INSTALLER_BASE_PATH / "2-install-dependency" / "install_openEulerIntelligence.sh"
+                self.resource_manager.installer_base_path / "2-install-dependency" / "install_openEulerIntelligence.sh"
             )
             return await self._run_script(script_path, _("依赖安装脚本"), progress_callback)
         except Exception as e:
@@ -467,7 +493,7 @@ class DeploymentService:
             progress_callback(self.state)
 
         try:
-            script_path = self.resource_manager.INSTALLER_BASE_PATH / "3-install-server" / "init_config.sh"
+            script_path = self.resource_manager.installer_base_path / "3-install-server" / "init_config.sh"
             return await self._run_script(script_path, _("配置初始化脚本"), progress_callback)
         except Exception as e:
             self.state.add_log(_("✗ 配置初始化失败: {error}").format(error=e))
@@ -571,7 +597,7 @@ class DeploymentService:
     async def _update_config_toml(self, config: DeploymentConfig) -> None:
         """更新 config.toml 配置文件"""
         template_content = self.resource_manager.get_template_content(
-            self.resource_manager.CONFIG_TEMPLATE,
+            self.resource_manager.config_template,
         )
 
         updated_content = self.resource_manager.update_toml_values(
@@ -582,8 +608,8 @@ class DeploymentService:
         backup_cmd = [
             "sudo",
             "cp",
-            str(self.resource_manager.CONFIG_TEMPLATE),
-            f"{self.resource_manager.CONFIG_TEMPLATE}.backup",
+            str(self.resource_manager.config_template),
+            f"{self.resource_manager.config_template}.backup",
         ]
         backup_process = await asyncio.create_subprocess_exec(
             *backup_cmd,
@@ -598,7 +624,7 @@ class DeploymentService:
             raise RuntimeError(msg)
 
         # 写入更新后的内容
-        write_cmd = ["sudo", "tee", str(self.resource_manager.CONFIG_TEMPLATE)]
+        write_cmd = ["sudo", "tee", str(self.resource_manager.config_template)]
         process = await asyncio.create_subprocess_exec(
             *write_cmd,
             stdin=asyncio.subprocess.PIPE,

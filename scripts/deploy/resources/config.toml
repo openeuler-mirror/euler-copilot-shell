@@ -9,12 +9,6 @@ rag_service = 'http://127.0.0.1:9988'
 [fastapi]
 domain = '127.0.0.1'
 
-[minio]
-endpoint = '127.0.0.1:9000'
-access_key = 'minioadmin'
-secret_key = ''
-secure = false
-
 [postgres]
 host = '127.0.0.1'
 port = 5432

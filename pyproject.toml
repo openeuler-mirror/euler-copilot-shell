@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://gitee.com/openeuler/euler-copilot-shell"
+Homepage = "https://atomgit.com/openeuler/euler-copilot-shell"
 
 [project.scripts]
 witty = "main:main"

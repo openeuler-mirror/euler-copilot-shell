@@ -10,61 +10,6 @@ declare -a installed_pkgs=()
 install_success=true
 missing_pkgs=()
 
-# 检查系统版本并返回兼容的 el 版本
-get_el_version() {
-  # 首先检查是否为 openEuler 系统
-  if [ -f "/etc/openEuler-release" ]; then
-    local openeuler_version
-    openeuler_version=$(grep -Eo 'openEuler release [0-9]+\.[0-9]+' /etc/openEuler-release | awk '{print $3}' | tail -n 1)
-
-    if [ -n "$openeuler_version" ]; then
-      # 将版本号转换为可比较的数字格式（如 22.03 -> 2203）
-      local major minor
-      major=$(echo "$openeuler_version" | cut -d'.' -f1)
-      minor=$(echo "$openeuler_version" | cut -d'.' -f2)
-
-      if [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ ]]; then
-        local version_num=$((10#$major * 100 + 10#$minor))
-
-        # openEuler 22.03 及之前使用 el8，24.03 及之后使用 el9
-        if [ $version_num -le 2203 ]; then
-          echo "8"
-          return 0
-        else
-          echo "9"
-          return 0
-        fi
-      fi
-    fi
-  fi
-
-  # 如果不是标准的 openEuler 或无法获取版本，则检查内核版本
-  echo -e "${COLOR_WARNING}[Warning] 非标准 openEuler 系统，基于内核版本判断 el 版本${COLOR_RESET}" >&2
-  local kernel_version
-  kernel_version=$(uname -r | cut -d'.' -f1,2)
-
-  # 将版本号转换为可比较的数字格式
-  local major minor
-  major=$(echo "$kernel_version" | cut -d'.' -f1)
-  minor=$(echo "$kernel_version" | cut -d'.' -f2)
-
-  if [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ ]]; then
-    local version_num=$((10#$major * 100 + 10#$minor))
-
-    # 内核版本 < 5.14 使用 el8，>= 5.14 使用 el9
-    if [ $version_num -lt 514 ]; then
-      echo "8"
-      return 0
-    else
-      echo "9"
-      return 0
-    fi
-  fi
-
-  echo -e "${COLOR_ERROR}[Error] 无法确定兼容的 el 版本，请检查系统信息${COLOR_RESET}" >&2
-  return 1
-}
-
 # 获取 wget 日志文件名
 get_wget_log_filename() {
   local file_path=$1
@@ -80,105 +25,7 @@ get_wget_log_filename() {
   local logfile="$HOME/.cache/witty/logs/${timestamp}_${filename}.log"
   echo "$logfile"
 }
-# 获取最新的 MinIO RPM 下载地址
-get_latest_minio_rpm_url() {
-  local arch=$1
-  local base_url
 
-  case "$arch" in
-  x86_64 | i386 | i686)
-    base_url="https://dl.min.io/server/minio/release/linux-amd64/archive/"
-    ;;
-  aarch64 | arm64)
-    base_url="https://dl.min.io/server/minio/release/linux-arm64/archive/"
-    ;;
-  *)
-    echo -e "${COLOR_ERROR}[Error] 不支持的架构: $arch${COLOR_RESET}" >&2
-    return 1
-    ;;
-  esac
-
-  # 获取目录列表并解析最新的 RPM 文件
-  # 使用兼容 macOS 和 Linux 的 grep 选项
-  local rpm_file
-  rpm_file=$(curl -sL "$base_url" | grep -o 'minio-[0-9][^"]*\.rpm' | sort -V | tail -1)
-
-  if [ -z "$rpm_file" ]; then
-    echo -e "${COLOR_ERROR}[Error] 无法获取最新的 MinIO RPM 文件名${COLOR_RESET}" >&2
-    return 1
-  fi
-
-  # 只输出 URL 到 stdout（作为函数返回值）
-  echo "${base_url}${rpm_file}"
-  return 0
-}
-
-# 安装MinIO
-install_minio() {
-  echo -e "${COLOR_INFO}[Info] 开始安装MinIO...${COLOR_RESET}"
-  local minio_dir="/opt/minio"
-  local arch
-  arch=$(uname -m)
-
-  if ! mkdir -p "$minio_dir"; then
-    echo -e "${COLOR_ERROR}[Error] 创建目录失败: $minio_dir${COLOR_RESET}"
-    return 1
-  fi
-
-  # 根据架构选择不同的安装方式
-  case "$arch" in
-  x86_64 | i386 | i686 | aarch64 | arm64)
-    # 首先检查缓存目录中是否已存在 MinIO RPM 文件（任何版本）
-    local existing_rpm
-    existing_rpm=$(find "$minio_dir" -name "minio-*.rpm" -type f 2>/dev/null | head -1)
-
-    if [ -n "$existing_rpm" ]; then
-      # 找到已存在的 RPM 文件，直接使用
-      echo -e "${COLOR_INFO}[Info] 发现已存在的 MinIO RPM 文件: $(basename "$existing_rpm")${COLOR_RESET}"
-      echo -e "${COLOR_INFO}[Info] 使用缓存的 RPM 文件，跳过下载${COLOR_RESET}"
-      local minio_file="$existing_rpm"
-    else
-      # 没有找到已存在的 RPM，获取最新版本并下载
-      echo -e "${COLOR_INFO}[Info] 未找到缓存的 MinIO RPM，准备下载最新版本...${COLOR_RESET}"
-      echo -e "${COLOR_INFO}[Info] 获取最新的 MinIO RPM 下载地址（$arch）...${COLOR_RESET}"
-
-      local minio_url
-      minio_url=$(get_latest_minio_rpm_url "$arch")
-      if [ $? -ne 0 ] || [ -z "$minio_url" ]; then
-        echo -e "${COLOR_ERROR}[Error] 获取 MinIO 下载地址失败${COLOR_RESET}"
-        return 1
-      fi
-
-      local rpm_filename
-      rpm_filename=$(basename "$minio_url")
-      local minio_file="$minio_dir/$rpm_filename"
-
-      echo -e "${COLOR_INFO}[Info] 最新版本: $rpm_filename${COLOR_RESET}"
-      echo -e "${COLOR_INFO}[Info] 正在下载MinIO软件包...${COLOR_RESET}"
-
-      local logfile
-      logfile=$(get_wget_log_filename "$minio_file")
-      if ! wget "$minio_url" --no-check-certificate -O "$minio_file" -o "$logfile"; then
-        echo -e "${COLOR_ERROR}[Error] MinIO下载失败${COLOR_RESET}"
-        return 1
-      fi
-    fi
-
-    # 安装 RPM 文件
-    dnf install -y "$minio_file" || {
-      echo -e "${COLOR_ERROR}[Error] MinIO安装失败${COLOR_RESET}"
-      return 1
-    }
-    echo -e "${COLOR_SUCCESS}[Success] MinIO安装成功${COLOR_RESET}"
-    return 0
-    ;;
-  *)
-    echo -e "${COLOR_ERROR}[Error] 不支持的架构: $arch${COLOR_RESET}"
-    echo -e "${COLOR_ERROR}[Error] 仅支持 x86_64、aarch64 架构${COLOR_RESET}"
-    return 1
-    ;;
-  esac
-}
 # 智能安装函数
 # 参数: 包名 或 "包名:备用包名1:备用包名2"
 smart_install() {
@@ -251,7 +98,7 @@ install_and_verify() {
 # 安装pgvector服务
 install_pgvector() {
   local pgvector_dir="/opt/pgvector"
-  local pgvector_tar="../5-resource/pg-plugin/pgvector-0.8.1.tar.gz"
+  local pgvector_tar="../resources/pg-plugin/pgvector-0.8.1.tar.gz"
   local pgvector_installed_marker="/usr/share/pgsql/extension/vector.control" # pgvector安装后的标志文件
 
   echo -e "${COLOR_INFO}[Info] 开始安装pgvector...${COLOR_RESET}"
@@ -290,7 +137,7 @@ install_pgvector() {
 }
 # 安装scws服务
 install_scws() {
-  local scws_tar="../5-resource/pg-plugin/scws-1.2.3.tar.bz2"
+  local scws_tar="../resources/pg-plugin/scws-1.2.3.tar.bz2"
   local scws_dir="/opt/scws"
   local scws_installed_marker="/usr/local/lib/libscws.la" # SCWS安装后的标志性文件
 
@@ -349,7 +196,7 @@ install_scws() {
 # 安装zhparser服务
 install_zhparser() {
   local zhparser_dir="/opt/zhparser"
-  local zhparser_tar="../5-resource/pg-plugin/zhparser-2.3.tar.gz"
+  local zhparser_tar="../resources/pg-plugin/zhparser-2.3.tar.gz"
   local zhparser_installed_marker="/usr/share/pgsql/extension/zhparser.control" # zhparser安装后的标志文件
 
   echo -e "${COLOR_INFO}[Info] 开始安装zhparser...${COLOR_RESET}"
@@ -390,90 +237,16 @@ install_zhparser() {
   return 0
 }
 
-check_pip_framework() {
-  local need_install=0
-  local install_list=()
-
-  # 获取 Python 版本
-  local python_version
-  python_version=$(python3 --version 2>&1 | grep -oP '\d+\.\d+' | head -1)
-
-  # 根据 Python 版本选择包列表
-  declare -A REQUIRED_PACKAGES
-  if [[ "$python_version" =~ ^3\.(11|[2-9][0-9])$ ]]; then
-    # Python 3.11 或更新版本，检查并安装 DNF 源中缺失的 pip 依赖
-    REQUIRED_PACKAGES=(
-      ["pydantic"]=""
-    )
-  elif [[ "$python_version" =~ ^3\.(9|10)$ ]]; then
-    # Python 3.9 或 3.10，RPM 包安装过程已处理 pip 依赖
-    # 对于 Python 3.9，单独安装 MCP 的 wheel 包
-    local wheel_path="../5-resource/pip/mcp-1.6.0-py3-none-any.whl"
-    if [ -f "$wheel_path" ]; then
-      echo -e "${COLOR_INFO}[Info] 为 Python 3.9 安装 wheel 包: $wheel_path${COLOR_RESET}"
-      install_list+=("$wheel_path")
-      need_install=1
-    else
-      echo -e "${COLOR_WARNING}[Warning] Wheel 文件不存在: $wheel_path${COLOR_RESET}"
-    fi
-  else
-    echo -e "${COLOR_WARNING}[Warning] 不支持的 Python 版本: $python_version${COLOR_RESET}"
-    return 1
-  fi
-
-  echo -e "${COLOR_INFO}[Info] 检查Python依赖包...${COLOR_RESET}"
-
-  # 检查每个包是否需要安装
-  for pkg in "${!REQUIRED_PACKAGES[@]}"; do
-    local required_ver
-    local installed_ver
-    required_ver="${REQUIRED_PACKAGES[$pkg]}"
-    installed_ver=$(pip show "$pkg" 2>/dev/null | grep '^Version:' | awk '{print $2}')
-
-    if [[ -z "$installed_ver" ]]; then
-      echo -e "${COLOR_WARNING}[Warning] 未安装包: $pkg${COLOR_RESET}"
-      need_install=1
-      if [[ -n "$required_ver" ]]; then
-        install_list+=("${pkg}==${required_ver}")
-      else
-        install_list+=("$pkg")
-      fi
-    elif [[ -n "$required_ver" && "$installed_ver" != "$required_ver" ]]; then
-      echo -e "${COLOR_WARNING}[Warning] 包版本不匹配: $pkg (已安装: $installed_ver, 需要: $required_ver)${COLOR_RESET}"
-      need_install=1
-      install_list+=("${pkg}==${required_ver}")
-    else
-      echo -e "${COLOR_SUCCESS}[OK] 已安装: $pkg${COLOR_RESET}"
-    fi
-  done
-
-  # 如果需要安装，则执行安装命令
-  if [[ "$need_install" -eq 1 ]]; then
-    echo -e "${COLOR_INFO}[Info] 开始安装Python依赖...${COLOR_RESET}"
-    pip install --retries 10 --timeout 120 "${install_list[@]}" -i https://repo.huaweicloud.com/repository/pypi/simple || {
-      echo -e "${COLOR_ERROR}[Error] Python依赖安装失败！${COLOR_RESET}"
-      return 1
-    }
-    echo -e "${COLOR_SUCCESS}[Success] Python依赖安装完成！${COLOR_RESET}"
-  else
-    echo -e "${COLOR_SUCCESS}[Success] Python依赖已满足要求，跳过安装${COLOR_RESET}"
-  fi
-
-  return 0
-}
-
 install_framework() {
   echo -e "\n${COLOR_INFO}[Info] 开始安装框架服务...${COLOR_RESET}"
   local pkgs=(
     "euler-copilot-framework"
-    "git"
     "make"
     "gcc"
     "gcc-c++"
     "clang"
     "llvm"
     "tar"
-    "python3-pip"
     "postgresql"
     "postgresql-server"
     "postgresql-server-devel"
@@ -490,11 +263,6 @@ install_framework() {
   install_pgvector || return 1
   cd "$SCRIPT_DIR" || return 1
   install_zhparser || return 1
-  # 安装 MinIO 对象存储
-  cd "$SCRIPT_DIR" || return 1
-  install_minio || return 1
-  cd "$SCRIPT_DIR" || return 1
-  check_pip_framework || return 1
 }
 
 # 主执行函数

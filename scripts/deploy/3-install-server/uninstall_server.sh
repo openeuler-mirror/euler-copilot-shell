@@ -10,7 +10,6 @@ uninstall_success=true
 missing_pkgs=()
 pkgs=(
   "euler-copilot-framework"
-  "minio"
 )
 
 # 清理函数（在中断或退出时调用）
@@ -30,8 +29,6 @@ uninstall_server() {
       if [ "$pkg" = "euler-copilot-framework" ]; then
         systemctl stop sysagent 2>/dev/null || true
         systemctl stop oi-runtime 2>/dev/null || true # 兼容旧版本
-      elif [ "$pkg" = "minio" ]; then
-        systemctl stop minio >/dev/null 2>&1
       else
         systemctl stop "$pkg"
       fi

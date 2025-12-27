@@ -16,55 +16,7 @@ generate_random_password() {
 }
 
 config_toml_file=""
-MINIO_ROOT_PASSWORD=""
 PGSQL_PASSWORD=""
-
-# 配置MinIO（RPM安装后的配置）
-install_minio() {
-  echo -e "${COLOR_INFO}[Info] 开始配置MinIO...${COLOR_RESET}"
-
-  # 1. 配置MinIO环境变量
-  echo -e "${COLOR_INFO}[Info] 配置MinIO环境变量...${COLOR_RESET}"
-  cat >/etc/default/minio <<EOF
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD
-MINIO_VOLUMES=/var/lib/minio
-EOF
-
-  # 2. 创建用户和数据目录（RPM可能已创建，这里确保存在）
-  echo -e "${COLOR_INFO}[Info] 创建MinIO用户和数据目录...${COLOR_RESET}"
-  if ! id minio-user &>/dev/null; then
-    groupadd minio-user
-    useradd -g minio-user --shell=/sbin/nologin -r minio-user || {
-      echo -e "${COLOR_ERROR}[Error] 创建minio-user失败${COLOR_RESET}"
-      return 1
-    }
-  fi
-
-  mkdir -p /var/lib/minio
-  chown -R minio-user:minio-user /var/lib/minio || {
-    echo -e "${COLOR_ERROR}[Error] 无法设置/var/lib/minio权限${COLOR_RESET}"
-    return 1
-  }
-
-  # 3. 启动MinIO服务
-  echo -e "${COLOR_INFO}[Info] 启动MinIO服务...${COLOR_RESET}"
-  systemctl daemon-reload
-  systemctl enable --now minio || {
-    echo -e "${COLOR_ERROR}[Error] MinIO服务启动失败${COLOR_RESET}"
-    return 1
-  }
-
-  # 4. 检查服务状态
-  echo -e "${COLOR_INFO}[Info] 验证MinIO服务状态...${COLOR_RESET}"
-  if systemctl is-active --quiet minio; then
-    echo -e "${COLOR_SUCCESS}[Success] MinIO配置完成${COLOR_RESET}"
-    return 0
-  else
-    echo -e "${COLOR_ERROR}[Error] MinIO服务未正常运行，请查看日志: journalctl -u minio -f${COLOR_RESET}"
-    return 1
-  fi
-}
 
 update_password() {
   echo -e "${COLOR_INFO}[Info] 更新配置文件中的密码...${COLOR_RESET}"
@@ -75,10 +27,6 @@ update_password() {
   fi
 
   # 支持单引号和双引号两种格式
-  sed -i "s/secret_key = ['\"][^'\"]*['\"]/secret_key = '$MINIO_ROOT_PASSWORD'/" "$config_toml_file" || {
-    echo -e "${COLOR_ERROR}[Error] 更新 minio secret_key 失败${COLOR_RESET}"
-    return 1
-  }
   sed -i "/\[postgres\]/,/^\[/ s/password = ['\"][^'\"]*['\"]/password = '$PGSQL_PASSWORD'/" "$config_toml_file" || {
     echo -e "${COLOR_ERROR}[Error] 更新 postgres password 失败${COLOR_RESET}"
     return 1
@@ -327,7 +275,7 @@ install_framework() {
 
   # 3. 获取本机IP
   local ip_address
-  config_toml_path="../5-resource/config.toml"
+  config_toml_path="../resources/config.toml"
   # 提取 domain 的值，支持多种 TOML 字符串格式（双引号、单引号、无引号）
   if [ ! -f "$config_toml_path" ]; then
     echo -e "${COLOR_ERROR}[Error] 配置文件不存在: $config_toml_path${COLOR_RESET}"
@@ -352,7 +300,7 @@ install_framework() {
   unset http_proxy https_proxy
 
   # 5. 配置文件处理
-  local framework_file="../5-resource/config.toml"
+  local framework_file="../resources/config.toml"
   local framework_target="/etc/sysagent/config.toml"
 
   # 检查源文件是否存在
@@ -418,14 +366,12 @@ main() {
   SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   cd "$SCRIPT_DIR" || return 1
 
-  config_toml_file="$SCRIPT_DIR/../5-resource/config.toml"
-  MINIO_ROOT_PASSWORD=$(generate_random_password)
+  config_toml_file="$SCRIPT_DIR/../resources/config.toml"
   PGSQL_PASSWORD=$(generate_random_password)
 
   update_password || return 1
 
   configure_postgresql || return 1
-  install_minio || return 1
   install_framework || return 1
 }
 

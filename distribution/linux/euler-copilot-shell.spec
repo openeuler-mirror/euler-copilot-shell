@@ -7,7 +7,7 @@ Version:        2.0.0
 Release:        3%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
 Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
-URL:            https://gitee.com/openeuler/euler-copilot-shell
+URL:            https://atomgit.com/openeuler/euler-copilot-shell
 Source0:        %{name}-%{version}.tar.gz
 
 ExclusiveArch:  x86_64 aarch64 riscv64 loongarch64
@@ -92,7 +92,7 @@ mkdir -p %{buildroot}%{_bindir}
 
 # 复制部署脚本和资源
 install -m 755 scripts/deploy/deploy.sh %{buildroot}/usr/lib/witty-assistant/scripts/deploy
-cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deploy/2-install-dependency scripts/deploy/3-install-server scripts/deploy/4-other-script scripts/deploy/5-resource %{buildroot}/usr/lib/witty-assistant/scripts/
+cp -r scripts/deploy/0-one-click-deploy scripts/deploy/1-check-env scripts/deploy/2-install-dependency scripts/deploy/3-install-server scripts/deploy/resources %{buildroot}/usr/lib/witty-assistant/scripts/
 chmod -R +x %{buildroot}/usr/lib/witty-assistant/scripts/
 
 # 创建可执行文件的符号链接

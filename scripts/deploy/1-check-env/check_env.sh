@@ -5,63 +5,6 @@ COLOR_SUCCESS='\033[32m' # 绿色成功
 COLOR_ERROR='\033[31m'   # 红色错误
 COLOR_WARNING='\033[33m' # 黄色警告
 COLOR_RESET='\033[0m'    # 重置颜色
-# 全局模式标记
-OFFLINE_MODE=false
-
-# 检查系统版本并返回兼容的 el 版本
-get_el_version() {
-  # 首先检查是否为 openEuler 系统
-  if [ -f "/etc/openEuler-release" ]; then
-    local openeuler_version
-    openeuler_version=$(grep -Eo 'openEuler release [0-9]+\.[0-9]+' /etc/openEuler-release | awk '{print $3}' | tail -n 1)
-
-    if [ -n "$openeuler_version" ]; then
-      # 将版本号转换为可比较的数字格式（如 22.03 -> 2203）
-      local major minor
-      major=$(echo "$openeuler_version" | cut -d'.' -f1)
-      minor=$(echo "$openeuler_version" | cut -d'.' -f2)
-
-      if [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ ]]; then
-        local version_num=$((10#$major * 100 + 10#$minor))
-
-        # openEuler 22.03 及之前使用 el8，24.03 及之后使用 el9
-        if [ $version_num -le 2203 ]; then
-          echo "8"
-          return 0
-        else
-          echo "9"
-          return 0
-        fi
-      fi
-    fi
-  fi
-
-  # 如果不是标准的 openEuler 或无法获取版本，则检查内核版本
-  echo -e "${COLOR_WARNING}[Warning] 非标准 openEuler 系统，基于内核版本判断 el 版本${COLOR_RESET}" >&2
-  local kernel_version
-  kernel_version=$(uname -r | cut -d'.' -f1,2)
-
-  # 将版本号转换为可比较的数字格式
-  local major minor
-  major=$(echo "$kernel_version" | cut -d'.' -f1)
-  minor=$(echo "$kernel_version" | cut -d'.' -f2)
-
-  if [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ ]]; then
-    local version_num=$((10#$major * 100 + 10#$minor))
-
-    # 内核版本 < 5.14 使用 el8，>= 5.14 使用 el9
-    if [ $version_num -lt 514 ]; then
-      echo "8"
-      return 0
-    else
-      echo "9"
-      return 0
-    fi
-  fi
-
-  echo -e "${COLOR_ERROR}[Error] 无法确定兼容的 el 版本，请检查系统信息${COLOR_RESET}" >&2
-  return 1
-}
 
 # 全局变量：默认端口列表
 PORTS=(8002)
@@ -205,14 +148,12 @@ check_packages() {
 check_framework_pkg() {
   local pkgs=(
     "euler-copilot-framework"
-    "git"
     "make"
     "gcc"
     "gcc-c++"
     "clang"
     "llvm"
     "tar"
-    "python3-pip"
     "postgresql"
     "postgresql-server"
     "postgresql-server-devel"
@@ -223,51 +164,10 @@ check_framework_pkg() {
   fi
 }
 
-# 安装过程需要访问的站点列表
-REQUIRED_URLS=(
-  "dl.min.io:443"            # MinIO 下载
-  "www.xunsearch.com:80"     # SCWS 分词库下载
-  "repo.huaweicloud.com:443" # pip 华为云镜像源
-)
-
-function check_network {
-  echo -e "${COLOR_INFO}[Info] 检查网络连接...${COLOR_RESET}"
-
-  local failed_sites=()
-  local timeout_seconds=5
-
-  for site in "${REQUIRED_URLS[@]}"; do
-    local host="${site%%:*}"
-    local port="${site##*:}"
-
-    printf "  %-35s" "检测: $host"
-    if timeout $timeout_seconds bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
-      echo -e "${COLOR_SUCCESS}[OK]${COLOR_RESET}"
-    else
-      echo -e "${COLOR_ERROR}[FAIL]${COLOR_RESET}"
-      failed_sites+=("$host")
-    fi
-  done
-
-  if [ ${#failed_sites[@]} -eq 0 ]; then
-    echo -e "${COLOR_SUCCESS}[Success] 所有必要站点均可访问${COLOR_RESET}"
-    return 0
-  else
-    echo -e "${COLOR_WARNING}[Warning] 以下站点不可访问: ${failed_sites[*]}${COLOR_RESET}"
-    echo -e "${COLOR_INFO}[Info] 安装过程中相关功能可能失败，请检查网络或配置代理${COLOR_RESET}"
-    return 1
-  fi
-}
-
 function check_dns {
   echo -e "${COLOR_INFO}[Info] 检查DNS设置${COLOR_RESET}"
   if grep -q "^nameserver" /etc/resolv.conf; then
     echo -e "${COLOR_SUCCESS}[Success] DNS已配置${COLOR_RESET}"
-    return 0
-  fi
-
-  if $OFFLINE_MODE; then
-    echo -e "${COLOR_WARNING}[Warning] 离线模式：请手动配置内部DNS服务器${COLOR_RESET}"
     return 0
   else
     echo -e "${COLOR_WARNING}[Warning] DNS未配置，建议手动设置DNS服务器（如8.8.8.8）${COLOR_RESET}"
