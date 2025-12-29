@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import copy
 import platform
 import sys
 from pathlib import Path
@@ -880,10 +881,6 @@ class DeploymentService:
             current_config_manager.set_model(config.llm.model)
             current_config_manager.set_api_key(config.llm.api_key)
 
-            # 清除 token，每个用户需要自己登录获取
-            # _check_framework_api_health 会写入当前用户的 token，但不应该传播给其他用户
-            current_config_manager.set_witty_key("")
-
             # 写入默认的 Chat 模型 llm_id（后端服务使用），让其他用户开箱即用。
             # 优先使用部署时注册/验证的模型 ID；若为空则回退到默认值。
             llm_id = (config.llm.model or "").strip() or "default-llm"
@@ -892,8 +889,10 @@ class DeploymentService:
             # 创建专用的模板配置管理器
             template_manager = ConfigManager.create_deployment_manager()
 
-            # 将当前 root 用户的完整配置复制到模板中（已清除 token）
-            template_manager.data = current_config_manager.data
+            # 将当前 root 用户的完整配置复制到模板中。
+            # 注意：仅清除模板中的 Hermes token（witty.api_key），不要影响 root/current 用户本地配置。
+            template_manager.data = copy.deepcopy(current_config_manager.data)
+            template_manager.data.witty.api_key = ""
 
             # 创建全局配置模板文件
             success = template_manager.create_global_template()
