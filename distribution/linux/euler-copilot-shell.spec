@@ -3,8 +3,8 @@
 %global debug_package %{nil}
 
 Name:           euler-copilot-shell
-Version:        2.0.0
-Release:        3%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
+Version:        2.0.1
+Release:        1%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
 Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
 URL:            https://atomgit.com/openeuler/euler-copilot-shell
@@ -142,6 +142,11 @@ rm -f /usr/lib/witty-assistant/scripts
 fi
 
 %changelog
+* Mon Dec 29 2025 openEuler <contact@openeuler.org> - 2.0.1-1
+- feat: Set defautl chat model during installation
+- fix: Markdown rendering issue in TUI
+- chore: Remove deprecated scripts in installer
+
 * Tue Dec 23 2025 openEuler <contact@openeuler.org> - 2.0.0-3
 - feat: Add Witty Assistant welcome screen & LOGO
 - refactor: Improve Markdown rendering performance in TUI
