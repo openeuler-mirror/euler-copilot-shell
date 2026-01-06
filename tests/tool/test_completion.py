@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 import pytest
 
 import main
-from tool.completion import _ROOT_COMMANDS, _SET_DEFAULT_SUBCOMMANDS, generate_completion_script
+from i18n.manager import get_locale, init_i18n
+from tool.completion import (
+    _ROOT_COMMANDS,
+    _SET_DEFAULT_SUBCOMMANDS,
+    generate_completion_script,
+    get_default_install_path,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.unit
@@ -19,17 +29,72 @@ from tool.completion import _ROOT_COMMANDS, _SET_DEFAULT_SUBCOMMANDS, generate_c
         ("fish", "complete -c witty"),
     ],
 )
-def test_completion_command_emits_script(shell: str, expected_snippet: str, capsys: pytest.CaptureFixture[str]) -> None:
-    """验证 completion 命令为不同 shell 输出正确的脚本"""
-    config = Mock()
+def test_completion_command_installs_script(
+    shell: str,
+    expected_snippet: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """验证 completion 命令会安装脚本，并输出提示信息（脚本不会立刻生效）"""
+    previous_locale = get_locale()
+    init_i18n("zh_CN")
+    try:
+        # 将 HOME/XDG 指向临时目录，避免污染真实用户环境
+        home = tmp_path / "home"
+        home.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "xdg_config"))
+        monkeypatch.setenv("XDG_DATA_HOME", str(home / "xdg_data"))
 
-    handled = main._dispatch_cli(["completion", shell], config)  # noqa: SLF001
-    assert handled is True
+        config = Mock()
+        handled = main._dispatch_cli(["completion", shell], config)  # noqa: SLF001
+        assert handled is True
 
-    out = capsys.readouterr().out
-    assert expected_snippet in out
-    # 基本命令应出现在脚本中（验证非空且覆盖主命令表）
-    assert "set-default" in out
+        target = get_default_install_path(shell)
+        assert target.exists()
+        content = target.read_text(encoding="utf-8")
+        assert expected_snippet in content
+
+        out = capsys.readouterr().out
+        # 输出中应包含安装路径及“不会立即生效”的提示（中文）
+        assert str(target) in out
+        assert "不会在当前会话立刻生效" in out
+    finally:
+        init_i18n(previous_locale)
+
+
+@pytest.mark.unit
+def test_completion_command_detects_shell_from_env(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """验证未指定 shell 时，会从 SHELL 环境变量探测并安装。"""
+    previous_locale = get_locale()
+    init_i18n("en_US")
+    try:
+        home = tmp_path / "home"
+        home.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "xdg_config"))
+        monkeypatch.setenv("XDG_DATA_HOME", str(home / "xdg_data"))
+        monkeypatch.setenv("SHELL", "/bin/zsh")
+        monkeypatch.delenv("FISH_VERSION", raising=False)
+
+        config = Mock()
+        handled = main._dispatch_cli(["completion"], config)  # noqa: SLF001
+        assert handled is True
+
+        target = get_default_install_path("zsh")
+        assert target.exists()
+        assert "#compdef witty" in target.read_text(encoding="utf-8")
+
+        out = capsys.readouterr().out
+        assert str(target) in out
+        assert "Completion will not take effect" in out
+    finally:
+        init_i18n(previous_locale)
 
 
 @pytest.mark.unit

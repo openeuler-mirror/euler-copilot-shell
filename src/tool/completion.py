@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import os
 import textwrap
-from typing import Final
+from pathlib import Path
+from typing import TYPE_CHECKING, Final
 
 from config.model import LogLevel
-from i18n.manager import get_supported_locales
+from i18n.manager import _, get_supported_locales
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _SUPPORTED_SHELLS: Final[tuple[str, ...]] = ("bash", "zsh", "fish")
 
@@ -21,6 +26,143 @@ _ROOT_COMMANDS: Final[tuple[str, ...]] = (
 )
 
 _SET_DEFAULT_SUBCOMMANDS: Final[tuple[str, ...]] = ("agent", "log-level", "locale")
+
+
+def detect_default_shell(environ: Mapping[str, str] | None = None) -> str | None:
+    """
+    探测当前环境的默认 shell。
+
+    规则尽量简单且可预测：
+    - fish：若存在 FISH_VERSION 环境变量
+    - 其他：读取 SHELL 并取 basename
+
+    Args:
+        environ: 环境变量映射，默认使用 os.environ。
+
+    Returns:
+        "bash" | "zsh" | "fish" 或 None（无法探测）。
+
+    """
+    env = os.environ if environ is None else environ
+    if "FISH_VERSION" in env:
+        return "fish"
+
+    shell_path = env.get("SHELL", "").strip()
+    if not shell_path:
+        return None
+
+    base = Path(shell_path).name.lower()
+    if base in _SUPPORTED_SHELLS:
+        return base
+
+    # 兼容类似 /usr/local/bin/zsh 或者其它变种名称
+    suffix_map: dict[str, str] = {"bash": "bash", "zsh": "zsh", "fish": "fish"}
+    for suffix, normalized in suffix_map.items():
+        if base.endswith(suffix):
+            return normalized
+    return None
+
+
+def get_default_install_path(shell: str, environ: Mapping[str, str] | None = None) -> Path:
+    """
+    返回 completion 脚本的默认用户级安装路径（XDG 优先）。
+
+    Args:
+        shell: 目标 shell（bash/zsh/fish）。
+        environ: 环境变量映射，默认使用 os.environ。
+
+    Returns:
+        建议写入的目标文件路径。
+
+    Raises:
+        ValueError: shell 不受支持。
+
+    """
+    normalized = shell.strip().lower()
+    if normalized not in _SUPPORTED_SHELLS:
+        msg = f"Unsupported shell: {shell}"
+        raise ValueError(msg)
+
+    env = os.environ if environ is None else environ
+    home_value = env.get("HOME")
+    home = Path(home_value) if home_value else Path.home()
+
+    xdg_config_home = Path(env.get("XDG_CONFIG_HOME") or (home / ".config"))
+    xdg_data_home = Path(env.get("XDG_DATA_HOME") or (home / ".local" / "share"))
+
+    if normalized == "fish":
+        return xdg_config_home / "fish" / "completions" / "witty.fish"
+    if normalized == "bash":
+        return xdg_data_home / "bash-completion" / "completions" / "witty"
+    # zsh
+    return xdg_data_home / "zsh" / "site-functions" / "_witty"
+
+
+def install_completion_script(
+    shell: str,
+    *,
+    environ: Mapping[str, str] | None = None,
+    dest_path: Path | None = None,
+) -> Path:
+    """
+    生成并安装 completion 脚本到默认位置（或指定位置）。
+
+    该操作是幂等的：会直接覆盖目标文件，便于用户重复执行更新脚本。
+
+    Args:
+        shell: 目标 shell（bash/zsh/fish）。
+        environ: 环境变量映射，默认使用 os.environ。
+        dest_path: 指定写入路径；若为空则使用 get_default_install_path。
+
+    Returns:
+        实际写入的目标路径。
+
+    """
+    normalized = shell.strip().lower()
+    target = dest_path or get_default_install_path(normalized, environ=environ)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(generate_completion_script(normalized), encoding="utf-8")
+    return target
+
+
+def get_install_hint(shell: str, target: Path) -> str:
+    """
+    返回安装后提示信息（不会立即生效）。
+
+    Args:
+        shell: 目标 shell（bash/zsh/fish）。
+        target: 已写入的脚本路径。
+
+    Returns:
+        面向用户的多行提示文本。
+
+    """
+    normalized = shell.strip().lower()
+    if normalized == "bash":
+        return (
+            _(
+                "自动补全不会在当前会话立刻生效。\n"
+                "你可以：\n"
+                "  1) 重新打开终端，或\n"
+                '  2) 临时执行：source "{path}"\n',
+            ).format(path=target)
+        )
+    if normalized == "zsh":
+        parent = target.parent
+        return (
+            _(
+                "自动补全不会在当前会话立刻生效。\n"
+                "你可以将目录加入 fpath 并重新初始化 compinit，例如：\n"
+                '  fpath=("{dir}" $fpath)\n'
+                "  autoload -U compinit && compinit\n"
+                "（建议把 fpath 配置写入 ~/.zshrc）\n",
+            ).format(dir=parent)
+        )
+    # fish
+    return _(
+        "自动补全不会在当前会话立刻生效。\n"
+        "你可以重新打开 fish，或执行：exec fish\n",
+    )
 
 
 def generate_completion_script(shell: str) -> str:
