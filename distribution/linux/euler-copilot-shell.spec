@@ -142,8 +142,9 @@ rm -f /usr/lib/witty-assistant/scripts
 fi
 
 %changelog
-* Mon Dec 29 2025 openEuler <contact@openeuler.org> - 2.0.1-1
+* Tue Jan 06 2026 openEuler <contact@openeuler.org> - 2.0.1-1
 - feat: Set defautl chat model during installation
+- feat: Add shell completion installation command
 - fix: Markdown rendering issue in TUI
 - chore: Remove deprecated scripts in installer
 
