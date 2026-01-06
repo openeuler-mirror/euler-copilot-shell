@@ -905,6 +905,24 @@ class IntelligentTerminal(App):
             # 让出事件循环，确保键盘事件（如 Ctrl+C）有机会被处理
             await asyncio.sleep(0)
 
+        # 流结束兜底：若尾部内容未达到节流阈值，则强制 flush，避免最后几个 chunk 丢失
+        try:
+            pending_chars = cast("int", stream_state.get("pending_chars", 0))
+            current_line = cast(
+                "OutputLine | MarkdownOutput | None",
+                stream_state.get("current_line"),
+            )
+            if pending_chars > 0 and current_line is not None:
+                self._flush_current_line(current_line, stream_state)
+                now = asyncio.get_event_loop().time()
+                stream_state["last_ui_flush_time"] = now
+                stream_state["pending_chars"] = 0
+                # 若发生可见更新，尽量把最终内容滚到可见位置
+                self._maybe_scroll_to_end(output_container, stream_state, now)
+        except (AttributeError, RuntimeError, ValueError, TypeError):
+            # 退出/卸载过程中可能无法安全刷新，忽略兜底失败
+            self.logger.debug("[TUI] Final stream flush skipped", exc_info=True)
+
         return stream_state["received_any_content"]
 
     def _check_timeouts(
@@ -1102,14 +1120,25 @@ class IntelligentTerminal(App):
         if not stats_payload:
             return False
 
-        processed = self._append_llm_stats_block(
-            stats_payload,
-            cast("OutputLine | MarkdownOutput | None", stream_state.get("current_line")),
-            output_container,
-        )
+        # 注意：UI 刷新有节流逻辑，可能存在 stream_state 里累积了尾部内容、但组件还没 update 的情况。
+        # 若此时使用 current_line.get_content() 作为基准去追加统计段落，会导致尾部内容被覆盖丢失。
+        current_line = cast("OutputLine | MarkdownOutput | None", stream_state.get("current_line"))
+        stats_paragraph = f"\n\n> {stats_payload}"
+
+        processed: OutputLine | MarkdownOutput | None
+        if isinstance(current_line, MarkdownOutput):
+            base_content = cast("str", stream_state.get("current_content", ""))
+            updated = base_content + stats_paragraph
+            current_line.update_markdown(updated)
+            processed = current_line
+        else:
+            processed = self._append_llm_stats_block(stats_payload, current_line, output_container)
+
         if processed is not None:
             stream_state["current_line"] = processed
             stream_state["current_content"] = processed.get_content()
+            # 统计段落已触发一次“全量更新”，清空 pending 以避免后续兜底 flush 覆盖内容
+            stream_state["pending_chars"] = 0
         stream_state["is_first_content"] = False
 
         # 统计段属于普通输出，结束 MCP 进度块序列
