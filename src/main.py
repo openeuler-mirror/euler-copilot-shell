@@ -22,6 +22,7 @@ from log.manager import (
     setup_logging,
 )
 from tool import backend_init, llm_config, select_agent
+from tool.completion import _SUPPORTED_SHELLS, generate_completion_script
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -74,6 +75,23 @@ def _build_llm_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
+
+
+def _build_completion_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="witty completion",
+        description=_(
+            "Generate shell completion script for Witty Assistant\n * Supported shells: bash, zsh, fish",
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument(
+        "shell",
+        choices=list(_SUPPORTED_SHELLS),
+        metavar="SHELL",
+        help=_("Target shell (bash/zsh/fish)"),
+    )
+    return parser
 
 
 def _normalize_log_level(value: str) -> str:
@@ -154,6 +172,7 @@ def _print_root_help() -> None:
             [
                 _CommandInfo("help", "witty help / witty help <command>"),
                 _CommandInfo("version", "witty version"),
+                _CommandInfo("completion", _("Generate shell completion scripts")),
             ],
         ),
         (
@@ -233,6 +252,7 @@ def _dispatch_help(path: list[str]) -> bool:
         "init": _build_init_parser,
         "logs": _build_logs_parser,
         "llm": _build_llm_parser,
+        "completion": _build_completion_parser,
     }
 
     if cmd == "set-default":
@@ -281,6 +301,11 @@ def _cmd_logs(rest: list[str], _: ConfigManager) -> None:
 def _cmd_llm(rest: list[str], _: ConfigManager) -> None:
     _build_llm_parser().parse_args(rest)
     llm_config()
+
+
+def _cmd_completion(rest: list[str], _: ConfigManager) -> None:
+    args = _build_completion_parser().parse_args(rest)
+    sys.stdout.write(generate_completion_script(args.shell))
 
 
 def _cmd_set_default(rest: list[str], config_manager: ConfigManager) -> None:
@@ -345,6 +370,7 @@ def _dispatch_cli(argv: list[str], config_manager: ConfigManager) -> bool:
         "logs": _cmd_logs,
         "llm": _cmd_llm,
         "set-default": _cmd_set_default,
+        "completion": _cmd_completion,
     }
 
     handler = handlers.get(cmd)
@@ -401,6 +427,7 @@ def set_log_level(config_manager: ConfigManager, level: str) -> None:
 
     sys.stdout.write(_("✓ Log level successfully set to: {level}\n").format(level=level))
     sys.stdout.write(_("✓ Logging system initialized\n"))
+
 
 
 def main() -> None:
