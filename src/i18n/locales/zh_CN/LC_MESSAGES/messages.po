@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: witty-assistant\n"
 "Report-Msgid-Bugs-To: contact@openeuler.org\n"
-"POT-Creation-Date: 2025-12-18 11:14+0800\n"
+"POT-Creation-Date: 2026-01-06 17:30+0800\n"
 "PO-Revision-Date: 2025-10-21 09:40+0800\n"
 "Last-Translator: openEuler Intelligence Team\n"
 "Language-Team: Chinese (Simplified)\n"
@@ -54,360 +54,360 @@ msgstr "请输入 {param_name}"
 msgid "✓ 提交"
 msgstr "✓ 提交"
 
-#: src/app/deployment/service.py:66
+#: src/app/deployment/service.py:93
 #, python-brace-format
 msgid "无法读取模板文件: {path}"
 msgstr "无法读取模板文件: {path}"
 
-#: src/app/deployment/service.py:88
+#: src/app/deployment/service.py:115
 #, python-brace-format
 msgid "TOML 格式错误: {error}"
 msgstr "TOML 格式错误: {error}"
 
-#: src/app/deployment/service.py:92
+#: src/app/deployment/service.py:119
 #, python-brace-format
 msgid "更新 TOML 配置失败: {error}"
 msgstr "更新 TOML 配置失败: {error}"
 
-#: src/app/deployment/service.py:128
+#: src/app/deployment/service.py:155
 msgid "检查部署依赖"
 msgstr "检查部署依赖"
 
-#: src/app/deployment/service.py:129
+#: src/app/deployment/service.py:156
 msgid "正在检查部署环境依赖..."
 msgstr "正在检查部署环境依赖..."
 
-#: src/app/deployment/service.py:134
+#: src/app/deployment/service.py:161
 #: src/app/deployment/components/env_check.py:141
 msgid "仅支持 openEuler 操作系统"
 msgstr "仅支持 openEuler 操作系统"
 
-#: src/app/deployment/service.py:141
+#: src/app/deployment/service.py:168
 #, python-brace-format
 msgid "⚠ 检测到 Python {version}，建议升级至 3.10 或更高版本以获得最佳兼容性"
 msgstr "⚠ 检测到 Python {version}，建议升级至 3.10 或更高版本以获得最佳兼容性"
 
-#: src/app/deployment/service.py:150
+#: src/app/deployment/service.py:177
 msgid "缺少 witty-assistant-installer 包，正在尝试安装..."
 msgstr "缺少 witty-assistant-installer 包，正在尝试安装..."
 
-#: src/app/deployment/service.py:160
+#: src/app/deployment/service.py:187
 #: src/app/deployment/components/env_check.py:164
 msgid "需要管理员权限，请确保可以使用 sudo"
 msgstr "需要管理员权限，请确保可以使用 sudo"
 
-#: src/app/deployment/service.py:164
+#: src/app/deployment/service.py:191
 msgid "✓ 部署环境依赖检查完成"
 msgstr "✓ 部署环境依赖检查完成"
 
-#: src/app/deployment/service.py:245
+#: src/app/deployment/service.py:272
 msgid "部署过程中发生异常"
 msgstr "部署过程中发生异常"
 
-#: src/app/deployment/service.py:246
+#: src/app/deployment/service.py:273
 msgid "✗ 部署失败"
 msgstr "✗ 部署失败"
 
-#: src/app/deployment/service.py:256
+#: src/app/deployment/service.py:283
 msgid "✓ sysAgent 部署完成！"
 msgstr "✓ sysAgent 部署完成！"
 
-#: src/app/deployment/service.py:294
+#: src/app/deployment/service.py:321
 msgid "正在安装 witty-assistant-installer..."
 msgstr "正在安装 witty-assistant-installer..."
 
-#: src/app/deployment/service.py:305
+#: src/app/deployment/service.py:332
 msgid "✓ witty-assistant-installer 安装成功"
 msgstr "✓ witty-assistant-installer 安装成功"
 
-#: src/app/deployment/service.py:309
+#: src/app/deployment/service.py:336
 msgid "witty-assistant-installer 安装后资源文件仍然缺失"
 msgstr "witty-assistant-installer 安装后资源文件仍然缺失"
 
-#: src/app/deployment/service.py:312
+#: src/app/deployment/service.py:339
 msgid "安装 witty-assistant-installer 失败"
 msgstr "安装 witty-assistant-installer 失败"
 
-#: src/app/deployment/service.py:315
+#: src/app/deployment/service.py:342
 msgid "安装输出:"
 msgstr "安装输出:"
 
-#: src/app/deployment/service.py:319
+#: src/app/deployment/service.py:346
 #, python-brace-format
 msgid "安装过程中发生异常: {error}"
 msgstr "安装过程中发生异常: {error}"
 
-#: src/app/deployment/service.py:385 src/app/deployment/service.py:419
+#: src/app/deployment/service.py:412 src/app/deployment/service.py:446
 msgid "检查系统环境"
 msgstr "检查系统环境"
 
-#: src/app/deployment/service.py:386
+#: src/app/deployment/service.py:413
 msgid "正在检查系统环境..."
 msgstr "正在检查系统环境..."
 
-#: src/app/deployment/service.py:393
+#: src/app/deployment/service.py:420
 msgid "✗ 错误: 仅支持 openEuler 操作系统"
 msgstr "✗ 错误: 仅支持 openEuler 操作系统"
 
-#: src/app/deployment/service.py:395
+#: src/app/deployment/service.py:422
 msgid "✓ 检测到 openEuler 操作系统"
 msgstr "✓ 检测到 openEuler 操作系统"
 
-#: src/app/deployment/service.py:399
+#: src/app/deployment/service.py:426
 msgid "✗ 错误: witty-assistant-installer 包未安装或资源缺失"
 msgstr "✗ 错误: witty-assistant-installer 包未安装或资源缺失"
 
-#: src/app/deployment/service.py:400
+#: src/app/deployment/service.py:427
 msgid "请先安装: sudo dnf install -y witty-assistant-installer"
 msgstr "请先安装: sudo dnf install -y witty-assistant-installer"
 
-#: src/app/deployment/service.py:402
+#: src/app/deployment/service.py:429
 msgid "✓ witty-assistant-installer 资源可用"
 msgstr "✓ witty-assistant-installer 资源可用"
 
-#: src/app/deployment/service.py:406
+#: src/app/deployment/service.py:433
 msgid "✗ 错误: 需要管理员权限"
 msgstr "✗ 错误: 需要管理员权限"
 
-#: src/app/deployment/service.py:408
+#: src/app/deployment/service.py:435
 msgid "✓ 具有管理员权限"
 msgstr "✓ 具有管理员权限"
 
-#: src/app/deployment/service.py:420
+#: src/app/deployment/service.py:447
 msgid "正在执行系统环境检查..."
 msgstr "正在执行系统环境检查..."
 
-#: src/app/deployment/service.py:427
+#: src/app/deployment/service.py:454
 msgid "环境检查脚本"
 msgstr "环境检查脚本"
 
-#: src/app/deployment/service.py:429
+#: src/app/deployment/service.py:456
 #, python-brace-format
 msgid "✗ 环境检查失败: {error}"
 msgstr "✗ 环境检查失败: {error}"
 
-#: src/app/deployment/service.py:440
+#: src/app/deployment/service.py:467
 msgid "安装依赖组件"
 msgstr "安装依赖组件"
 
-#: src/app/deployment/service.py:441
+#: src/app/deployment/service.py:468
 msgid "正在安装后端依赖组件..."
 msgstr "正在安装后端依赖组件..."
 
-#: src/app/deployment/service.py:450
+#: src/app/deployment/service.py:477
 msgid "依赖安装脚本"
 msgstr "依赖安装脚本"
 
-#: src/app/deployment/service.py:452
+#: src/app/deployment/service.py:479
 #, python-brace-format
 msgid "✗ 依赖安装失败: {error}"
 msgstr "✗ 依赖安装失败: {error}"
 
-#: src/app/deployment/service.py:463
+#: src/app/deployment/service.py:490
 msgid "初始化配置和服务"
 msgstr "初始化配置和服务"
 
-#: src/app/deployment/service.py:464
+#: src/app/deployment/service.py:491
 msgid "正在初始化配置和启动服务..."
 msgstr "正在初始化配置和启动服务..."
 
-#: src/app/deployment/service.py:471
+#: src/app/deployment/service.py:498
 msgid "配置初始化脚本"
 msgstr "配置初始化脚本"
 
-#: src/app/deployment/service.py:473
+#: src/app/deployment/service.py:500
 #, python-brace-format
 msgid "✗ 配置初始化失败: {error}"
 msgstr "✗ 配置初始化失败: {error}"
 
-#: src/app/deployment/service.py:485
+#: src/app/deployment/service.py:512
 #, python-brace-format
 msgid "✗ 脚本文件不存在: {path}"
 msgstr "✗ 脚本文件不存在: {path}"
 
-#: src/app/deployment/service.py:523
+#: src/app/deployment/service.py:550
 #, python-brace-format
 msgid "✓ {name}执行成功"
 msgstr "✓ {name}执行成功"
 
-#: src/app/deployment/service.py:527
+#: src/app/deployment/service.py:554
 #, python-brace-format
 msgid "✗ 运行{name}时发生错误: {error}"
 msgstr "✗ 运行{name}时发生错误: {error}"
 
-#: src/app/deployment/service.py:532
+#: src/app/deployment/service.py:559
 #, python-brace-format
 msgid "✗ {name}执行失败，返回码: {code}"
 msgstr "✗ {name}执行失败，返回码: {code}"
 
-#: src/app/deployment/service.py:553
+#: src/app/deployment/service.py:580
 msgid "更新配置文件"
 msgstr "更新配置文件"
 
-#: src/app/deployment/service.py:554
+#: src/app/deployment/service.py:581
 msgid "正在更新配置文件..."
 msgstr "正在更新配置文件..."
 
-#: src/app/deployment/service.py:562
+#: src/app/deployment/service.py:589
 msgid "✓ 更新 config.toml 配置文件"
 msgstr "✓ 更新 config.toml 配置文件"
 
-#: src/app/deployment/service.py:565
+#: src/app/deployment/service.py:592
 #, python-brace-format
 msgid "✗ 更新配置文件失败: {error}"
 msgstr "✗ 更新配置文件失败: {error}"
 
-#: src/app/deployment/service.py:597
+#: src/app/deployment/service.py:624
 #, python-brace-format
 msgid "备份 config.toml 文件失败: {error}"
 msgstr "备份 config.toml 文件失败: {error}"
 
-#: src/app/deployment/service.py:612
+#: src/app/deployment/service.py:639
 #, python-brace-format
 msgid "写入 config.toml 文件失败: {error}"
 msgstr "写入 config.toml 文件失败: {error}"
 
-#: src/app/deployment/service.py:661
+#: src/app/deployment/service.py:688
 #, python-brace-format
 msgid "检查 sysagent 服务状态 ({current}/{total})..."
 msgstr "检查 sysagent 服务状态 ({current}/{total})..."
 
-#: src/app/deployment/service.py:684
+#: src/app/deployment/service.py:711
 msgid "✓ Framework 服务状态正常"
 msgstr "✓ Framework 服务状态正常"
 
-#: src/app/deployment/service.py:687
+#: src/app/deployment/service.py:714
 #, python-brace-format
 msgid "Framework 服务状态: {status}"
 msgstr "Framework 服务状态: {status}"
 
-#: src/app/deployment/service.py:690
+#: src/app/deployment/service.py:717
 #, python-brace-format
 msgid "等待 {seconds} 秒后重试..."
 msgstr "等待 {seconds} 秒后重试..."
 
-#: src/app/deployment/service.py:694
+#: src/app/deployment/service.py:721
 #, python-brace-format
 msgid "检查服务状态时发生错误: {error}"
 msgstr "检查服务状态时发生错误: {error}"
 
-#: src/app/deployment/service.py:698
+#: src/app/deployment/service.py:725
 msgid "✗ Framework 服务状态检查超时失败"
 msgstr "✗ Framework 服务状态检查超时失败"
 
-#: src/app/deployment/service.py:726
+#: src/app/deployment/service.py:753
 msgid "等待后端服务就绪"
 msgstr "等待后端服务就绪"
 
-#: src/app/deployment/service.py:743
+#: src/app/deployment/service.py:770
 msgid "✓ 后端服务已就绪"
 msgstr "✓ 后端服务已就绪"
 
-#: src/app/deployment/service.py:752
+#: src/app/deployment/service.py:779
 #, python-brace-format
 msgid "连接 {url} 超时"
 msgstr "连接 {url} 超时"
 
-#: src/app/deployment/service.py:754
+#: src/app/deployment/service.py:781
 #, python-brace-format
 msgid "API 连通性检查时发生错误: {error}"
 msgstr "API 连通性检查时发生错误: {error}"
 
-#: src/app/deployment/service.py:759
+#: src/app/deployment/service.py:786
 msgid "✗ 后端 API 服务检查超时失败"
 msgstr "✗ 后端 API 服务检查超时失败"
 
-#: src/app/deployment/service.py:782
+#: src/app/deployment/service.py:809
 msgid "注册大模型配置"
 msgstr "注册大模型配置"
 
-#: src/app/deployment/service.py:783
+#: src/app/deployment/service.py:810
 msgid "正在检查 sysAgent 服务状态..."
 msgstr "正在检查 sysAgent 服务状态..."
 
-#: src/app/deployment/service.py:794
+#: src/app/deployment/service.py:821
 msgid "✗ 后端服务检查失败"
 msgstr "✗ 后端服务检查失败"
 
-#: src/app/deployment/service.py:797
+#: src/app/deployment/service.py:824
 msgid "✓ 后端服务检查通过"
 msgstr "✓ 后端服务检查通过"
 
-#: src/app/deployment/service.py:811
+#: src/app/deployment/service.py:838
 msgid "初始化 Agent 服务"
 msgstr "初始化 Agent 服务"
 
-#: src/app/deployment/service.py:812
+#: src/app/deployment/service.py:839
 msgid "正在初始化 Agent 和 MCP 服务..."
 msgstr "正在初始化 Agent 和 MCP 服务..."
 
-#: src/app/deployment/service.py:822
+#: src/app/deployment/service.py:849
 msgid "✓ Agent 初始化完成"
 msgstr "✓ Agent 初始化完成"
 
-#: src/app/deployment/service.py:826
+#: src/app/deployment/service.py:853
 msgid "⚠ Agent 初始化已跳过（RPM 包不可用），但部署将继续进行"
 msgstr "⚠ Agent 初始化已跳过（RPM 包不可用），但部署将继续进行"
 
-#: src/app/deployment/service.py:871
+#: src/app/deployment/service.py:901
 msgid "✓ 全局配置模板创建成功，其他用户可正常使用"
 msgstr "✓ 全局配置模板创建成功，其他用户可正常使用"
 
-#: src/app/deployment/service.py:874
+#: src/app/deployment/service.py:904
 msgid "⚠ 全局配置模板创建失败，可能影响其他用户使用"
 msgstr "⚠ 全局配置模板创建失败，可能影响其他用户使用"
 
-#: src/app/deployment/service.py:879
+#: src/app/deployment/service.py:909
 msgid "⚠ 配置模板创建异常，可能影响其他用户使用"
 msgstr "⚠ 配置模板创建异常，可能影响其他用户使用"
 
-#: src/app/deployment/service.py:1007
+#: src/app/deployment/service.py:1037
 msgid "正在注册大模型配置..."
 msgstr "正在注册大模型配置..."
 
-#: src/app/deployment/service.py:1016
+#: src/app/deployment/service.py:1046
 msgid "⚠ 未找到 Hermes 后端 URL 配置，跳过模型注册"
 msgstr "⚠ 未找到 Hermes 后端 URL 配置，跳过模型注册"
 
-#: src/app/deployment/service.py:1034
+#: src/app/deployment/service.py:1064
 #, python-brace-format
 msgid "⚠ 注册模型时发生错误: {error}"
 msgstr "⚠ 注册模型时发生错误: {error}"
 
-#: src/app/deployment/service.py:1059
+#: src/app/deployment/service.py:1089
 msgid "正在连接 Hermes 后端服务..."
 msgstr "正在连接 Hermes 后端服务..."
 
-#: src/app/deployment/service.py:1066
+#: src/app/deployment/service.py:1096
 msgid "⚠ 无法连接 Hermes 后端服务，跳过模型注册"
 msgstr "⚠ 无法连接 Hermes 后端服务，跳过模型注册"
 
-#: src/app/deployment/service.py:1072
+#: src/app/deployment/service.py:1102
 msgid "⚠ 当前用户非管理员，跳过模型注册"
 msgstr "⚠ 当前用户非管理员，跳过模型注册"
 
-#: src/app/deployment/service.py:1076
+#: src/app/deployment/service.py:1106
 msgid "✓ 已连接 Hermes 后端服务（管理员权限）"
 msgstr "✓ 已连接 Hermes 后端服务（管理员权限）"
 
-#: src/app/deployment/service.py:1111
+#: src/app/deployment/service.py:1141
 msgid "✓ 已更新全局模型设置"
 msgstr "✓ 已更新全局模型设置"
 
-#: src/app/deployment/service.py:1129
+#: src/app/deployment/service.py:1159
 msgid "部署时配置的 Chat 模型（支持 Function Call）"
 msgstr "部署时配置的 Chat 模型（支持 Function Call）"
 
-#: src/app/deployment/service.py:1135
+#: src/app/deployment/service.py:1165
 #, python-brace-format
 msgid "✓ 已注册 LLM 模型: {model}"
 msgstr "✓ 已注册 LLM 模型: {model}"
 
-#: src/app/deployment/service.py:1155
+#: src/app/deployment/service.py:1185
 msgid "部署时配置的 Embedding 模型"
 msgstr "部署时配置的 Embedding 模型"
 
-#: src/app/deployment/service.py:1160
+#: src/app/deployment/service.py:1190
 #, python-brace-format
 msgid "✓ 已注册 Embedding 模型: {model}"
 msgstr "✓ 已注册 Embedding 模型: {model}"
@@ -1202,129 +1202,129 @@ msgstr "更改用户设置"
 msgid "Base URL 不能为空"
 msgstr "基础 URL 不能为空"
 
-#: src/app/tui.py:246
+#: src/app/tui.py:383
 msgid "Enter command or question..."
 msgstr "输入命令或问题..."
 
-#: src/app/tui.py:255
+#: src/app/tui.py:399
 msgid "Quit"
 msgstr "退出"
 
-#: src/app/tui.py:256
+#: src/app/tui.py:400
 msgid "Settings"
 msgstr "设置"
 
-#: src/app/tui.py:257
+#: src/app/tui.py:401
 msgid "Reset"
 msgstr "重置对话"
 
-#: src/app/tui.py:258
+#: src/app/tui.py:402
 msgid "Agent"
 msgstr "选择智能体"
 
-#: src/app/tui.py:259
+#: src/app/tui.py:403
 msgid "Cancel"
 msgstr "取消"
 
-#: src/app/tui.py:260
+#: src/app/tui.py:404
 msgid "Focus"
 msgstr "切换焦点"
 
-#: src/app/tui.py:284
+#: src/app/tui.py:428
 #, python-brace-format
 msgid "Intelligent CLI Assistant {version}"
 msgstr "智能命令行助手 {version}"
 
-#: src/app/tui.py:398
+#: src/app/tui.py:558
 msgid "[Cancelled]"
 msgstr "[已取消]"
 
-#: src/app/tui.py:630
+#: src/app/tui.py:797
 msgid ""
 "No response received, please check network connection or try again later"
 msgstr "没有收到响应，请检查网络连接或稍后重试"
 
-#: src/app/tui.py:743
+#: src/app/tui.py:937
 msgid "Request timeout, processing stopped"
 msgstr "请求超时，已停止处理"
 
-#: src/app/tui.py:750
+#: src/app/tui.py:944
 msgid "No response for a long time, processing stopped"
 msgstr "长时间无响应，已停止处理"
 
-#: src/app/tui.py:817 src/app/tui.py:1058
+#: src/app/tui.py:1171 src/app/tui.py:1412
 msgid "Request timeout, please try again later"
 msgstr "请求超时，请稍后重试"
 
-#: src/app/tui.py:1044
+#: src/app/tui.py:1398
 #, python-brace-format
 msgid "Server error: {message}"
 msgstr "服务端错误: {message}"
 
-#: src/app/tui.py:1046
+#: src/app/tui.py:1400
 #, python-brace-format
 msgid "Request failed: {message}"
 msgstr "请求失败: {message}"
 
-#: src/app/tui.py:1050
+#: src/app/tui.py:1404
 msgid "Network connection interrupted, please check network and try again"
 msgstr "网络连接异常中断，请检查网络连接后重试"
 
-#: src/app/tui.py:1062
+#: src/app/tui.py:1416
 msgid "Network connection error, please check network and try again"
 msgstr "网络连接错误，请检查网络后重试"
 
-#: src/app/tui.py:1071 src/app/tui.py:1105
+#: src/app/tui.py:1425 src/app/tui.py:1459
 msgid "Server response error, please try again later"
 msgstr "服务端响应异常，请稍后重试"
 
-#: src/app/tui.py:1076
+#: src/app/tui.py:1430
 msgid "Data format error, please try again later"
 msgstr "数据格式错误，请稍后重试"
 
-#: src/app/tui.py:1083
+#: src/app/tui.py:1437
 msgid "Authentication failed, please check configuration"
 msgstr "认证失败，请检查配置"
 
-#: src/app/tui.py:1107
+#: src/app/tui.py:1461
 #, python-brace-format
 msgid "Error processing command: {error}"
 msgstr "处理命令时出错: {error}"
 
-#: src/app/tui.py:1232 src/app/tui.py:1258 src/app/tui.py:1459
-#: src/app/tui.py:1663 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
+#: src/app/tui.py:1600 src/app/tui.py:1626 src/app/tui.py:1830
+#: src/app/tui.py:2043 src/app/dialogs/agent.py:60 src/app/dialogs/agent.py:131
 #: src/app/dialogs/agent.py:187 src/app/dialogs/agent.py:207
 #: src/app/dialogs/agent.py:210 src/tool/oi_select_agent.py:67
 #: src/tool/oi_select_agent.py:94
 msgid "智能问答"
 msgstr "智能问答"
 
-#: src/app/tui.py:1294
+#: src/app/tui.py:1662
 msgid "Agent changed, conversation has been reset"
 msgstr "智能体已变更，会话已重置"
 
-#: src/app/tui.py:1378
+#: src/app/tui.py:1746
 msgid "💡 MCP response sent"
 msgstr "💡 MCP 响应已发送"
 
-#: src/app/tui.py:1381 src/app/tui.py:1409
+#: src/app/tui.py:1749 src/app/tui.py:1777
 msgid "❌ Current client does not support MCP response"
 msgstr "❌ 当前客户端不支持 MCP 响应功能"
 
-#: src/app/tui.py:1390
+#: src/app/tui.py:1758
 #, python-brace-format
 msgid "❌ Failed to send MCP response: {error}"
 msgstr "❌ 发送 MCP 响应失败: {error}"
 
-#: src/app/tui.py:1448
+#: src/app/tui.py:1819
 msgid "🚫 MCP response cancelled"
 msgstr "🚫 MCP 响应被取消"
 
-#: src/app/tui.py:1546
+#: src/app/tui.py:1917
 msgid "Backend configuration validation failed, please check and modify"
 msgstr "后端配置验证失败，请检查并修改配置"
 
-#: src/app/tui.py:1547
+#: src/app/tui.py:1918
 msgid "Configuration Error"
 msgstr "配置错误"
 
@@ -1492,7 +1492,7 @@ msgstr "名称"
 msgid "说明"
 msgstr "说明"
 
-#: src/main.py:46
+#: src/main.py:47
 msgid ""
 "Initialize sysAgent\n"
 " * Initialization requires administrator privileges and network connection"
@@ -1500,15 +1500,15 @@ msgstr ""
 "初始化 sysAgent\n"
 " * 初始化操作需要管理员权限和网络连接"
 
-#: src/main.py:55 src/main.py:163
+#: src/main.py:56 src/main.py:185
 msgid "View and manage application logs"
 msgstr "查看和管理应用日志"
 
-#: src/main.py:64
+#: src/main.py:65
 msgid "Number of log lines to display (default: 1000)"
 msgstr "显示的日志行数 (默认: 1000)"
 
-#: src/main.py:73
+#: src/main.py:74
 msgid ""
 "Manage Witty Assistant LLM settings\n"
 " * Configuration editing requires administrator privileges"
@@ -1516,169 +1516,198 @@ msgstr ""
 "管理 Witty Assistant 大模型设置\n"
 " * 配置编辑操作需要管理员权限"
 
-#: src/main.py:82
+#: src/main.py:84
+msgid ""
+"Install shell completion script for Witty Assistant\n"
+" * Supported shells: bash, zsh, fish"
+msgstr ""
+"安装 Witty Assistant 的 shell 补全脚本\n"
+" * 支持的 shell: bash, zsh, fish"
+
+#: src/main.py:94
+msgid ""
+"Target shell (bash/zsh/fish). If omitted, Witty will try to detect your "
+"current shell."
+msgstr ""
+"目标 shell (bash/zsh/fish)。若省略，Witty 将尝试自动检测当前 shell。"
+
+#: src/main.py:103
 #, python-brace-format
 msgid "Invalid log level: {level}"
 msgstr "无效的日志级别: {level}"
 
-#: src/main.py:89 src/main.py:194
+#: src/main.py:110 src/main.py:216
 msgid "Configure default settings for Witty Assistant"
 msgstr "配置 Witty Assistant 的默认设置"
 
-#: src/main.py:97 src/main.py:98 src/main.py:198
+#: src/main.py:118 src/main.py:119 src/main.py:220
 msgid "Select default agent"
 msgstr "选择默认智能体"
 
-#: src/main.py:105 src/main.py:106 src/main.py:199
+#: src/main.py:126 src/main.py:127 src/main.py:221
 msgid "Set log level"
 msgstr "设置日志级别"
 
-#: src/main.py:113
+#: src/main.py:134
 msgid "Log level (DEBUG/INFO/WARNING/ERROR)"
 msgstr "日志级别 (DEBUG/INFO/WARNING/ERROR)"
 
-#: src/main.py:119 src/main.py:120 src/main.py:200
+#: src/main.py:140 src/main.py:141 src/main.py:222
 msgid "Set display language"
 msgstr "设置显示语言"
 
-#: src/main.py:129
+#: src/main.py:150
 #, python-brace-format
 msgid "Available locales: {locales}"
 msgstr "可用语言: {locales}"
 
-#: src/main.py:140
+#: src/main.py:161
 msgid "Witty Assistant - Intelligent command-line tool"
 msgstr "Witty Assistant - 智能命令行助手"
 
-#: src/main.py:142 src/main.py:195
+#: src/main.py:163 src/main.py:217
 msgid "Usage:\n"
 msgstr "用法:\n"
 
-#: src/main.py:147
+#: src/main.py:168
 msgid "Global options:\n"
 msgstr "全局选项:\n"
 
-#: src/main.py:148
+#: src/main.py:169
 msgid "Show help and exit"
 msgstr "显示帮助并退出"
 
-#: src/main.py:149
+#: src/main.py:170
 msgid "Show program version number and exit"
 msgstr "显示程序版本号并退出"
 
-#: src/main.py:153
+#: src/main.py:174
 msgid "版本与帮助"
 msgstr "版本与帮助"
 
-#: src/main.py:160
+#: src/main.py:178
+msgid "Generate shell completion scripts"
+msgstr "生成 shell 补全脚本"
+
+#: src/main.py:182
 msgid "初始化与调试"
 msgstr "初始化与调试"
 
-#: src/main.py:162
+#: src/main.py:184
 msgid "Initialize sysAgent"
 msgstr "初始化 sysAgent"
 
-#: src/main.py:167
+#: src/main.py:189
 msgid "管理命令"
 msgstr "管理命令"
 
-#: src/main.py:169
+#: src/main.py:191
 msgid "Manage LLM settings"
 msgstr "管理大模型设置"
 
-#: src/main.py:173
+#: src/main.py:195
 msgid "设置调整"
 msgstr "设置调整"
 
-#: src/main.py:175
+#: src/main.py:197
 msgid "Configure default settings"
 msgstr "配置默认设置"
 
-#: src/main.py:180
+#: src/main.py:202
 msgid "Commands:\n"
 msgstr "命令:\n"
 
-#: src/main.py:187
+#: src/main.py:209
 msgid "Run 'witty help <command>' or 'witty <command> -h' for more details.\n"
 msgstr "运行 'witty help <command>' 或 'witty <command> -h' 获取更多详情。\n"
 
-#: src/main.py:188
+#: src/main.py:210
 msgid "For more information and documentation, please visit:\n"
 msgstr "更多信息和使用文档请访问:\n"
 
-#: src/main.py:197
+#: src/main.py:219
 msgid "Subcommands:\n"
 msgstr "子命令:\n"
 
-#: src/main.py:201
+#: src/main.py:223
 msgid "Examples:\n"
 msgstr "示例:\n"
 
-#: src/main.py:252 src/main.py:352
+#: src/main.py:275 src/main.py:397
 #, python-brace-format
 msgid "Unknown command: {cmd}\n"
 msgstr "未知命令: {cmd}\n"
 
-#: src/main.py:295
+#: src/main.py:318
+msgid ""
+"Unable to detect current shell. Please specify one of: bash, zsh, fish\n"
+msgstr "无法检测当前 shell。请手动指定: bash, zsh, fish\n"
+
+#: src/main.py:325
+#, python-brace-format
+msgid "✓ Completion installed to: {path}\n"
+msgstr "✓ 补全脚本已安装到: {path}\n"
+
+#: src/main.py:339
 msgid "未指定子命令。使用 'witty help set-default' 查看可用选项。\n"
 msgstr "未指定子命令。使用 'witty help set-default' 查看可用选项。\n"
 
-#: src/main.py:307
+#: src/main.py:351
 #, python-brace-format
 msgid "✓ Language set to: {locale}\n"
 msgstr "✓ 语言已设置为: {locale}\n"
 
-#: src/main.py:309
+#: src/main.py:353
 #, python-brace-format
 msgid "✗ Unsupported language: {locale}\n"
 msgstr "✗ 不支持的语言: {locale}\n"
 
-#: src/main.py:319
+#: src/main.py:363
 #, python-brace-format
 msgid "Unknown subcommand: {cmd}\n"
 msgstr "未知子命令: {cmd}\n"
 
-#: src/main.py:380
+#: src/main.py:425
 #, python-brace-format
 msgid "Failed to retrieve logs: {error}\n"
 msgstr "获取日志失败: {error}\n"
 
-#: src/main.py:387
+#: src/main.py:432
 #, python-brace-format
 msgid "Invalid log level: {level}\n"
 msgstr "无效的日志级别: {level}\n"
 
-#: src/main.py:396
+#: src/main.py:441
 #, python-format
 msgid "Log level has been set to: %s"
 msgstr "日志级别已设置为: %s"
 
-#: src/main.py:397
+#: src/main.py:442
 msgid "This is a DEBUG level test message"
 msgstr "这是一条 DEBUG 级别的测试消息"
 
-#: src/main.py:398
+#: src/main.py:443
 msgid "This is an INFO level test message"
 msgstr "这是一条 INFO 级别的测试消息"
 
-#: src/main.py:399
+#: src/main.py:444
 msgid "This is a WARNING level test message"
 msgstr "这是一条 WARNING 级别的测试消息"
 
-#: src/main.py:400
+#: src/main.py:445
 msgid "This is an ERROR level test message"
 msgstr "这是一条 ERROR 级别的测试消息"
 
-#: src/main.py:402
+#: src/main.py:447
 #, python-brace-format
 msgid "✓ Log level successfully set to: {level}\n"
 msgstr "✓ 日志级别已成功设置为: {level}\n"
 
-#: src/main.py:403
+#: src/main.py:448
 msgid "✓ Logging system initialized\n"
 msgstr "✓ 日志系统初始化完成\n"
 
-#: src/main.py:442
+#: src/main.py:487
 msgid "Fatal error in Witty Assistant application"
 msgstr "Witty Assistant 应用发生致命错误"
 
@@ -1716,6 +1745,42 @@ msgstr "  witty  # 然后按下 Ctrl+S 进入设置界面切换到 sysAgent\n"
 #, python-brace-format
 msgid "错误: {error}\n"
 msgstr "错误: {error}\n"
+
+#: src/tool/completion.py:144
+#, python-brace-format
+msgid ""
+"自动补全不会在当前会话立刻生效。\n"
+"你可以：\n"
+"  1) 重新打开终端，或\n"
+"  2) 临时执行：source \"{path}\"\n"
+msgstr ""
+"自动补全不会在当前会话立刻生效。\n"
+"你可以：\n"
+"  1) 重新打开终端，或\n"
+"  2) 临时执行：source \"{path}\"\n"
+
+#: src/tool/completion.py:154
+#, python-brace-format
+msgid ""
+"自动补全不会在当前会话立刻生效。\n"
+"你可以将目录加入 fpath 并重新初始化 compinit，例如：\n"
+"  fpath=(\"{dir}\" $fpath)\n"
+"  autoload -U compinit && compinit\n"
+"（建议把 fpath 配置写入 ~/.zshrc）\n"
+msgstr ""
+"自动补全不会在当前会话立刻生效。\n"
+"你可以将目录加入 fpath 并重新初始化 compinit，例如：\n"
+"  fpath=(\"{dir}\" $fpath)\n"
+"  autoload -U compinit && compinit\n"
+"（建议把 fpath 配置写入 ~/.zshrc）\n"
+
+#: src/tool/completion.py:163
+msgid ""
+"自动补全不会在当前会话立刻生效。\n"
+"你可以重新打开 fish，或执行：exec fish\n"
+msgstr ""
+"自动补全不会在当前会话立刻生效。\n"
+"你可以重新打开 fish，或执行：exec fish\n"
 
 #: src/tool/oi_llm_config.py:67
 msgid "未找到 systemctl，跳过重启后端服务"

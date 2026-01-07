@@ -28,7 +28,7 @@ pytest tests/backend/test_model_info.py::TestModelInfo::test_model_info_creation
 
 ## 测试统计
 
-截至 2025-11-17，pytest 收集到 **127** 个测试用例，覆盖以下模块：
+用例数量以本仓库实际运行 `pytest` 的收集结果为准（本仓库当前约 **338** 个用例）。
 
 ### Backend 模块概览
 
@@ -42,7 +42,6 @@ pytest tests/backend/test_model_info.py::TestModelInfo::test_model_info_creation
 - `test_browser_availability.py`: 浏览器可用性检测
 - `test_token_validation.py`: Token 格式校验
 - `test_token_integration.py`: Token 接入与网络交互
-- `test_login.py`: 浏览器登录、回调服务器与轮询流程
 - `test_command_processor.py`: CLI 命令执行/回退逻辑
 - `test_ssl_flags.py`: SSL 标志解析与 APIValidator 分支
 
@@ -77,7 +76,6 @@ tests/
 └── tool/
     ├── test_browser_availability.py
     ├── test_command_processor.py
-    ├── test_login.py
     ├── test_ssl_flags.py
     ├── test_token_integration.py
     └── test_token_validation.py
@@ -126,7 +124,6 @@ pytest -m asyncio tests/ -v
 
 - `test_browser_availability.py`: 检查浏览器可用性探测的正常、异常与回退分支。
 - `test_token_validation.py` / `test_token_integration.py`: 覆盖短期/长期 token 的解析、空值与格式拒绝，以及网络交互路径。
-- `test_login.py`: 复现浏览器登录流程、回调服务器端口发现、错误响应与清理逻辑。
 - `test_command_processor.py` / `test_ssl_flags.py`: 关注命令黑/白名单、子进程回退、流式输出聚合，以及 SSL 标志和 APIValidator 分支。
 
 ### App.Deployment 模块覆盖

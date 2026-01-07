@@ -22,6 +22,7 @@ from log.manager import (
     setup_logging,
 )
 from tool import backend_init, llm_config, select_agent
+from tool.completion import _SUPPORTED_SHELLS, detect_default_shell, get_install_hint, install_completion_script
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -74,6 +75,26 @@ def _build_llm_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
+
+
+def _build_completion_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="witty completion",
+        description=_(
+            "Install shell completion script for Witty Assistant\n * Supported shells: bash, zsh, fish",
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument(
+        "shell",
+        choices=list(_SUPPORTED_SHELLS),
+        nargs="?",
+        metavar="SHELL",
+        help=_(
+            "Target shell (bash/zsh/fish). If omitted, Witty will try to detect your current shell.",
+        ),
+    )
+    return parser
 
 
 def _normalize_log_level(value: str) -> str:
@@ -154,6 +175,7 @@ def _print_root_help() -> None:
             [
                 _CommandInfo("help", "witty help / witty help <command>"),
                 _CommandInfo("version", "witty version"),
+                _CommandInfo("completion", _("Generate shell completion scripts")),
             ],
         ),
         (
@@ -233,6 +255,7 @@ def _dispatch_help(path: list[str]) -> bool:
         "init": _build_init_parser,
         "logs": _build_logs_parser,
         "llm": _build_llm_parser,
+        "completion": _build_completion_parser,
     }
 
     if cmd == "set-default":
@@ -257,30 +280,51 @@ def _dispatch_help(path: list[str]) -> bool:
     return True
 
 
-def _cmd_help(rest: list[str], _: ConfigManager) -> None:
+def _cmd_help(rest: list[str], _config_manager: ConfigManager) -> None:
     if rest:
         _dispatch_help(rest)
         return
     _print_root_help()
 
 
-def _cmd_version(_: list[str], __: ConfigManager) -> None:
+def _cmd_version(_rest: list[str], _config_manager: ConfigManager) -> None:
     sys.stdout.write(f"witty {__version__}\n")
 
 
-def _cmd_init(rest: list[str], _: ConfigManager) -> None:
+def _cmd_init(rest: list[str], _config_manager: ConfigManager) -> None:
     _build_init_parser().parse_args(rest)
     backend_init()
 
 
-def _cmd_logs(rest: list[str], _: ConfigManager) -> None:
+def _cmd_logs(rest: list[str], _config_manager: ConfigManager) -> None:
     args = _build_logs_parser().parse_args(rest)
     show_logs(max_lines=args.lines)
 
 
-def _cmd_llm(rest: list[str], _: ConfigManager) -> None:
+def _cmd_llm(rest: list[str], _config_manager: ConfigManager) -> None:
     _build_llm_parser().parse_args(rest)
     llm_config()
+
+
+def _cmd_completion(rest: list[str], _config_manager: ConfigManager) -> None:
+    args = _build_completion_parser().parse_args(rest)
+    shell: str | None = args.shell
+    if shell is None:
+        shell = detect_default_shell()
+
+    if shell is None:
+        sys.stderr.write(
+            _(
+                "Unable to detect current shell. Please specify one of: bash, zsh, fish\n",
+            ),
+        )
+        raise SystemExit(2)
+
+    target_path = install_completion_script(shell)
+    sys.stdout.write(
+        _("✓ Completion installed to: {path}\n").format(path=target_path),
+    )
+    sys.stdout.write(get_install_hint(shell, target_path))
 
 
 def _cmd_set_default(rest: list[str], config_manager: ConfigManager) -> None:
@@ -345,6 +389,7 @@ def _dispatch_cli(argv: list[str], config_manager: ConfigManager) -> bool:
         "logs": _cmd_logs,
         "llm": _cmd_llm,
         "set-default": _cmd_set_default,
+        "completion": _cmd_completion,
     }
 
     handler = handlers.get(cmd)
