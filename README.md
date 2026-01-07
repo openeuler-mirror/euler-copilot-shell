@@ -165,28 +165,31 @@ witty set-default agent
 
 ## Shell Completion
 
-Witty Assistant 支持为 Bash / Zsh / Fish 生成补全脚本：
+Witty Assistant 支持为 Bash / Zsh / Fish 安装补全脚本：
 
-- Bash（当前 shell 会话生效）：
-
-  ```sh
-  source <(witty completion bash)
-  ```
-
-- Zsh（当前 shell 会话生效，内部复用 Bash completion）：
+- Bash：
 
   ```sh
-  source <(witty completion zsh)
+  witty completion bash
   ```
 
-- Fish（当前 shell 会话生效）：
+- Zsh：
 
   ```sh
-  witty completion fish | source
+  witty completion zsh
   ```
 
-如果需要永久生效，请将上述命令写入您的 shell 配置文件（如 `~/.bashrc` / `~/.zshrc` / `~/.config/fish/config.fish`），或将脚本输出保存到系统的 completion 目录（RPM 打包时通常安装到：
-`/usr/share/bash-completion/completions/witty`、`/usr/share/zsh/site-functions/_witty`、`/usr/share/fish/vendor_completions.d/witty.fish`）。
+- Fish：
+
+  ```sh
+  witty completion fish
+  ```
+
+这会将补全脚本安装到用户级的默认目录（遵循 XDG 规范）。安装完成后，您可能需要重新启动 shell 或重新加载配置以使补全生效。
+
+如果未指定 shell，Witty 会尝试自动检测当前 shell。
+
+对于系统级安装（RPM 包），补全脚本会自动安装到标准位置。
 
 ## 国际化支持
 
