@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
+import contextlib
+import shutil
+import subprocess
 import time
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
@@ -401,6 +405,7 @@ class IntelligentTerminal(App):
         Binding(key="ctrl+r", action="reset_conversation", description=_("Reset")),
         Binding(key="ctrl+t", action="choose_agent", description=_("Agent")),
         Binding(key="ctrl+c", action="cancel", description=_("Cancel"), priority=True),
+        Binding(key="ctrl+z", action="opencode", description=_("使用 OpenCode 智能体")),
         Binding(key="tab", action="toggle_focus", description=_("Focus")),
     ]
 
@@ -507,6 +512,33 @@ class IntelligentTerminal(App):
         task = asyncio.create_task(self._show_agent_selection())
         self.background_tasks.add(task)
         task.add_done_callback(self._task_done_callback)
+
+    def action_opencode(self) -> None:
+        """打开 OpenCode 编辑器，覆盖当前窗口"""
+        # 只有在主界面（无其他屏幕）时才响应
+        if not self._is_in_main_interface():
+            return
+
+        # 检查 opencode 命令是否存在
+        opencode_path = shutil.which("opencode")
+        if not opencode_path:
+            # 如果找不到 opencode 命令，则无事发生
+            self.logger.debug("OpenCode 未安装，命令未执行")
+            return
+
+        # 注册退出后要执行的函数
+        def launch_opencode() -> None:
+            """在 Python 进程退出后，在恢复的终端中启动 OpenCode"""
+            with contextlib.suppress(OSError, subprocess.SubprocessError):
+                # 使用 subprocess.run 在前台运行 OpenCode
+                # 不使用 os.execvp，让 Python 正常退出以确保终端状态恢复
+                # 使用完整路径以避免安全警告
+                subprocess.run([opencode_path, "."], check=False)  # noqa: S603
+
+        atexit.register(launch_opencode)
+
+        # 退出 Textual 应用，这会恢复终端状态
+        self.exit()
 
     def action_toggle_focus(self) -> None:
         """在命令输入框和文本区域之间切换焦点"""
