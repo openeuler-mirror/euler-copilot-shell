@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_submodules
 
 # 项目根目录
 project_root = Path(os.getcwd())
@@ -33,6 +34,9 @@ hidden_imports = [
     "textual.widgets._switch",
     "textual.widgets._tabs",
 ]
+
+# 收集 rich 库的所有子模块
+hidden_imports.extend(collect_submodules('rich'))
 
 # 数据文件
 added_files = [
