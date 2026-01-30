@@ -362,6 +362,7 @@ class DeploymentService:
             self._check_environment,
             self._run_env_check_script,
             self._run_install_dependency_script,
+            self._install_opencode_step,
             self._generate_config_files,
             self._run_init_config_script,
             self._register_llm_models_step,
@@ -486,7 +487,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """运行配置初始化脚本"""
-        self.state.current_step = 4
+        self.state.current_step = 6
         self.state.current_step_name = _("初始化配置和服务")
         self.state.add_log(_("正在初始化配置和启动服务..."))
 
@@ -576,7 +577,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """生成配置文件"""
-        self.state.current_step = 3
+        self.state.current_step = 5
         self.state.current_step_name = _("更新配置文件")
         self.state.add_log(_("正在更新配置文件..."))
 
@@ -834,7 +835,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """运行 Agent 初始化脚本"""
-        self.state.current_step = 6
+        self.state.current_step = 7
         self.state.current_step_name = _("初始化 Agent 服务")
         self.state.add_log(_("正在初始化 Agent 和 MCP 服务..."))
 
@@ -855,6 +856,227 @@ class DeploymentService:
 
         # FAILED
         self.state.add_log("✗ Agent 初始化失败")
+        return False
+
+    async def _install_opencode_step(
+        self,
+        config: DeploymentConfig,
+        progress_callback: Callable[[DeploymentState], None] | None,
+    ) -> bool:
+        """检查并安装 opencode-ai"""
+        self.state.current_step = 4
+        self.state.current_step_name = _("安装 opencode-ai")
+        self.state.add_log(_("正在检查 opencode-ai 安装状态..."))
+
+        if progress_callback:
+            progress_callback(self.state)
+
+        try:
+            # 检查 opencode 是否已安装
+            if await self._check_opencode_installed():
+                self.state.add_log(_("✓ opencode-ai 已安装，跳过安装步骤"))
+                return True
+
+            self.state.add_log(_("opencode-ai 未安装，开始安装流程..."))
+
+            # 安装 nodejs
+            if not await self._install_nodejs(progress_callback):
+                self.state.add_log(_("⚠ nodejs 安装失败，跳过 opencode-ai 安装"))
+                return True  # 不阻止部署继续
+
+            # 配置 npm 镜像源（如果需要）
+            await self._configure_npm_mirror(progress_callback)
+
+            # 安装 opencode-ai
+            if await self._install_opencode(progress_callback):
+                self.state.add_log(_("✓ opencode-ai 安装完成"))
+                return True
+            self.state.add_log(_("⚠ opencode-ai 安装失败，但部署将继续进行"))
+
+        except Exception as e:
+            self.state.add_log(_("⚠ 安装 opencode-ai 时发生异常: {error}").format(error=e))
+            logger.exception("安装 opencode-ai 时发生异常")
+        return True  # 不阻断部署流程
+
+    async def _check_opencode_installed(self) -> bool:
+        """检查 opencode-ai 是否已安装"""
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "which",
+                "opencode",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await process.wait()
+        except Exception:
+            logger.exception("检查 opencode-ai 安装状态失败")
+            return False
+        else:
+            return process.returncode == 0
+
+    async def _install_nodejs(
+        self,
+        progress_callback: Callable[[DeploymentState], None] | None,
+    ) -> bool:
+        """安装 nodejs"""
+        self.state.add_log(_("正在检查 npm 安装状态..."))
+        if progress_callback:
+            progress_callback(self.state)
+
+        # 检查 npm 是否已安装
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "which",
+                "npm",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await process.wait()
+            if process.returncode == 0:
+                self.state.add_log(_("✓ npm 已安装"))
+                return True
+        except Exception:
+            logger.exception("检查 npm 安装状态失败")
+
+        # 安装 nodejs 和 npm
+        self.state.add_log(_("正在通过 dnf 安装 nodejs 和 npm..."))
+        if progress_callback:
+            progress_callback(self.state)
+
+        try:
+            cmd = ["dnf", "install", "-y", "nodejs", "npm"]
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+
+            # 读取安装输出
+            if process.stdout:
+                async for line in self._read_process_output_lines(process):
+                    self.state.add_log(f"nodejs: {line}")
+                    if progress_callback:
+                        progress_callback(self.state)
+
+            return_code = await process.wait()
+
+            if return_code == 0:
+                self.state.add_log(_("✓ nodejs 安装成功"))
+                return True
+            self.state.add_log(_("✗ nodejs 安装失败，返回码: {code}").format(code=return_code))
+
+        except Exception as e:
+            self.state.add_log(_("✗ 安装 nodejs 时发生错误: {error}").format(error=e))
+            logger.exception("安装 nodejs 失败")
+        return False
+
+    async def _check_npm_availability(self) -> bool:
+        """检查 npm 是否可用"""
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "npm",
+                "ping",
+                "--registry",
+                "https://registry.npmjs.org",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await asyncio.wait_for(process.wait(), timeout=10.0)
+        except Exception:
+            logger.exception("检查 npm 可用性失败")
+            return False
+        else:
+            return process.returncode == 0
+
+    async def _configure_npm_mirror(
+        self,
+        progress_callback: Callable[[DeploymentState], None] | None,
+    ) -> None:
+        """配置 npm 镜像源（如果 npm 官方源不可用）"""
+        self.state.add_log(_("正在检查 npm 可用性..."))
+        if progress_callback:
+            progress_callback(self.state)
+
+        # 检查 npm 官方源是否可用
+        if await self._check_npm_availability():
+            self.state.add_log(_("✓ npm 官方源可用"))
+            return
+
+        self.state.add_log(_("npm 官方源不可用，配置国内镜像源..."))
+
+        # 尝试配置国内镜像源（按优先级）
+        mirrors = [
+            ("华为云镜像", "https://repo.huaweicloud.com/repository/npm/"),
+            ("腾讯云镜像", "http://mirrors.cloud.tencent.com/npm/"),
+            ("淘宝镜像", "https://registry.npmmirror.com"),
+        ]
+
+        for mirror_name, mirror_url in mirrors:
+            try:
+                self.state.add_log(_("尝试配置 {name}: {url}").format(name=mirror_name, url=mirror_url))
+                if progress_callback:
+                    progress_callback(self.state)
+
+                process = await asyncio.create_subprocess_exec(
+                    "npm",
+                    "config",
+                    "set",
+                    "registry",
+                    mirror_url,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                await process.wait()
+
+                if process.returncode == 0:
+                    self.state.add_log(_("✓ 已配置 npm 镜像源: {name}").format(name=mirror_name))
+                    return
+
+            except OSError as e:
+                self.state.add_log(_("配置 {name} 失败: {error}").format(name=mirror_name, error=e))
+                continue
+
+        self.state.add_log(_("⚠ 无法配置 npm 镜像源，将使用默认源"))
+
+    async def _install_opencode(
+        self,
+        progress_callback: Callable[[DeploymentState], None] | None,
+    ) -> bool:
+        """安装 opencode-ai"""
+        self.state.add_log(_("正在全局安装 opencode-ai..."))
+        if progress_callback:
+            progress_callback(self.state)
+
+        try:
+            cmd = ["npm", "install", "-g", "opencode-ai"]
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+
+            # 读取安装输出
+            if process.stdout:
+                async for line in self._read_process_output_lines(process):
+                    # 过滤掉 npm 的进度条和警告信息
+                    if line and not line.startswith(("npm WARN", "npm notice")):
+                        self.state.add_log(f"npm: {line}")
+                        if progress_callback:
+                            progress_callback(self.state)
+
+            return_code = await process.wait()
+
+            if return_code == 0:
+                # 验证安装是否成功
+                if await self._check_opencode_installed():
+                    return True
+                self.state.add_log(_("✗ opencode-ai 安装后验证失败"))
+                return False
+            self.state.add_log(_("✗ opencode-ai 安装失败，返回码: {code}").format(code=return_code))
+
+        except Exception as e:
+            self.state.add_log(_("✗ 安装 opencode-ai 时发生错误: {error}").format(error=e))
+            logger.exception("安装 opencode-ai 失败")
         return False
 
     async def _create_global_config_template(self, config: DeploymentConfig) -> None:
