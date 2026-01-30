@@ -492,6 +492,10 @@ class IntelligentTerminal(App):
         self._reset_mcp_state()
         # 重新显示 LOGO
         self._has_conversation = False
+        # 确保不会重复挂载 LOGO
+        with contextlib.suppress(Exception):
+            logo = self.query_one("#witty-logo", WittyLogo)
+            logo.remove()
         output_container.mount(WittyLogo())
 
     def action_choose_agent(self) -> None:
