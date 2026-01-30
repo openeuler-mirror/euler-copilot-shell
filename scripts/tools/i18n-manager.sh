@@ -99,7 +99,7 @@ extract() {
         --output="$POT_FILE" \
         --from-code=UTF-8 \
         --package-name=witty-assistant \
-        --package-version=2.0.0 \
+        --package-version=2.0.2 \
         --msgid-bugs-address=contact@openeuler.org \
         --copyright-holder="openEuler" \
         --add-comments=Translators \
@@ -169,6 +169,9 @@ compile() {
 
     compiled=0
     failed=0
+
+    # 切换到 locale 目录，避免在项目根目录生成临时文件
+    cd "$LOCALE_DIR"
 
     # 遍历所有语言目录
     for locale_path in "$LOCALE_DIR"/*; do

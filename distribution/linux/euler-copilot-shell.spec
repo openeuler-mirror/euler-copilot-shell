@@ -3,7 +3,7 @@
 %global debug_package %{nil}
 
 Name:           euler-copilot-shell
-Version:        2.0.1
+Version:        2.0.2
 Release:        1%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
 Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
@@ -142,6 +142,10 @@ rm -f /usr/lib/witty-assistant/scripts
 fi
 
 %changelog
+* Fri Jan 30 2026 openEuler <contact@openeuler.org> - 2.0.2-1
+- feat: Add option to launch OpenCode through Witty Assistant
+- installer: Install OpenCode-AI during deployment
+
 * Tue Jan 06 2026 openEuler <contact@openeuler.org> - 2.0.1-1
 - feat: Set defautl chat model during installation
 - feat: Add shell completion installation command
