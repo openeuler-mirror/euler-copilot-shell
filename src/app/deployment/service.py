@@ -12,6 +12,7 @@ import copy
 import platform
 import sys
 from pathlib import Path
+from textwrap import dedent
 from typing import TYPE_CHECKING
 
 import httpx
@@ -360,6 +361,7 @@ class DeploymentService:
 
         steps = [
             self._check_environment,
+            self._setup_epol_repo,
             self._run_env_check_script,
             self._run_install_dependency_script,
             self._install_opencode_step,
@@ -437,13 +439,126 @@ class DeploymentService:
 
         return True
 
+    def _get_openeuler_mirror_base_url(self) -> str:
+        """读取 openEuler.repo 文件获取镜像源地址，失败时返回默认值"""
+        default_mirror = "https://repo.openeuler.org/"
+        repo_file_path = Path("/etc/yum.repos.d/openEuler.repo")
+
+        try:
+            if not repo_file_path.exists():
+                logger.warning("未找到 %s，使用默认镜像源: %s", repo_file_path, default_mirror)
+                return default_mirror
+
+            content = repo_file_path.read_text(encoding="utf-8")
+
+            # 查找第一个 baseurl 行，提取镜像源基础 URL
+            # 格式示例: baseurl=https://mirrors.example.com/openEuler-24.03-LTS-SP3/OS/$basearch/
+            for raw_line in content.splitlines():
+                line = raw_line.strip()
+                if line.startswith("baseurl="):
+                    baseurl = line.split("=", 1)[1].strip()
+                    # 提取镜像源根地址（到 openEuler-XX 之前的部分）
+                    # 例如从 https://mirrors.example.com/openEuler-24.03-LTS-SP3/OS/$basearch/
+                    # 提取 https://mirrors.example.com/
+                    if "/openEuler-" in baseurl:
+                        mirror_base = baseurl.split("/openEuler-")[0] + "/"
+                        logger.info("从 %s 读取到镜像源: %s", repo_file_path, mirror_base)
+                        return mirror_base
+
+            logger.warning("未能从 %s 解析出镜像源，使用默认值: %s", repo_file_path, default_mirror)
+
+        except OSError as e:
+            logger.warning("读取 %s 失败: %s，使用默认镜像源", repo_file_path, e)
+
+        return default_mirror
+
+    async def _setup_epol_repo(
+        self,
+        config: DeploymentConfig,
+        progress_callback: Callable[[DeploymentState], None] | None,
+    ) -> bool:
+        """配置 update-EPOL 软件源"""
+        self.state.current_step = 2
+        self.state.current_step_name = _("配置 EPOL 软件源")
+        self.state.add_log(_("正在配置 update-EPOL 软件源..."))
+
+        if progress_callback:
+            progress_callback(self.state)
+
+        try:
+            # 检查是否已存在包含 /EPOL/update/ 的仓库
+            check_process = await asyncio.create_subprocess_exec(
+                "dnf",
+                "repolist",
+                "-v",
+                "--enabled",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _stderr = await check_process.communicate()
+            repolist_output = stdout.decode("utf-8", errors="ignore")
+
+            # 检查输出中是否包含 /EPOL/update/ 路径
+            if "/EPOL/update/" in repolist_output:
+                self.state.add_log(_("✓ update-EPOL 软件源已存在，跳过配置"))
+                logger.info("检测到已存在包含 /EPOL/update/ 的软件源，跳过配置")
+                return True
+
+            # 获取镜像源地址
+            mirror_base = self._get_openeuler_mirror_base_url()
+
+            # 从镜像源构造 update-EPOL 的 URL
+            # 注意：这里硬编码了 openEuler-24.03-LTS-SP3，未来可能需要动态检测版本
+            epol_baseurl = f"{mirror_base}openEuler-24.03-LTS-SP3/EPOL/update/main/$basearch/"
+            gpgkey_url = f"{mirror_base}openEuler-24.03-LTS-SP3/OS/$basearch/RPM-GPG-KEY-openEuler"
+
+            # 生成 repo 文件内容
+            repo_content = dedent(f"""\
+                [update-EPOL]
+                name=update-EPOL
+                baseurl={epol_baseurl}
+                metadata_expire=1h
+                enabled=1
+                gpgcheck=1
+                gpgkey={gpgkey_url}
+            """)
+
+            # 写入 repo 文件
+            repo_file_path = "/etc/yum.repos.d/openEuler-EPOL-update.repo"
+
+            # 使用 sudo tee 写入文件
+            write_cmd = ["tee", repo_file_path]
+            process = await asyncio.create_subprocess_exec(
+                *write_cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _stdout, stderr = await process.communicate(repo_content.encode("utf-8"))
+
+            if process.returncode != 0:
+                error_msg = stderr.decode("utf-8", errors="ignore").strip()
+                self.state.add_log(_("✗ 写入 EPOL repo 文件失败: {error}").format(error=error_msg))
+                return False
+
+            self.state.add_log(_("✓ update-EPOL 软件源配置完成"))
+            self.state.add_log(_("  镜像源: {mirror}").format(mirror=mirror_base))
+            logger.info("update-EPOL 软件源配置完成，使用镜像源: %s", mirror_base)
+
+        except Exception as e:
+            self.state.add_log(_("✗ 配置 EPOL 软件源失败: {error}").format(error=e))
+            logger.exception("配置 EPOL 软件源失败")
+            return False
+
+        return True
+
     async def _run_env_check_script(
         self,
         config: DeploymentConfig,
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """运行环境检查脚本"""
-        self.state.current_step = 1
+        self.state.current_step = 3
         self.state.current_step_name = _("检查系统环境")
         self.state.add_log(_("正在执行系统环境检查..."))
 
@@ -464,7 +579,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """运行依赖安装脚本"""
-        self.state.current_step = 2
+        self.state.current_step = 4
         self.state.current_step_name = _("安装依赖组件")
         self.state.add_log(_("正在安装后端依赖组件..."))
 
@@ -487,7 +602,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """运行配置初始化脚本"""
-        self.state.current_step = 6
+        self.state.current_step = 7
         self.state.current_step_name = _("初始化配置和服务")
         self.state.add_log(_("正在初始化配置和启动服务..."))
 
@@ -577,7 +692,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """生成配置文件"""
-        self.state.current_step = 5
+        self.state.current_step = 6
         self.state.current_step_name = _("更新配置文件")
         self.state.add_log(_("正在更新配置文件..."))
 
@@ -793,7 +908,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """
-        第 5 步：注册 LLM 模型
+        第 8 步：注册 LLM 模型
 
         在后端服务拉起后，先进行健康检查，然后注册 LLM 和 Embedding 模型。
         这一步包含用户登录、获取 token 等操作。
@@ -806,7 +921,7 @@ class DeploymentService:
             bool: 是否成功
 
         """
-        self.state.current_step = 5
+        self.state.current_step = 8
         self.state.current_step_name = _("注册大模型配置")
         self.state.add_log(_("正在检查 sysAgent 服务状态..."))
 
@@ -835,7 +950,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """运行 Agent 初始化脚本"""
-        self.state.current_step = 7
+        self.state.current_step = 9
         self.state.current_step_name = _("初始化 Agent 服务")
         self.state.add_log(_("正在初始化 Agent 和 MCP 服务..."))
 
@@ -864,7 +979,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """检查并安装 opencode-ai"""
-        self.state.current_step = 4
+        self.state.current_step = 5
         self.state.current_step_name = _("安装 opencode-ai")
         self.state.add_log(_("正在检查 opencode-ai 安装状态..."))
 
