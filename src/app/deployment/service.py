@@ -12,7 +12,6 @@ import copy
 import platform
 import sys
 from pathlib import Path
-from textwrap import dedent
 from typing import TYPE_CHECKING
 
 import httpx
@@ -40,9 +39,7 @@ LOCAL_DEPLOYMENT_HOST = "127.0.0.1"
 class DeploymentResourceManager:
     """部署资源管理器，管理 RPM 包安装的资源文件"""
 
-    CANDIDATE_INSTALLER_BASE_PATHS: tuple[Path, ...] = (
-        Path("/usr/lib/witty-assistant/scripts"),
-    )
+    CANDIDATE_INSTALLER_BASE_PATHS: tuple[Path, ...] = (Path("/usr/lib/witty-assistant/scripts"),)
 
     def __init__(self) -> None:
         """初始化资源管理器，并缓存已解析的安装器资源路径。"""
@@ -439,38 +436,86 @@ class DeploymentService:
 
         return True
 
-    def _get_openeuler_mirror_base_url(self) -> str:
-        """读取 openEuler.repo 文件获取镜像源地址，失败时返回默认值"""
-        default_mirror = "https://repo.openeuler.org/"
+    def _get_epol_repo_config(self) -> tuple[str, str | None] | None:
+        """
+        从 openEuler.repo 文件读取 EPOL 仓库配置
+
+        Returns:
+            tuple[str, str | None] | None: (epol_baseurl, gpgkey_url) 或 None（未找到配置）
+            如果 EPOL 没有配置 gpgkey，则返回的 gpgkey_url 为 None
+
+        """
         repo_file_path = Path("/etc/yum.repos.d/openEuler.repo")
 
         try:
             if not repo_file_path.exists():
-                logger.warning("未找到 %s，使用默认镜像源: %s", repo_file_path, default_mirror)
-                return default_mirror
+                logger.warning("未找到 %s", repo_file_path)
+                return None
 
             content = repo_file_path.read_text(encoding="utf-8")
-
-            # 查找第一个 baseurl 行，提取镜像源基础 URL
-            # 格式示例: baseurl=https://mirrors.example.com/openEuler-24.03-LTS-SP3/OS/$basearch/
-            for raw_line in content.splitlines():
-                line = raw_line.strip()
-                if line.startswith("baseurl="):
-                    baseurl = line.split("=", 1)[1].strip()
-                    # 提取镜像源根地址（到 openEuler-XX 之前的部分）
-                    # 例如从 https://mirrors.example.com/openEuler-24.03-LTS-SP3/OS/$basearch/
-                    # 提取 https://mirrors.example.com/
-                    if "/openEuler-" in baseurl:
-                        mirror_base = baseurl.split("/openEuler-")[0] + "/"
-                        logger.info("从 %s 读取到镜像源: %s", repo_file_path, mirror_base)
-                        return mirror_base
-
-            logger.warning("未能从 %s 解析出镜像源，使用默认值: %s", repo_file_path, default_mirror)
-
         except OSError as e:
-            logger.warning("读取 %s 失败: %s，使用默认镜像源", repo_file_path, e)
+            logger.warning("读取 %s 失败: %s", repo_file_path, e)
+            return None
+        else:
+            epol_config = self._parse_epol_section(content, repo_file_path)
 
-        return default_mirror
+            if not epol_config:
+                return None
+
+            # 直接返回 EPOL 的配置，不做推断
+            return epol_config
+
+    def _parse_epol_section(self, content: str, repo_file_path: Path) -> tuple[str, str | None] | None:
+        """解析 repo 文件内容，提取 EPOL section 的配置"""
+        current_section = None
+        epol_baseurl = None
+        epol_gpgkey = None
+
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+
+            # 检测 section
+            if line.startswith("[") and line.endswith("]"):
+                current_section = line[1:-1]
+                continue
+
+            # 只处理 EPOL section
+            if current_section == "EPOL":
+                if line.startswith("baseurl="):
+                    epol_baseurl = line.split("=", 1)[1].strip()
+                elif line.startswith("gpgkey="):
+                    epol_gpgkey = line.split("=", 1)[1].strip()
+
+                # 找到了所需的配置，可以提前返回
+                if epol_baseurl and epol_gpgkey:
+                    logger.info(
+                        "从 %s 读取到 EPOL 配置: baseurl=%s, gpgkey=%s",
+                        repo_file_path,
+                        epol_baseurl,
+                        epol_gpgkey,
+                    )
+                    return epol_baseurl, epol_gpgkey
+
+        if not epol_baseurl:
+            logger.warning("未能从 %s 找到 EPOL 仓库配置", repo_file_path)
+            return None
+
+        # 如果只找到 baseurl，没有 gpgkey，返回 None
+        if epol_gpgkey:
+            logger.info(
+                "从 %s 读取到 EPOL 配置: baseurl=%s, gpgkey=%s",
+                repo_file_path,
+                epol_baseurl,
+                epol_gpgkey,
+            )
+        else:
+            logger.info(
+                "从 %s 读取到 EPOL 配置: baseurl=%s (无 gpgkey)",
+                repo_file_path,
+                epol_baseurl,
+            )
+
+        return epol_baseurl, epol_gpgkey
 
     async def _setup_epol_repo(
         self,
@@ -504,29 +549,52 @@ class DeploymentService:
                 logger.info("检测到已存在包含 /EPOL/update/ 的软件源，跳过配置")
                 return True
 
-            # 获取镜像源地址
-            mirror_base = self._get_openeuler_mirror_base_url()
+            # 获取 EPOL 仓库配置
+            epol_config = self._get_epol_repo_config()
+            if not epol_config:
+                self.state.add_log(_("✗ 无法读取 EPOL 仓库配置，跳过 update-EPOL 配置"))
+                logger.warning("无法读取 EPOL 仓库配置，跳过 update-EPOL 配置")
+                return True  # 不阻止部署继续
 
-            # 从镜像源构造 update-EPOL 的 URL
-            # 注意：这里硬编码了 openEuler-24.03-LTS-SP3，未来可能需要动态检测版本
-            epol_baseurl = f"{mirror_base}openEuler-24.03-LTS-SP3/EPOL/update/main/$basearch/"
-            gpgkey_url = f"{mirror_base}openEuler-24.03-LTS-SP3/OS/$basearch/RPM-GPG-KEY-openEuler"
+            epol_baseurl, epol_gpgkey = epol_config
+
+            # 基于 EPOL 仓库的 baseurl 构造 update-EPOL 的 URL
+            # 将 /EPOL/main/ 替换为 /EPOL/update/main/
+            # 例如：https://repo.openeuler.org/openEuler-24.03-LTS-SP3/EPOL/main/$basearch/
+            # 转换为：https://repo.openeuler.org/openEuler-24.03-LTS-SP3/EPOL/update/main/$basearch/
+            if "/EPOL/main/" in epol_baseurl:
+                update_epol_baseurl = epol_baseurl.replace("/EPOL/main/", "/EPOL/update/main/")
+            else:
+                # 如果不是标准格式，尝试在 EPOL 后插入 update
+                update_epol_baseurl = epol_baseurl.replace("/EPOL/", "/EPOL/update/")
+
+            # 如果 EPOL 有 gpgkey，直接使用；否则关闭 gpg 校验
+            if epol_gpgkey:
+                gpgcheck = "1"
+                gpgkey_line = f"gpgkey={epol_gpgkey}"
+                self.state.add_log(_("  使用 EPOL 的 GPG 密钥"))
+            else:
+                gpgcheck = "0"
+                gpgkey_line = ""
+                self.state.add_log(_("  ⚠ EPOL 未配置 GPG 密钥，已关闭 GPG 校验"))
+                logger.warning("EPOL 未配置 gpgkey，update-EPOL 将关闭 gpgcheck")
 
             # 生成 repo 文件内容
-            repo_content = dedent(f"""\
-                [update-EPOL]
-                name=update-EPOL
-                baseurl={epol_baseurl}
-                metadata_expire=1h
-                enabled=1
-                gpgcheck=1
-                gpgkey={gpgkey_url}
-            """)
+            repo_lines = [
+                "[update-EPOL]",
+                "name=update-EPOL",
+                f"baseurl={update_epol_baseurl}",
+                "metadata_expire=1h",
+                "enabled=1",
+                f"gpgcheck={gpgcheck}",
+            ]
+            if gpgkey_line:
+                repo_lines.append(gpgkey_line)
+
+            repo_content = "\n".join(repo_lines) + "\n"
 
             # 写入 repo 文件
             repo_file_path = "/etc/yum.repos.d/openEuler-EPOL-update.repo"
-
-            # 使用 sudo tee 写入文件
             write_cmd = ["tee", repo_file_path]
             process = await asyncio.create_subprocess_exec(
                 *write_cmd,
@@ -542,8 +610,8 @@ class DeploymentService:
                 return False
 
             self.state.add_log(_("✓ update-EPOL 软件源配置完成"))
-            self.state.add_log(_("  镜像源: {mirror}").format(mirror=mirror_base))
-            logger.info("update-EPOL 软件源配置完成，使用镜像源: %s", mirror_base)
+            self.state.add_log(_("  基于 EPOL: {epol}").format(epol=epol_baseurl))
+            logger.info("update-EPOL 软件源配置完成，基于 EPOL: %s", epol_baseurl)
 
         except Exception as e:
             self.state.add_log(_("✗ 配置 EPOL 软件源失败: {error}").format(error=e))
