@@ -228,3 +228,100 @@ def test_update_epol_repo_configuration_format() -> None:
     assert "gpgkey=http://repo.openeuler.org/openEuler-24.03-LTS-SP3/OS/$basearch/RPM-GPG-KEY-openEuler" in repo_content
     assert "enabled=1" in repo_content
     assert "gpgcheck=1" in repo_content
+
+
+def test_get_epol_repo_config_from_dailybuild_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """测试从 openEuler dailybuild 仓库配置中读取 EPOL 仓库配置。"""
+    repo_file = tmp_path / "openEuler.repo"
+    repo_content = """\
+[OS]
+name=OS
+baseurl=http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/OS/$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/OS/$basearch/RPM-GPG-KEY-openEuler
+
+[EPOL]
+name=EPOL
+baseurl=http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/EPOL/main/$basearch/
+metadata_expire=1h
+enabled=1
+gpgcheck=1
+gpgkey=http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/OS/$basearch/RPM-GPG-KEY-openEuler
+"""
+    repo_file.write_text(repo_content, encoding="utf-8")
+
+    monkeypatch.setattr(
+        "app.deployment.service.Path",
+        lambda path: repo_file if "openEuler.repo" in path else tmp_path / path,
+    )
+
+    service = DeploymentService()
+    result = service._get_epol_repo_config()  # noqa: SLF001
+
+    # 验证返回结果
+    assert result is not None
+    epol_baseurl, gpgkey_url = result
+    assert (
+        epol_baseurl
+        == "http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/EPOL/main/$basearch/"
+    )
+    assert (
+        gpgkey_url
+        == "http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/OS/$basearch/RPM-GPG-KEY-openEuler"
+    )
+
+
+def test_construct_update_epol_from_dailybuild_epol() -> None:
+    """测试基于 dailybuild EPOL baseurl 构造 update-EPOL URL。"""
+    epol_baseurl = (
+        "http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/EPOL/main/$basearch/"
+    )
+
+    # 构造 update-EPOL URL（模拟 _setup_epol_repo 中的逻辑）
+    if "/EPOL/main/" in epol_baseurl:
+        update_epol_baseurl = epol_baseurl.replace("/EPOL/main/", "/EPOL/update/main/")
+    else:
+        update_epol_baseurl = epol_baseurl.replace("/EPOL/", "/EPOL/update/")
+
+    # 验证转换结果
+    assert (
+        update_epol_baseurl
+        == "http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/EPOL/update/main/$basearch/"
+    )
+
+
+def test_dailybuild_update_epol_repo_configuration_format() -> None:
+    """测试 dailybuild 环境下 update-EPOL 仓库配置的完整格式。"""
+    epol_baseurl = (
+        "http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/EPOL/main/$basearch/"
+    )
+    gpgkey_url = "http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/OS/$basearch/RPM-GPG-KEY-openEuler"
+
+    # 构造 update-EPOL URL
+    update_epol_baseurl = epol_baseurl.replace("/EPOL/main/", "/EPOL/update/main/")
+
+    # 生成 repo 配置（模拟 _setup_epol_repo 中的逻辑）
+    repo_content = dedent(f"""\
+        [update-EPOL]
+        name=update-EPOL
+        baseurl={update_epol_baseurl}
+        metadata_expire=1h
+        enabled=1
+        gpgcheck=1
+        gpgkey={gpgkey_url}
+    """)
+
+    # 验证配置内容
+    assert "[update-EPOL]" in repo_content
+    assert "name=update-EPOL" in repo_content
+    assert (
+        "baseurl=http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/EPOL/update/main/$basearch/"
+        in repo_content
+    )
+    assert (
+        "gpgkey=http://121.36.84.172/dailybuild/EBS-openEuler-24.03-LTS-SP3/openeuler-2026-02-02-02-11-15/OS/$basearch/RPM-GPG-KEY-openEuler"
+        in repo_content
+    )
+    assert "enabled=1" in repo_content
+    assert "gpgcheck=1" in repo_content
