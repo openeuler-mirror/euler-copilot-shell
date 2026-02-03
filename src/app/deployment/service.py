@@ -39,9 +39,7 @@ LOCAL_DEPLOYMENT_HOST = "127.0.0.1"
 class DeploymentResourceManager:
     """部署资源管理器，管理 RPM 包安装的资源文件"""
 
-    CANDIDATE_INSTALLER_BASE_PATHS: tuple[Path, ...] = (
-        Path("/usr/lib/witty-assistant/scripts"),
-    )
+    CANDIDATE_INSTALLER_BASE_PATHS: tuple[Path, ...] = (Path("/usr/lib/witty-assistant/scripts"),)
 
     def __init__(self) -> None:
         """初始化资源管理器，并缓存已解析的安装器资源路径。"""
@@ -360,6 +358,7 @@ class DeploymentService:
 
         steps = [
             self._check_environment,
+            self._setup_epol_repo,
             self._run_env_check_script,
             self._run_install_dependency_script,
             self._install_opencode_step,
@@ -437,13 +436,197 @@ class DeploymentService:
 
         return True
 
+    def _get_epol_repo_config(self) -> tuple[str, str | None] | None:
+        """
+        从 openEuler.repo 文件读取 EPOL 仓库配置
+
+        Returns:
+            tuple[str, str | None] | None: (epol_baseurl, gpgkey_url) 或 None（未找到配置）
+            如果 EPOL 没有配置 gpgkey，则返回的 gpgkey_url 为 None
+
+        """
+        repo_file_path = Path("/etc/yum.repos.d/openEuler.repo")
+
+        try:
+            if not repo_file_path.exists():
+                logger.warning("未找到 %s", repo_file_path)
+                return None
+
+            content = repo_file_path.read_text(encoding="utf-8")
+        except OSError as e:
+            logger.warning("读取 %s 失败: %s", repo_file_path, e)
+            return None
+        else:
+            epol_config = self._parse_epol_section(content, repo_file_path)
+
+            if not epol_config:
+                return None
+
+            # 直接返回 EPOL 的配置，不做推断
+            return epol_config
+
+    def _parse_epol_section(self, content: str, repo_file_path: Path) -> tuple[str, str | None] | None:
+        """解析 repo 文件内容，提取 EPOL section 的配置"""
+        current_section = None
+        epol_baseurl = None
+        epol_gpgkey = None
+
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+
+            # 检测 section
+            if line.startswith("[") and line.endswith("]"):
+                current_section = line[1:-1]
+                continue
+
+            # 只处理 EPOL section
+            if current_section == "EPOL":
+                if line.startswith("baseurl="):
+                    epol_baseurl = line.split("=", 1)[1].strip()
+                elif line.startswith("gpgkey="):
+                    epol_gpgkey = line.split("=", 1)[1].strip()
+
+                # 找到了所需的配置，可以提前返回
+                if epol_baseurl and epol_gpgkey:
+                    logger.info(
+                        "从 %s 读取到 EPOL 配置: baseurl=%s, gpgkey=%s",
+                        repo_file_path,
+                        epol_baseurl,
+                        epol_gpgkey,
+                    )
+                    return epol_baseurl, epol_gpgkey
+
+        if not epol_baseurl:
+            logger.warning("未能从 %s 找到 EPOL 仓库配置", repo_file_path)
+            return None
+
+        # 如果只找到 baseurl，没有 gpgkey，返回 None
+        if epol_gpgkey:
+            logger.info(
+                "从 %s 读取到 EPOL 配置: baseurl=%s, gpgkey=%s",
+                repo_file_path,
+                epol_baseurl,
+                epol_gpgkey,
+            )
+        else:
+            logger.info(
+                "从 %s 读取到 EPOL 配置: baseurl=%s (无 gpgkey)",
+                repo_file_path,
+                epol_baseurl,
+            )
+
+        return epol_baseurl, epol_gpgkey
+
+    async def _setup_epol_repo(
+        self,
+        config: DeploymentConfig,
+        progress_callback: Callable[[DeploymentState], None] | None,
+    ) -> bool:
+        """配置 update-EPOL 软件源"""
+        self.state.current_step = 2
+        self.state.current_step_name = _("配置 EPOL 软件源")
+        self.state.add_log(_("正在配置 update-EPOL 软件源..."))
+
+        if progress_callback:
+            progress_callback(self.state)
+
+        try:
+            # 检查是否已存在包含 /EPOL/update/ 的仓库
+            check_process = await asyncio.create_subprocess_exec(
+                "dnf",
+                "repolist",
+                "-v",
+                "--enabled",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _stderr = await check_process.communicate()
+            repolist_output = stdout.decode("utf-8", errors="ignore")
+
+            # 检查输出中是否包含 /EPOL/update/ 路径
+            if "/EPOL/update/" in repolist_output:
+                self.state.add_log(_("✓ update-EPOL 软件源已存在，跳过配置"))
+                logger.info("检测到已存在包含 /EPOL/update/ 的软件源，跳过配置")
+                return True
+
+            # 获取 EPOL 仓库配置
+            epol_config = self._get_epol_repo_config()
+            if not epol_config:
+                self.state.add_log(_("✗ 无法读取 EPOL 仓库配置，跳过 update-EPOL 配置"))
+                logger.warning("无法读取 EPOL 仓库配置，跳过 update-EPOL 配置")
+                return True  # 不阻止部署继续
+
+            epol_baseurl, epol_gpgkey = epol_config
+
+            # 基于 EPOL 仓库的 baseurl 构造 update-EPOL 的 URL
+            # 将 /EPOL/main/ 替换为 /EPOL/update/main/
+            # 例如：https://repo.openeuler.org/openEuler-24.03-LTS-SP3/EPOL/main/$basearch/
+            # 转换为：https://repo.openeuler.org/openEuler-24.03-LTS-SP3/EPOL/update/main/$basearch/
+            if "/EPOL/main/" in epol_baseurl:
+                update_epol_baseurl = epol_baseurl.replace("/EPOL/main/", "/EPOL/update/main/")
+            else:
+                # 如果不是标准格式，尝试在 EPOL 后插入 update
+                update_epol_baseurl = epol_baseurl.replace("/EPOL/", "/EPOL/update/")
+
+            # 如果 EPOL 有 gpgkey，直接使用；否则关闭 gpg 校验
+            if epol_gpgkey:
+                gpgcheck = "1"
+                gpgkey_line = f"gpgkey={epol_gpgkey}"
+                self.state.add_log(_("  使用 EPOL 的 GPG 密钥"))
+            else:
+                gpgcheck = "0"
+                gpgkey_line = ""
+                self.state.add_log(_("  ⚠ EPOL 未配置 GPG 密钥，已关闭 GPG 校验"))
+                logger.warning("EPOL 未配置 gpgkey，update-EPOL 将关闭 gpgcheck")
+
+            # 生成 repo 文件内容
+            repo_lines = [
+                "[update-EPOL]",
+                "name=update-EPOL",
+                f"baseurl={update_epol_baseurl}",
+                "metadata_expire=1h",
+                "enabled=1",
+                f"gpgcheck={gpgcheck}",
+            ]
+            if gpgkey_line:
+                repo_lines.append(gpgkey_line)
+
+            repo_content = "\n".join(repo_lines) + "\n"
+
+            # 写入 repo 文件
+            repo_file_path = "/etc/yum.repos.d/openEuler-EPOL-update.repo"
+            write_cmd = ["tee", repo_file_path]
+            process = await asyncio.create_subprocess_exec(
+                *write_cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _stdout, stderr = await process.communicate(repo_content.encode("utf-8"))
+
+            if process.returncode != 0:
+                error_msg = stderr.decode("utf-8", errors="ignore").strip()
+                self.state.add_log(_("✗ 写入 EPOL repo 文件失败: {error}").format(error=error_msg))
+                return False
+
+            self.state.add_log(_("✓ update-EPOL 软件源配置完成"))
+            self.state.add_log(_("  基于 EPOL: {epol}").format(epol=epol_baseurl))
+            logger.info("update-EPOL 软件源配置完成，基于 EPOL: %s", epol_baseurl)
+
+        except Exception as e:
+            self.state.add_log(_("✗ 配置 EPOL 软件源失败: {error}").format(error=e))
+            logger.exception("配置 EPOL 软件源失败")
+            return False
+
+        return True
+
     async def _run_env_check_script(
         self,
         config: DeploymentConfig,
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """运行环境检查脚本"""
-        self.state.current_step = 1
+        self.state.current_step = 3
         self.state.current_step_name = _("检查系统环境")
         self.state.add_log(_("正在执行系统环境检查..."))
 
@@ -464,7 +647,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """运行依赖安装脚本"""
-        self.state.current_step = 2
+        self.state.current_step = 4
         self.state.current_step_name = _("安装依赖组件")
         self.state.add_log(_("正在安装后端依赖组件..."))
 
@@ -487,7 +670,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """运行配置初始化脚本"""
-        self.state.current_step = 6
+        self.state.current_step = 7
         self.state.current_step_name = _("初始化配置和服务")
         self.state.add_log(_("正在初始化配置和启动服务..."))
 
@@ -577,7 +760,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """生成配置文件"""
-        self.state.current_step = 5
+        self.state.current_step = 6
         self.state.current_step_name = _("更新配置文件")
         self.state.add_log(_("正在更新配置文件..."))
 
@@ -793,7 +976,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """
-        第 5 步：注册 LLM 模型
+        第 8 步：注册 LLM 模型
 
         在后端服务拉起后，先进行健康检查，然后注册 LLM 和 Embedding 模型。
         这一步包含用户登录、获取 token 等操作。
@@ -806,7 +989,7 @@ class DeploymentService:
             bool: 是否成功
 
         """
-        self.state.current_step = 5
+        self.state.current_step = 8
         self.state.current_step_name = _("注册大模型配置")
         self.state.add_log(_("正在检查 sysAgent 服务状态..."))
 
@@ -835,7 +1018,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """运行 Agent 初始化脚本"""
-        self.state.current_step = 7
+        self.state.current_step = 9
         self.state.current_step_name = _("初始化 Agent 服务")
         self.state.add_log(_("正在初始化 Agent 和 MCP 服务..."))
 
@@ -864,7 +1047,7 @@ class DeploymentService:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> bool:
         """检查并安装 opencode-ai"""
-        self.state.current_step = 4
+        self.state.current_step = 5
         self.state.current_step_name = _("安装 opencode-ai")
         self.state.add_log(_("正在检查 opencode-ai 安装状态..."))
 
