@@ -4,15 +4,20 @@ set -euo pipefail
 
 # Parse arguments
 DEV_MODE=0
+STAGED_MODE=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
     --dev)
         DEV_MODE=1
         shift
         ;;
+    --staged)
+        STAGED_MODE=1
+        shift
+        ;;
     *)
         echo "Unknown parameter: $1" >&2
-        echo "Usage: $0 [--dev]" >&2
+        echo "Usage: $0 [--dev] [--staged]" >&2
         exit 1
         ;;
     esac
@@ -23,11 +28,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Create the tarball and set BUILD_DIR and TARBALL
-if [[ ${DEV_MODE} -eq 1 ]]; then
-    eval "$("${SCRIPT_DIR}"/create_tarball.sh --dev)"
-else
-    eval "$("${SCRIPT_DIR}"/create_tarball.sh)"
-fi
+TARBALL_ARGS=()
+[[ ${DEV_MODE} -eq 1 ]] && TARBALL_ARGS+=(--dev)
+[[ ${STAGED_MODE} -eq 1 ]] && TARBALL_ARGS+=(--staged)
+eval "$("${SCRIPT_DIR}"/create_tarball.sh "${TARBALL_ARGS[@]}")"
 set +u
 if [[ -z "${BUILD_DIR:-}" || -z "${TARBALL:-}" ]]; then
     echo "Error: BUILD_DIR 或 TARBALL 变量未设置，create_tarball.sh 执行失败。" >&2
