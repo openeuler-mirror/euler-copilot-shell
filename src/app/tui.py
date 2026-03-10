@@ -1039,6 +1039,18 @@ class IntelligentTerminal(App):
 
         mcp_handled, content = self._try_handle_mcp_progress(content, output_container)
         if mcp_handled:
+            # 自动执行模式下，MCP 进度块插入后必须重置当前输出组件状态，
+            # 确保后续 LLM 文本创建新的输出组件，实现工具调用和文本的交替显示。
+            # 否则后续文本会追加到 MCP 进度块之前的旧 MarkdownOutput 上，
+            # 导致所有文本堆在一起而非按时间顺序与工具调用交替出现。
+            current_line = cast("OutputLine | MarkdownOutput | None", stream_state.get("current_line"))
+            if current_line is not None and cast("int", stream_state.get("pending_chars", 0)) > 0:
+                self._flush_current_line(current_line, stream_state)
+                stream_state["pending_chars"] = 0
+                stream_state["last_ui_flush_time"] = current_time
+            stream_state["current_line"] = None
+            stream_state["is_first_content"] = True
+            stream_state["current_content"] = ""
             return True
 
         current_line = cast("OutputLine | MarkdownOutput | None", stream_state.get("current_line"))
