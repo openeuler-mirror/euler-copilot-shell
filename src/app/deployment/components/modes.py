@@ -100,14 +100,12 @@ class InitializationModeScreen(ModalScreen[bool]):
     @on(Button.Pressed, "#connect_existing")
     async def on_connect_existing_pressed(self) -> None:
         """处理连接现有服务按钮点击"""
-        await self.app.push_screen(ConnectExistingServiceScreen())
-        self.dismiss(result=True)
+        self.app.push_screen(ConnectExistingServiceScreen())
 
     @on(Button.Pressed, "#deploy_new")
     async def on_deploy_new_pressed(self) -> None:
         """处理部署新服务按钮点击"""
-        await self.app.push_screen(EnvironmentCheckScreen())
-        self.dismiss(result=True)
+        self.app.push_screen(EnvironmentCheckScreen())
 
     @on(Button.Pressed, "#exit")
     def on_exit_button_pressed(self) -> None:
