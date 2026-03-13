@@ -20,7 +20,7 @@ import tomllib
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 import yaml
 
@@ -236,19 +236,23 @@ class AgentManager:
         progress_callback: Callable[[DeploymentState], None] | None,
     ) -> AgentInitStatus:
         """执行所有初始化步骤"""
-        # 1. 安装 systemd 服务文件
-        if not await self._install_service_files(state, progress_callback):
-            return AgentInitStatus.FAILED
+        # 1. 如果本地存在 mcp_center 资源，则执行本地 MCP 服务管理。
+        # 否则进入兼容模式：MCP 由外部服务托管，仅写入智能体配置。
+        if self._has_local_mcp_runtime_resources():
+            if not await self._install_service_files(state, progress_callback):
+                return AgentInitStatus.FAILED
 
-        # 2. 运行脚本拉起 MCP Server 进程
-        if not await self._start_mcp_servers(state, progress_callback):
-            return AgentInitStatus.FAILED
+            if not await self._start_mcp_servers(state, progress_callback):
+                return AgentInitStatus.FAILED
 
-        # 3. 验证 MCP Server 服务状态
-        if not await self._verify_mcp_services(state, progress_callback):
-            return AgentInitStatus.FAILED
+            if not await self._verify_mcp_services(state, progress_callback):
+                return AgentInitStatus.FAILED
+        else:
+            logger.info(
+                "未检测到本地 mcp_center 运行资源，跳过本地 MCP 服务安装与校验，使用外部托管模式",
+            )
 
-        # 4. 停止 sysagent 服务，准备写入配置
+        # 2. 停止 sysagent 服务，准备写入配置
         if not await self._stop_sysagent_service(state, progress_callback):
             self._report_progress(
                 state,
@@ -256,22 +260,22 @@ class AgentManager:
                 progress_callback,
             )
 
-        # 5. 写入 MCP 配置到文件系统
-        mcp_service_mapping = await self._write_mcp_configs_to_filesystem(
+        # 3. 准备 MCP 服务映射，并在可能时写入本地 MCP 配置。
+        mcp_service_mapping = await self._prepare_mcp_service_mapping(
             state,
             progress_callback,
         )
         if not mcp_service_mapping:
             return AgentInitStatus.FAILED
 
-        # 6. 读取应用配置并写入智能体元数据
+        # 4. 读取应用配置并写入智能体元数据
         default_app_id = await self._write_app_metadata_to_filesystem(
             mcp_service_mapping,
             state,
             progress_callback,
         )
 
-        # 7. 重新启动 sysagent 服务
+        # 5. 重新启动 sysagent 服务
         if not await self._start_sysagent_service(state, progress_callback):
             self._report_progress(
                 state,
@@ -308,6 +312,49 @@ class AgentManager:
         )
         return AgentInitStatus.SUCCESS
 
+    def _has_local_mcp_runtime_resources(self) -> bool:
+        """判断是否存在可由本地部署流程接管的 mcp_center 运行资源。"""
+        return bool(
+            self.resource_dir.exists()
+            and self.run_script_path.exists()
+            and self.service_dir.exists()
+        )
+
+    async def _prepare_mcp_service_mapping(
+        self,
+        state: DeploymentState,
+        callback: Callable[[DeploymentState], None] | None,
+    ) -> dict[str, str]:
+        """准备 mcpPath -> mcp_service_id 映射。"""
+        local_mapping = await self._write_mcp_configs_to_filesystem(state, callback)
+
+        app_configs = await self._load_app_configs(state, callback)
+        fallback_mapping = self._build_fallback_mcp_service_mapping(app_configs)
+
+        if local_mapping:
+            for mcp_path, service_id in fallback_mapping.items():
+                local_mapping.setdefault(mcp_path, service_id)
+
+            return local_mapping
+
+        if fallback_mapping:
+            logger.info(
+                "未找到本地 MCP 配置，已使用 mcp_to_app_config.toml 中的 mcpPath 直接生成 Agent 配置",
+            )
+            return fallback_mapping
+
+        return {}
+
+    @staticmethod
+    def _build_fallback_mcp_service_mapping(app_configs: list[AppConfig]) -> dict[str, str]:
+        """基于 mcp_to_app_config.toml 中的 mcpPath 构建回退映射。"""
+        fallback_mapping: dict[str, str] = {}
+        for app_config in app_configs:
+            for mcp_path in app_config.mcp_path:
+                fallback_mapping.setdefault(mcp_path, mcp_path)
+
+        return fallback_mapping
+
     def _report_progress(
         self,
         state: DeploymentState,
@@ -318,6 +365,11 @@ class AgentManager:
         state.add_log(message)
         if callback:
             callback(state)
+
+    @staticmethod
+    def _raise_config_error(message: str) -> NoReturn:
+        """抛出配置错误。"""
+        raise ConfigError(message)
 
     async def _write_mcp_configs_to_filesystem(
         self,
@@ -362,7 +414,8 @@ class AgentManager:
                     server_entries = {dir_name: raw_servers if isinstance(raw_servers, dict) else {}}
 
                 if not server_entries:
-                    raise ConfigError(f"MCP 配置 {dir_name} 缺少 mcpServers")
+                    msg = f"MCP 配置 {dir_name} 缺少 mcpServers"
+                    self._raise_config_error(msg)
 
                 server_id = next(iter(server_entries.keys()))
                 if server_id in seen_server_ids:
@@ -372,7 +425,7 @@ class AgentManager:
                         "请修改 /usr/lib/sysagent/mcp_center/mcp_config 下对应配置，使其键名唯一。"
                     ).format(server_id=server_id)
                     self._report_progress(state, f"[red]{msg}[/red]", callback)
-                    raise ConfigError(msg)
+                    self._raise_config_error(msg)
 
                 seen_server_ids.add(server_id)
 
@@ -1003,15 +1056,15 @@ class AgentManager:
             callback,
         )
 
-        config_loader = McpConfigLoader(self.mcp_config_dir)
-        configs = config_loader.load_all_configs()
+        try:
+            config_loader = McpConfigLoader(self.mcp_config_dir)
+            configs = config_loader.load_all_configs()
+        except ConfigError:
+            logger.info("未找到本地 MCP 配置目录，进入外部托管兼容模式: %s", self.mcp_config_dir)
+            return []
 
         if not configs:
-            self._report_progress(
-                state,
-                _("[yellow]未找到 MCP 配置[/yellow]"),
-                callback,
-            )
+            logger.info("本地 MCP 配置目录中未找到可用配置: %s", self.mcp_config_dir)
 
         self._report_progress(
             state,

@@ -18,6 +18,7 @@ import yaml
 
 from app.deployment.agent import (
     AgentManager,
+    AppConfig,
     McpConfig,
     McpConfigLoader,
 )
@@ -299,6 +300,36 @@ class TestResolveMcpServices:
         resolved, _ = manager._resolve_mcp_services(mcp_paths, mapping)  # noqa: SLF001
 
         assert resolved == ["svc_c", "svc_a", "svc_b"]
+
+
+@pytest.mark.unit
+class TestFallbackMcpMapping:
+    """测试外部托管 MCP 的回退映射逻辑"""
+
+    def test_build_fallback_mcp_service_mapping_uses_mcp_path_as_service_id(self) -> None:
+        """当本地 mcp_config 不存在时，应直接使用 mcpPath 作为 service id。"""
+        app_configs = [
+            AppConfig(
+                app_type="agent",
+                name="A",
+                description="desc",
+                mcp_path=["external_rag", "external_tool"],
+            ),
+            AppConfig(
+                app_type="agent",
+                name="B",
+                description="desc",
+                mcp_path=["external_tool", "external_web"],
+            ),
+        ]
+
+        mapping = AgentManager._build_fallback_mcp_service_mapping(app_configs)  # noqa: SLF001
+
+        assert mapping == {
+            "external_rag": "external_rag",
+            "external_tool": "external_tool",
+            "external_web": "external_web",
+        }
 
 
 @pytest.mark.unit
@@ -968,6 +999,32 @@ class TestEdgeCases:
         mcp_mapping = await manager._write_mcp_configs_to_filesystem(state, None)  # noqa: SLF001
 
         assert mcp_mapping == {}
+
+    async def test_prepare_mapping_falls_back_to_app_config_when_local_mcp_missing(
+        self,
+        temp_semantics_dir: Path,
+        temp_mcp_config_dir: Path,
+    ) -> None:
+        """当本地 mcp_center 缺失时，应使用 mcp_to_app_config.toml 的 mcpPath 继续生成映射。"""
+        manager = AgentManager()
+        manager.resource_dir = temp_semantics_dir / "missing_mcp_center"
+        manager.service_dir = manager.resource_dir / "service"
+        manager.run_script_path = manager.resource_dir / "run.sh"
+        manager.mcp_config_dir = temp_semantics_dir / "missing_mcp_config"
+        manager.app_config_path = temp_mcp_config_dir / "mcp_to_app_config.toml"
+        manager.mcp_template_dir = temp_semantics_dir / "mcp" / "template"
+        manager.app_dir = temp_semantics_dir / "app"
+
+        state = DeploymentState()
+        mapping = await manager._prepare_mcp_service_mapping(state, None)  # noqa: SLF001
+
+        assert mapping == {
+            "rag_mcp": "rag_mcp",
+            "mcp_server_mcp": "mcp_server_mcp",
+        }
+
+        assert not any("未找到本地 MCP 配置" in log for log in state.output_log)
+        assert not any("mcp_center" in log for log in state.output_log)
 
     async def test_missing_app_config_file(
         self,
