@@ -334,12 +334,33 @@ install_framework() {
   }
 
   # 8. 启动服务
-  echo -e "${COLOR_INFO}[Info] 启动 sysagent 服务...${COLOR_RESET}"
+  echo -e "${COLOR_INFO}[Info] 重载 systemd 配置...${COLOR_RESET}"
   systemctl daemon-reload || {
     echo -e "${COLOR_ERROR}[Error] systemd 配置重载失败${COLOR_RESET}"
     return 1
   }
 
+  echo -e "${COLOR_INFO}[Info] 启动 witty-mcp-manager 服务...${COLOR_RESET}"
+  if ! systemctl list-unit-files | grep -q "^witty-mcp-manager.service"; then
+    echo -e "${COLOR_ERROR}[Error] witty-mcp-manager 服务不存在${COLOR_RESET}"
+    return 1
+  fi
+
+  if ! systemctl enable --now witty-mcp-manager; then
+    echo -e "${COLOR_ERROR}[Error] 无法启动 witty-mcp-manager 服务${COLOR_RESET}"
+    systemctl status witty-mcp-manager --no-pager || true
+    return 1
+  fi
+
+  if ! systemctl is-active --quiet witty-mcp-manager; then
+    echo -e "${COLOR_ERROR}[Error] witty-mcp-manager 服务未运行${COLOR_RESET}"
+    journalctl -u witty-mcp-manager --no-pager -n 20 || true
+    return 1
+  fi
+
+  echo -e "${COLOR_SUCCESS}[Success] witty-mcp-manager 服务已启动并设置为开机自启${COLOR_RESET}"
+
+  echo -e "${COLOR_INFO}[Info] 启动 sysagent 服务...${COLOR_RESET}"
   if ! systemctl enable --now sysagent; then
     echo -e "${COLOR_ERROR}[Error] 无法启动 sysagent 服务${COLOR_RESET}"
     systemctl status sysagent --no-pager
