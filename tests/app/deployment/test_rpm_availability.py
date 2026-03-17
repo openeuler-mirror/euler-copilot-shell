@@ -13,6 +13,48 @@ from pathlib import Path
 import pytest
 
 
+def test_install_framework_script_includes_required_rpms() -> None:
+    """安装 framework 时应一并安装 3 个配套 RPM 包。"""
+    project_root = Path(__file__).parent.parent.parent.parent
+    script_path = project_root / "scripts" / "deploy" / "2-install-dependency" / "install_openEulerIntelligence.sh"
+
+    content = script_path.read_text(encoding="utf-8")
+
+    assert '"euler-copilot-framework"' in content
+    assert '"witty-lite-rag"' in content
+    assert '"witty-log-detection"' in content
+    assert '"witty-mcp-manager"' in content
+
+
+def test_production_deploy_uninstall_scripts_remove_required_rpms() -> None:
+    """生产环境 deploy 卸载脚本应移除这 3 个配套 RPM。"""
+    project_root = Path(__file__).parent.parent.parent.parent
+    uninstall_server = project_root / "scripts" / "deploy" / "3-install-server" / "uninstall_server.sh"
+    uninstall_dependency = project_root / "scripts" / "deploy" / "2-install-dependency" / "uninstall_dependency.sh"
+
+    server_content = uninstall_server.read_text(encoding="utf-8")
+    dependency_content = uninstall_dependency.read_text(encoding="utf-8")
+
+    for pkg in ("witty-lite-rag", "witty-log-detection", "witty-mcp-manager"):
+        assert pkg in server_content
+        assert pkg not in dependency_content
+
+
+def test_init_config_starts_witty_mcp_manager_before_sysagent() -> None:
+    """初始化配置脚本应先启动 witty-mcp-manager，再启动 sysagent。"""
+    project_root = Path(__file__).parent.parent.parent.parent
+    script_path = project_root / "scripts" / "deploy" / "3-install-server" / "init_config.sh"
+
+    content = script_path.read_text(encoding="utf-8")
+
+    mcp_manager_enable = "systemctl enable --now witty-mcp-manager"
+    sysagent_enable = "systemctl enable --now sysagent"
+
+    assert mcp_manager_enable in content
+    assert sysagent_enable in content
+    assert content.index(mcp_manager_enable) < content.index(sysagent_enable)
+
+
 @pytest.mark.unit
 class TestDeploymentResourceFiles:
     """测试部署资源文件"""

@@ -10,6 +10,9 @@ uninstall_success=true
 missing_pkgs=()
 pkgs=(
   "euler-copilot-framework"
+  "witty-lite-rag"
+  "witty-log-detection"
+  "witty-mcp-manager"
 )
 
 # 清理函数（在中断或退出时调用）
@@ -26,12 +29,15 @@ uninstall_server() {
     if rpm -q "$pkg" >/dev/null 2>&1; then
       echo -e "${COLOR_INFO}[Info] 正在卸载 $pkg...${COLOR_RESET}"
 
-      if [ "$pkg" = "euler-copilot-framework" ]; then
+      case "$pkg" in
+      "euler-copilot-framework")
         systemctl stop sysagent 2>/dev/null || true
         systemctl stop oi-runtime 2>/dev/null || true # 兼容旧版本
-      else
-        systemctl stop "$pkg"
-      fi
+        ;;
+      "witty-mcp-manager")
+        systemctl stop witty-mcp-manager 2>/dev/null || true
+        ;;
+      esac
       if dnf remove -y "$pkg" >/dev/null 2>&1; then
         uninstalled_pkgs+=("$pkg")
 
@@ -57,6 +63,8 @@ uninstall_server() {
   rm -rf /etc/systemd/system/multi-user.target.wants/sysagent.service
   rm -rf /etc/systemd/system/oi-runtime.service                         # 兼容旧版本
   rm -rf /etc/systemd/system/multi-user.target.wants/oi-runtime.service # 兼容旧版本
+  rm -rf /etc/systemd/system/witty-mcp-manager.service
+  rm -rf /etc/systemd/system/multi-user.target.wants/witty-mcp-manager.service
 
   # 清理系统配置
   systemctl daemon-reload

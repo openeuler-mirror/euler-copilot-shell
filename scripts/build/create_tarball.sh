@@ -4,15 +4,20 @@ set -euo pipefail
 
 # Parse arguments
 DEV_MODE=0
+STAGED_MODE=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
     --dev)
         DEV_MODE=1
         shift
         ;;
+    --staged)
+        STAGED_MODE=1
+        shift
+        ;;
     *)
         echo "Unknown parameter: $1" >&2
-        echo "Usage: $0 [--dev]" >&2
+        echo "Usage: $0 [--dev] [--staged]" >&2
         exit 1
         ;;
     esac
@@ -38,8 +43,15 @@ mkdir -p "${BUILD_DIR}"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 
 echo "Creating tarball ${TARBALL} in ${BUILD_DIR}" >&2
-# Archive the current HEAD into tarball with proper prefix
-git archive --format=tar.gz --prefix="${NAME}-${VERSION}/" -o "${BUILD_DIR}/${TARBALL}" HEAD
+# Determine archive source: staged index or committed HEAD
+if [[ ${STAGED_MODE} -eq 1 ]]; then
+    echo "Using staged content (git index) for archive..." >&2
+    ARCHIVE_SOURCE=$(git -C "${REPO_ROOT}" write-tree)
+else
+    ARCHIVE_SOURCE="HEAD"
+fi
+# Archive the selected source into tarball with proper prefix
+git -C "${REPO_ROOT}" archive --format=tar.gz --prefix="${NAME}-${VERSION}/" -o "${BUILD_DIR}/${TARBALL}" "${ARCHIVE_SOURCE}"
 
 # 输出变量用于 build_rpm.sh 的 eval
 echo "BUILD_DIR=${BUILD_DIR}"

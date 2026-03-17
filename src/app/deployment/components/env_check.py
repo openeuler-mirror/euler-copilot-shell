@@ -179,10 +179,7 @@ class EnvironmentCheckScreen(ModalScreen[bool]):
     @on(Button.Pressed, "#continue")
     async def on_continue_button_pressed(self) -> None:
         """处理继续按钮点击"""
-        # 推送部署配置屏幕
-        await self.app.push_screen(DeploymentConfigScreen())
-        # 关闭当前屏幕
-        self.dismiss(result=True)
+        self.app.push_screen(DeploymentConfigScreen())
 
     @on(Button.Pressed, "#back")
     async def on_back_button_pressed(self) -> None:

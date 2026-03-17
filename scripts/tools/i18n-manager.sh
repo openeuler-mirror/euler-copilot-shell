@@ -99,7 +99,7 @@ extract() {
         --output="$POT_FILE" \
         --from-code=UTF-8 \
         --package-name=witty-assistant \
-        --package-version=2.0.2 \
+        --package-version=2.0.3 \
         --msgid-bugs-address=contact@openeuler.org \
         --copyright-holder="openEuler" \
         --add-comments=Translators \

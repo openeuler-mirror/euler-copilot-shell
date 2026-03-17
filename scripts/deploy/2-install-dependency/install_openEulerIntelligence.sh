@@ -241,6 +241,9 @@ install_framework() {
   echo -e "\n${COLOR_INFO}[Info] 开始安装框架服务...${COLOR_RESET}"
   local pkgs=(
     "euler-copilot-framework"
+    "witty-lite-rag"
+    "witty-log-detection"
+    "witty-mcp-manager"
     "make"
     "gcc"
     "gcc-c++"
