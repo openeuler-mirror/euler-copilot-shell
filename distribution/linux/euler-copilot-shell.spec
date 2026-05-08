@@ -4,7 +4,7 @@
 
 Name:           euler-copilot-shell
 Version:        2.0.3
-Release:        2%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
+Release:        3%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
 Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
 URL:            https://atomgit.com/openeuler/euler-copilot-shell
@@ -142,6 +142,10 @@ rm -f /usr/lib/witty-assistant/scripts
 fi
 
 %changelog
+* Fri May 08 2026 openEuler <contact@openeuler.org> - 2.0.3-3
+- chore: remove redundant logs
+- chore: exclude dev scripts from release package
+
 * Tue Apr 28 2026 openEuler <contact@openeuler.org> - 2.0.3-2
 - chore: Remove tests from SRPM
 
