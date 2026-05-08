@@ -50,8 +50,53 @@ if [[ ${STAGED_MODE} -eq 1 ]]; then
 else
     ARCHIVE_SOURCE="HEAD"
 fi
-# Archive the selected source into tarball with proper prefix
-git -C "${REPO_ROOT}" archive --format=tar.gz --prefix="${NAME}-${VERSION}/" -o "${BUILD_DIR}/${TARBALL}" "${ARCHIVE_SOURCE}"
+
+# Collect top-level archive paths and exclude non-source top-level directories from source packages.
+ARCHIVE_PATHS=()
+while IFS= read -r path; do
+    case "${path}" in
+    "" | "tests" | ".claude" | ".github" | "distribution")
+        continue
+        ;;
+    "scripts")
+        # Include scripts but exclude scripts/build and filter scripts/tools
+        while IFS= read -r subpath; do
+            case "${subpath}" in
+            "build")
+                continue
+                ;;
+            "tools")
+                # Include only i18n-manager.sh from scripts/tools
+                while IFS= read -r toolfile; do
+                    case "${toolfile}" in
+                    "i18n-manager.sh")
+                        ARCHIVE_PATHS+=("scripts/tools/${toolfile}")
+                        ;;
+                    *)
+                        continue
+                        ;;
+                    esac
+                done < <(git -C "${REPO_ROOT}" ls-tree --name-only "${ARCHIVE_SOURCE}:scripts/tools/")
+                ;;
+            *)
+                ARCHIVE_PATHS+=("scripts/${subpath}")
+                ;;
+            esac
+        done < <(git -C "${REPO_ROOT}" ls-tree --name-only "${ARCHIVE_SOURCE}:scripts/")
+        ;;
+    *)
+        ARCHIVE_PATHS+=("${path}")
+        ;;
+    esac
+done < <(git -C "${REPO_ROOT}" ls-tree --name-only "${ARCHIVE_SOURCE}")
+
+if [[ ${#ARCHIVE_PATHS[@]} -eq 0 ]]; then
+    echo "Error: no archive paths resolved for ${ARCHIVE_SOURCE}" >&2
+    exit 1
+fi
+
+# Archive the selected source into tarball with proper prefix.
+git -C "${REPO_ROOT}" archive --format=tar.gz --prefix="${NAME}-${VERSION}/" -o "${BUILD_DIR}/${TARBALL}" "${ARCHIVE_SOURCE}" "${ARCHIVE_PATHS[@]}"
 
 # 输出变量用于 build_rpm.sh 的 eval
 echo "BUILD_DIR=${BUILD_DIR}"

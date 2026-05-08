@@ -33,7 +33,6 @@ SSL_SKIP_ENV_VAR = "OI_SKIP_SSL_VERIFY"
 TOKEN_HEX_LENGTH = 32  # UUID4 hex 格式的长度
 TOKEN_LONG_TERM_PREFIX = "sk-"  # noqa: S105
 TOKEN_LONG_TERM_LENGTH = 35  # sk- (3) + 32 hex chars
-TOKEN_PREVIEW_LENGTH = 5  # 日志中显示的令牌预览长度
 
 
 def _parse_env_flag(value: str | None) -> bool | None:
@@ -675,13 +674,7 @@ async def validate_oi_connection(base_url: str, access_token: str) -> tuple[bool
 
         # 验证令牌格式
         if not _is_valid_token_format(access_token):
-            # 记录令牌的前几个字符用于调试
-            token_preview = (
-                access_token[:TOKEN_PREVIEW_LENGTH] + "..."
-                if len(access_token) > TOKEN_PREVIEW_LENGTH
-                else access_token
-            )
-            logger.warning("访问令牌格式无效: %s", token_preview)
+            logger.warning("访问令牌格式无效")
             return False, _("访问令牌格式无效")
 
         # 移除尾部的斜杠

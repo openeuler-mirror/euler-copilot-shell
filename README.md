@@ -395,7 +395,7 @@ witty set-default agent
    ./scripts/build/build_rpm.sh
    ```
 
-   脚本执行完成后，会在临时构建目录下的 `RPMS` 和 `SRPMS` 子目录中生成相应的二进制包和源码包，并在终端输出具体路径。
+   脚本执行完成后，会在临时构建目录下的 `RPMS` 和 `SRPMS` 子目录中生成相应的二进制包和源码包，并在终端输出具体路径。源码 tarball 默认会剔除仓库根目录下的 `tests/`、`.claude/` 和 `.github/` 目录。
 
 ## 项目结构
 
