@@ -766,9 +766,7 @@ class DefaultModelScreen(ModalScreen[LLMGlobalSetting | None]):
     def compose(self) -> ComposeResult:
         """组合界面组件"""
         # 筛选支持 Function 的模型
-        function_models = [
-            m for m in self._models if LLMType.FUNCTION in m.llm_type or LLMType.CHAT in m.llm_type
-        ]
+        function_models = [m for m in self._models if LLMType.FUNCTION in m.llm_type or LLMType.CHAT in m.llm_type]
         # 筛选支持 Embedding 的模型
         embedding_models = [m for m in self._models if LLMType.EMBEDDING in m.llm_type]
 
@@ -1037,7 +1035,7 @@ class LLMConfigScreen(ModalScreen[bool]):
                 self.post_message(self.LoadError(_("当前用户不是管理员，无法管理模型")))
                 return
 
-            logger.info("后端客户端初始化成功，用户: %s", self._client.get_user_name())
+            logger.info("后端客户端初始化成功（管理员权限）")
 
         except Exception as e:
             logger.exception("初始化后端客户端失败")
@@ -1208,7 +1206,7 @@ class LLMConfigScreen(ModalScreen[bool]):
 
         # 检查是否为删除操作
         if result.llm_id.startswith("__DELETE__"):
-            llm_id = result.llm_id[len("__DELETE__"):]
+            llm_id = result.llm_id[len("__DELETE__") :]
             self._delete_model(llm_id)
             return
 

@@ -96,8 +96,6 @@ async def _stream_system_command(
     若失败随后继续产出 LLM 建议 (is_llm_output=True，除非是 MCP 消息)。
     支持中断处理，会正确终止子进程。
     """
-    logger.info("(流式) 执行系统命令: %s", command)
-
     # 创建子进程
     proc = await _create_subprocess(command, logger)
     if proc is None:

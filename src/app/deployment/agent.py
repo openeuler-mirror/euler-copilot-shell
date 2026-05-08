@@ -152,9 +152,7 @@ class McpConfigLoader:
 
         if isinstance(raw_servers, dict) and raw_servers:
             mcp_servers = {
-                str(server_name): server_config
-                if isinstance(server_config, dict)
-                else {}
+                str(server_name): server_config if isinstance(server_config, dict) else {}
                 for server_name, server_config in raw_servers.items()
             }
         else:
@@ -314,11 +312,7 @@ class AgentManager:
 
     def _has_local_mcp_runtime_resources(self) -> bool:
         """判断是否存在可由本地部署流程接管的 mcp_center 运行资源。"""
-        return bool(
-            self.resource_dir.exists()
-            and self.run_script_path.exists()
-            and self.service_dir.exists()
-        )
+        return bool(self.resource_dir.exists() and self.run_script_path.exists() and self.service_dir.exists())
 
     async def _prepare_mcp_service_mapping(
         self,
@@ -422,7 +416,7 @@ class AgentManager:
                     msg = _(
                         "检测到重复的 mcpServers 内部键名: {server_id}。"
                         "多个 MCP 配置不能共用同一个键名，否则会发生覆盖。"
-                        "请修改 /usr/lib/sysagent/mcp_center/mcp_config 下对应配置，使其键名唯一。"
+                        "请修改 /usr/lib/sysagent/mcp_center/mcp_config 下对应配置，使其键名唯一。",
                     ).format(server_id=server_id)
                     self._report_progress(state, f"[red]{msg}[/red]", callback)
                     self._raise_config_error(msg)

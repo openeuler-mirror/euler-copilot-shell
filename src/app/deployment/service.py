@@ -449,15 +449,15 @@ class DeploymentService:
 
         try:
             if not repo_file_path.exists():
-                logger.warning("未找到 %s", repo_file_path)
+                logger.warning("未找到 openEuler.repo")
                 return None
 
             content = repo_file_path.read_text(encoding="utf-8")
         except OSError as e:
-            logger.warning("读取 %s 失败: %s", repo_file_path, e)
+            logger.warning("读取 openEuler.repo 失败: %s", e)
             return None
         else:
-            epol_config = self._parse_epol_section(content, repo_file_path)
+            epol_config = self._parse_epol_section(content)
 
             if not epol_config:
                 return None
@@ -465,8 +465,8 @@ class DeploymentService:
             # 直接返回 EPOL 的配置，不做推断
             return epol_config
 
-    def _parse_epol_section(self, content: str, repo_file_path: Path) -> tuple[str, str | None] | None:
-        """解析 repo 文件内容，提取 EPOL section 的配置"""
+    def _parse_epol_section(self, content: str) -> tuple[str, str | None] | None:
+        """解析 repo 文件内容，提取 EPOL section 的配置（gpgkey 为可选项）"""
         current_section = None
         epol_baseurl = None
         epol_gpgkey = None
@@ -474,47 +474,21 @@ class DeploymentService:
         for raw_line in content.splitlines():
             line = raw_line.strip()
 
-            # 检测 section
             if line.startswith("[") and line.endswith("]"):
                 current_section = line[1:-1]
                 continue
 
-            # 只处理 EPOL section
             if current_section == "EPOL":
                 if line.startswith("baseurl="):
                     epol_baseurl = line.split("=", 1)[1].strip()
                 elif line.startswith("gpgkey="):
                     epol_gpgkey = line.split("=", 1)[1].strip()
 
-                # 找到了所需的配置，可以提前返回
-                if epol_baseurl and epol_gpgkey:
-                    logger.info(
-                        "从 %s 读取到 EPOL 配置: baseurl=%s, gpgkey=%s",
-                        repo_file_path,
-                        epol_baseurl,
-                        epol_gpgkey,
-                    )
-                    return epol_baseurl, epol_gpgkey
-
         if not epol_baseurl:
-            logger.warning("未能从 %s 找到 EPOL 仓库配置", repo_file_path)
+            logger.warning("未能从 openEuler.repo 找到 EPOL 仓库配置")
             return None
 
-        # 如果只找到 baseurl，没有 gpgkey，返回 None
-        if epol_gpgkey:
-            logger.info(
-                "从 %s 读取到 EPOL 配置: baseurl=%s, gpgkey=%s",
-                repo_file_path,
-                epol_baseurl,
-                epol_gpgkey,
-            )
-        else:
-            logger.info(
-                "从 %s 读取到 EPOL 配置: baseurl=%s (无 gpgkey)",
-                repo_file_path,
-                epol_baseurl,
-            )
-
+        logger.debug("EPOL 配置已读取%s", "" if epol_gpgkey else " (无 gpgkey)")
         return epol_baseurl, epol_gpgkey
 
     async def _setup_epol_repo(
@@ -610,8 +584,7 @@ class DeploymentService:
                 return False
 
             self.state.add_log(_("✓ update-EPOL 软件源配置完成"))
-            self.state.add_log(_("  基于 EPOL: {epol}").format(epol=epol_baseurl))
-            logger.info("update-EPOL 软件源配置完成，基于 EPOL: %s", epol_baseurl)
+            logger.info("update-EPOL 软件源配置完成")
 
         except Exception as e:
             self.state.add_log(_("✗ 配置 EPOL 软件源失败: {error}").format(error=e))
@@ -1509,7 +1482,7 @@ class DeploymentService:
             return False
 
         self.state.add_log(_("✓ 已连接 Hermes 后端服务（管理员权限）"))
-        logger.info("已成功连接 Hermes 后端，用户: %s (管理员)", hermes_client.get_user_name())
+        logger.info("已成功连接 Hermes 后端（管理员权限）")
         return True
 
     async def _do_register_models(
