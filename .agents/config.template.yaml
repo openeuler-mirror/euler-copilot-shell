@@ -1,0 +1,27 @@
+# Witty 远程测试环境配置
+# cp .agents/config.template.yaml .agents/config.yaml && 填入实际值
+# .agents/config.yaml 已被 gitignore
+
+active: orbstack  # 激活的环境，对应下面 envs 的 key
+
+envs:
+  orbstack:        # macOS OrbStack VM
+    type: orbstack
+    vm_name: ""    # VM 名称
+    work_dir: ""   # VM 内工作目录
+    user: root
+
+  wsl:             # Windows WSL
+    type: wsl
+    distro: ""     # 发行版名称
+    work_dir: ""   # WSL 内工作目录
+    user: root
+
+  ssh:             # 远程服务器
+    type: ssh
+    host: ""       # IP 或域名
+    port: 22
+    user: root
+    identity_file: ""   # SSH 私钥路径
+    work_dir: ""        # 远程工作目录
+    extra_args: ""      # 额外 SSH 参数（如跳板机 -J user@host）

@@ -1,0 +1,16 @@
+# Agent 敏感配置
+.agents/config.yaml
+
+# Go 构建产物
+dist/
+witty
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
