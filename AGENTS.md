@@ -24,13 +24,14 @@ Go 1.26+ CLI 工具，对接 opencode MCP Server，为 openEuler 提供终端 AI
 ## 关键命令
 
 - 初始化: `go mod download && go mod tidy`
-- 构建: `go build -ldflags="-s -w" ./cmd/witty`
+- 构建: `OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty`
 - 测试全部: `go test ./...`
 - 测试单包: `go test -v -run TestName ./internal/<package>/`
 - Lint: `golangci-lint run ./...`
 - Shell 检查: `shellcheck internal/shellinit/templates/*.bash.tmpl`
 - 更新 OpenAPI: `bash scripts/update-openapi.sh`
 - PTY 集成测试: `go test -v -tags=pty ./test/pty/`
+- opencode 集成测试: `go test -v -tags=integration -count=1 -timeout 300s ./test/integration/`
 - GoReleaser 本地验证: `goreleaser release --snapshot --clean --skip=publish`
 - 格式化: `go fmt ./...`
 
@@ -63,6 +64,7 @@ Go 1.26+ CLI 工具，对接 opencode MCP Server，为 openEuler 提供终端 AI
 - `internal/terminal/` — TTY 检测、宽度、prompt
 - `internal/doctor/` — 运维诊断
 - `api/opencode/openapi.json` — vendored OpenAPI 3.1.0 spec
+- `test/integration/` — opencode 真实环境集成测试（build tag: integration）
 - `.agents/config.template.yaml` — 远程环境配置模板
 
 ## 编码约定
@@ -104,6 +106,7 @@ Go 1.26+ CLI 工具，对接 opencode MCP Server，为 openEuler 提供终端 AI
 - 读文件、列目录、搜索代码
 - 运行 `go build`, `go test`, `golangci-lint`, `shellcheck`, `go fmt`
 - 更新 `*_test.go` 文件
+- 新增 `test/integration/` 下的集成测试文件
 
 ### ⚠️ 需要确认
 
@@ -205,3 +208,12 @@ Agent 将自动读取此配置，在 openEuler 环境中执行测试和构建。
 - `.agents/skills/witty-shell-adapter/SKILL.md`
 - `.agents/skills/witty-renderer/SKILL.md`
 - `.agents/skills/witty-release/SKILL.md`
+- `.agents/skills/witty-integration-test/SKILL.md`
+
+### 文档维护规则
+
+**Agent 完成开发任务后必须同步更新状态**：
+
+1. `docs/development/development-todo.md` 是所有模块开发进度的**事实来源**。每完成一个 Phase 或 Px-N 任务，必须将该任务及其 checkpoint 下的所有 `[ ]` 标记为 `[x]`。
+2. 新增模块或测试目录后，必须更新本 `AGENTS.md` 的项目结构一节。
+3. 新增跨模块验证流程（如集成测试）后，必须创建或更新对应的 `.agents/skills/` Skill 文件。

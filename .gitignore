@@ -3,7 +3,10 @@
 
 # Go 构建产物
 dist/
-witty
+build/
+*.test
+coverage.out
+coverage.html
 
 # IDE
 .idea/
