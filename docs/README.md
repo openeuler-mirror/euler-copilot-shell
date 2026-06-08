@@ -8,3 +8,4 @@
 ## 开发文档
 
 - [`development/implementation-plan.md`](development/implementation-plan.md)：推荐技术栈、模块拆分、目录结构、接口边界、分阶段实施计划、测试与发布方案。
+- [`development/development-todo.md`](development/development-todo.md)：按 Phase 拆分的详细开发 todo list、全局质量门禁、跨模块验收矩阵与阶段验收 checkpoint。
