@@ -14,6 +14,7 @@ import (
 	"atomgit.com/openeuler/witty-cli/internal/presenter"
 	"atomgit.com/openeuler/witty-cli/internal/renderer"
 	"atomgit.com/openeuler/witty-cli/internal/session"
+	"atomgit.com/openeuler/witty-cli/internal/shellinit"
 	"atomgit.com/openeuler/witty-cli/internal/transport"
 	"atomgit.com/openeuler/witty-cli/internal/version"
 )
@@ -38,6 +39,10 @@ type Container interface {
 	Doctor(ctx context.Context) (string, error)
 }
 
+type bashInitRenderer interface {
+	RenderBash(ctx context.Context, opts shellinit.BashOptions) (string, error)
+}
+
 type App struct {
 	cfg        config.Config
 	logger     *slog.Logger
@@ -48,6 +53,7 @@ type App struct {
 	presenter  presenter.Presenter
 	permission permission.Manager
 	ask        core.Runner
+	shellInit  bashInitRenderer
 	version    version.Info
 }
 
@@ -113,7 +119,16 @@ func (a *App) InitBash(ctx context.Context) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	return "# Witty Bash integration placeholder\n# Full Shell Adapter will be implemented in Phase 1.\n", nil
+	renderer := a.shellInit
+	if renderer == nil {
+		renderer = shellinit.NewRenderer()
+	}
+	return renderer.RenderBash(ctx, shellinit.BashOptions{
+		BinaryPath:   "witty",
+		Version:      a.version.Version,
+		ShellEnabled: a.cfg.Shell.Enabled,
+		ShellDebug:   a.cfg.Shell.Debug,
+	})
 }
 
 func (a *App) ListSessions(ctx context.Context) ([]session.Summary, error) {

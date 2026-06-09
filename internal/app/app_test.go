@@ -51,9 +51,9 @@ func TestNew_LoadsConfigAndVersion(t *testing.T) {
 	}
 }
 
-func TestInitBash_ReturnsPlaceholder(t *testing.T) {
+func TestInitBash_RendersTemplate(t *testing.T) {
 	var stdout bytes.Buffer
-	container, err := New(context.Background(), Options{Config: config.LoadOptions{ConfigFiles: []string{}}, Stdout: &stdout})
+	container, err := New(context.Background(), Options{Config: config.LoadOptions{ConfigFiles: []string{}}, Stdout: &stdout, Version: version.New("1.2.3", "abc", "today")})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -62,8 +62,10 @@ func TestInitBash_ReturnsPlaceholder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InitBash() error = %v", err)
 	}
-	if !strings.Contains(script, "Witty Bash integration placeholder") {
-		t.Fatalf("InitBash() = %q, want placeholder", script)
+	for _, want := range []string{"Witty Bash integration 1.2.3", "__witty_classify()", "__witty_shell_dispatch()"} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("InitBash() = %q, want %q", script, want)
+		}
 	}
 }
 

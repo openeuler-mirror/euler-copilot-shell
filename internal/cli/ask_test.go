@@ -130,6 +130,11 @@ type fakeContainer struct {
 	connectProviderErr   error
 	connectProviderInput string
 	connectProviderKey   string
+	sessions             []session.Summary
+	listSessionsErr      error
+	continuedSession     session.Context
+	continueSessionID    string
+	continueSessionErr   error
 }
 
 func (f *fakeContainer) Config() config.Config           { return f.cfg }
@@ -145,8 +150,10 @@ func (f *fakeContainer) Ask(_ context.Context, req core.AskRequest) error {
 	f.askReq = req
 	return f.askErr
 }
-func (f *fakeContainer) InitBash(context.Context) (string, error)                { return "", nil }
-func (f *fakeContainer) ListSessions(context.Context) ([]session.Summary, error) { return nil, nil }
+func (f *fakeContainer) InitBash(context.Context) (string, error) { return "", nil }
+func (f *fakeContainer) ListSessions(context.Context) ([]session.Summary, error) {
+	return f.sessions, f.listSessionsErr
+}
 func (f *fakeContainer) ListProviders(context.Context) ([]app.ProviderStatus, error) {
 	return f.providers, f.listProvidersErr
 }
@@ -155,7 +162,8 @@ func (f *fakeContainer) ConnectProviderWithAPIKey(_ context.Context, input, apiK
 	f.connectProviderKey = apiKey
 	return f.connectProvider, f.connectProviderErr
 }
-func (f *fakeContainer) ContinueSession(context.Context, string) (session.Context, error) {
-	return session.Context{}, nil
+func (f *fakeContainer) ContinueSession(_ context.Context, id string) (session.Context, error) {
+	f.continueSessionID = id
+	return f.continuedSession, f.continueSessionErr
 }
 func (f *fakeContainer) Doctor(context.Context) (string, error) { return "", nil }

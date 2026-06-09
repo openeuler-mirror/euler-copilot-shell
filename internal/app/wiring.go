@@ -14,6 +14,7 @@ import (
 	"atomgit.com/openeuler/witty-cli/internal/presenter"
 	"atomgit.com/openeuler/witty-cli/internal/renderer"
 	"atomgit.com/openeuler/witty-cli/internal/session"
+	"atomgit.com/openeuler/witty-cli/internal/shellinit"
 	"atomgit.com/openeuler/witty-cli/internal/terminal"
 	"atomgit.com/openeuler/witty-cli/internal/transport"
 	"atomgit.com/openeuler/witty-cli/internal/version"
@@ -113,6 +114,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		presenter:  presenterService,
 		permission: permissionService,
 		ask:        askRunner,
+		shellInit:  shellinit.NewRenderer(),
 		version:    opts.Version,
 	}, nil
 }

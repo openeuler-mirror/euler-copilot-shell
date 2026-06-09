@@ -44,8 +44,10 @@ func TestExecute_InitBash(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute(init bash) error = %v", err)
 	}
-	if !strings.Contains(out.String(), "Witty Bash integration placeholder") {
-		t.Fatalf("init bash output = %q, want placeholder", out.String())
+	for _, want := range []string{"Witty Bash integration dev", "__witty_classify()", "__witty_shell_dispatch()"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("init bash output = %q, want %q", out.String(), want)
+		}
 	}
 }
 
