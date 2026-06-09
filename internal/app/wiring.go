@@ -2,12 +2,15 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
 
 	"atomgit.com/openeuler/witty-cli/internal/config"
 	"atomgit.com/openeuler/witty-cli/internal/event"
+	"atomgit.com/openeuler/witty-cli/internal/presenter"
+	"atomgit.com/openeuler/witty-cli/internal/renderer"
 	"atomgit.com/openeuler/witty-cli/internal/session"
 	"atomgit.com/openeuler/witty-cli/internal/terminal"
 	"atomgit.com/openeuler/witty-cli/internal/transport"
@@ -18,6 +21,7 @@ import (
 type Options struct {
 	Config           config.LoadOptions
 	Version          version.Info
+	Stdout           io.Writer
 	Stderr           io.Writer
 	SessionStatePath string
 }
@@ -32,6 +36,10 @@ func New(ctx context.Context, opts Options) (Container, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	stdout := stdoutWriter(opts.Stdout)
+	stdoutFile := writerFile(stdout)
+	isTTY := terminal.IsTerminal(stdoutFile)
 
 	logger := newLogger(cfg, stderrWriter(opts.Stderr))
 	transportClient, err := transport.NewClient(transport.Options{
@@ -49,6 +57,23 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		return nil, err
 	}
 	eventRouter := event.NewRouter(transportClient)
+	rendererService, err := renderer.NewMarkdownRenderer(renderer.Options{
+		Writer:     stdout,
+		IsTTY:      isTTY,
+		Width:      terminal.Width(stdoutFile),
+		Theme:      cfg.Theme,
+		NoColor:    cfg.NoColor,
+		InputFile:  os.Stdin,
+		OutputFile: stdoutFile,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create renderer: %w", err)
+	}
+	presenterService := presenter.NewPresenter(presenter.Options{
+		Writer:  stdout,
+		IsTTY:   isTTY,
+		NoColor: cfg.NoColor,
+	})
 
 	return &App{
 		cfg:       cfg,
@@ -56,6 +81,8 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		transport: transportClient,
 		events:    eventRouter,
 		sessions:  sessionResolver,
+		renderer:  rendererService,
+		presenter: presenterService,
 		version:   opts.Version,
 	}, nil
 }
@@ -85,6 +112,13 @@ func newLogger(cfg config.Config, stderr io.Writer) *slog.Logger {
 }
 
 func isTTYWriter(writer io.Writer) bool {
+	return terminal.IsTerminal(writerFile(writer))
+}
+
+func writerFile(writer io.Writer) *os.File {
 	file, ok := writer.(*os.File)
-	return ok && terminal.IsTerminal(file)
+	if !ok {
+		return nil
+	}
+	return file
 }

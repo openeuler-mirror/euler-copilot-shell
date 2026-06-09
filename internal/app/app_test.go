@@ -3,21 +3,30 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	"atomgit.com/openeuler/witty-cli/internal/config"
+	"atomgit.com/openeuler/witty-cli/internal/event"
+	presenterpkg "atomgit.com/openeuler/witty-cli/internal/presenter"
+	"atomgit.com/openeuler/witty-cli/internal/renderer"
+	"atomgit.com/openeuler/witty-cli/internal/session"
+	"atomgit.com/openeuler/witty-cli/internal/transport"
 	"atomgit.com/openeuler/witty-cli/internal/version"
 )
 
 func TestNew_LoadsConfigAndVersion(t *testing.T) {
+	var stdout bytes.Buffer
 	container, err := New(context.Background(), Options{
 		Config:  config.LoadOptions{ConfigFiles: []string{}},
 		Version: version.New("1.0.0", "abc", "today"),
+		Stdout:  &stdout,
 	})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -38,10 +47,17 @@ func TestNew_LoadsConfigAndVersion(t *testing.T) {
 	if container.Sessions() == nil {
 		t.Fatal("Sessions() = nil, want wired session resolver")
 	}
+	if container.Renderer() == nil {
+		t.Fatal("Renderer() = nil, want wired text renderer")
+	}
+	if container.Presenter() == nil {
+		t.Fatal("Presenter() = nil, want wired presenter")
+	}
 }
 
 func TestInitBash_ReturnsPlaceholder(t *testing.T) {
-	container, err := New(context.Background(), Options{Config: config.LoadOptions{ConfigFiles: []string{}}})
+	var stdout bytes.Buffer
+	container, err := New(context.Background(), Options{Config: config.LoadOptions{ConfigFiles: []string{}}, Stdout: &stdout})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -75,11 +91,13 @@ func TestSessionServices_UseWiredTransport(t *testing.T) {
 	}))
 	defer server.Close()
 
+	var stdout bytes.Buffer
 	container, err := New(context.Background(), Options{
 		Config: config.LoadOptions{
 			ConfigFiles: []string{},
 			Overrides:   config.Overrides{ServerURL: server.URL},
 		},
+		Stdout:           &stdout,
 		SessionStatePath: filepath.Join(t.TempDir(), "state.json"),
 	})
 	if err != nil {
@@ -102,15 +120,70 @@ func TestSessionServices_UseWiredTransport(t *testing.T) {
 	}
 }
 
-func TestAsk_NotImplemented(t *testing.T) {
-	container, err := New(context.Background(), Options{Config: config.LoadOptions{ConfigFiles: []string{}}})
-	if err != nil {
-		t.Fatalf("New() error = %v", err)
+func TestAsk_RejectsEmptyPrompt(t *testing.T) {
+	app := &App{}
+	var userErr *presenterpkg.UserError
+	if err := app.Ask(context.Background(), "   "); !errors.As(err, &userErr) {
+		t.Fatalf("Ask(empty) error = %v, want presenter.UserError", err)
+	}
+}
+
+func TestAsk_DispatchesRendererAndPresenter(t *testing.T) {
+	renderer := &fakeTextRenderer{}
+	presenter := &fakePresenter{}
+	transportClient := &fakeTransport{}
+	app := &App{
+		cfg:       config.Default(),
+		transport: transportClient,
+		events: &fakeRouter{events: []event.AppEvent{
+			{Kind: event.EventStepStarted},
+			{Kind: event.EventTextDelta, Payload: event.TextDeltaPayload{Delta: "hello\n\n"}},
+			{Kind: event.EventToolCalled, Payload: event.ToolCalledPayload{ToolName: "bash", CallID: "call_1", Input: json.RawMessage(`{"cmd":"ls"}`)}},
+			{Kind: event.EventSessionIdle},
+		}},
+		sessions:  &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
+		renderer:  renderer,
+		presenter: presenter,
 	}
 
-	err = container.Ask(context.Background(), "hello")
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Fatalf("Ask() error = %v, want ErrNotImplemented", err)
+	if err := app.Ask(context.Background(), "hello"); err != nil {
+		t.Fatalf("Ask() error = %v", err)
+	}
+	if transportClient.sentSessionID != "ses_1" {
+		t.Fatalf("SendPromptAsync session = %q, want ses_1", transportClient.sentSessionID)
+	}
+	if got := transportClient.promptReq.Parts; len(got) != 1 || got[0].Text != "hello" || got[0].Type != "text" {
+		t.Fatalf("prompt parts = %+v", got)
+	}
+	if !reflect.DeepEqual(renderer.deltas, []string{"hello\n\n"}) {
+		t.Fatalf("renderer deltas = %#v", renderer.deltas)
+	}
+	if renderer.flushCount != 1 {
+		t.Fatalf("renderer flush count = %d, want 1", renderer.flushCount)
+	}
+	if !reflect.DeepEqual(presenter.events, []event.AppEventKind{event.EventStepStarted, event.EventToolCalled}) {
+		t.Fatalf("presented events = %#v", presenter.events)
+	}
+}
+
+func TestAsk_EOFBeforeIdleFlushesAndReturnsError(t *testing.T) {
+	renderer := &fakeTextRenderer{}
+	app := &App{
+		cfg:       config.Default(),
+		transport: &fakeTransport{},
+		events: &fakeRouter{events: []event.AppEvent{
+			{Kind: event.EventTextDelta, Payload: event.TextDeltaPayload{Delta: "tail"}},
+		}},
+		sessions: &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
+		renderer: renderer,
+	}
+
+	err := app.Ask(context.Background(), "hello")
+	if !errors.Is(err, ErrStreamEndedWithoutIdle) {
+		t.Fatalf("Ask() error = %v, want ErrStreamEndedWithoutIdle", err)
+	}
+	if renderer.flushCount != 1 {
+		t.Fatalf("renderer flush count = %d, want 1", renderer.flushCount)
 	}
 }
 
@@ -124,6 +197,7 @@ func TestLogger_DebugWritesToNonTTYStderr(t *testing.T) {
 				Debug: &debug,
 			},
 		},
+		Stdout: &bytes.Buffer{},
 		Stderr: &stderr,
 	})
 	if err != nil {
@@ -135,3 +209,129 @@ func TestLogger_DebugWritesToNonTTYStderr(t *testing.T) {
 		t.Fatalf("debug log = %q, want debug message", stderr.String())
 	}
 }
+
+type fakeSessions struct {
+	resolved session.Context
+}
+
+func (f *fakeSessions) Resolve(context.Context, string, bool) (session.Context, error) {
+	return f.resolved, nil
+}
+
+func (f *fakeSessions) Continue(context.Context, string) (session.Context, error) {
+	return session.Context{}, nil
+}
+
+func (f *fakeSessions) List(context.Context, session.Scope) ([]session.Summary, error) {
+	return nil, nil
+}
+
+type fakeTransport struct {
+	sentSessionID string
+	promptReq     transport.PromptRequest
+}
+
+func (f *fakeTransport) Health(context.Context) (transport.Health, error) {
+	return transport.Health{}, nil
+}
+
+func (f *fakeTransport) CreateSession(context.Context, transport.CreateSessionRequest) (transport.Session, error) {
+	return transport.Session{}, nil
+}
+
+func (f *fakeTransport) GetSession(context.Context, string) (transport.Session, error) {
+	return transport.Session{}, nil
+}
+
+func (f *fakeTransport) ListSessions(context.Context, transport.SessionFilter) ([]transport.Session, error) {
+	return nil, nil
+}
+
+func (f *fakeTransport) SendPromptAsync(_ context.Context, sessionID string, req transport.PromptRequest) error {
+	f.sentSessionID = sessionID
+	f.promptReq = req
+	return nil
+}
+
+func (f *fakeTransport) ReplyPermission(context.Context, string, transport.PermissionDecision) (bool, error) {
+	return false, nil
+}
+
+func (f *fakeTransport) ReplyQuestion(context.Context, string, [][]string) (bool, error) {
+	return false, nil
+}
+
+func (f *fakeTransport) RejectQuestion(context.Context, string) (bool, error) {
+	return false, nil
+}
+
+func (f *fakeTransport) SubscribeEvents(context.Context, transport.EventFilter) (<-chan transport.RawEvent, <-chan error) {
+	return nil, nil
+}
+
+type fakeRouter struct {
+	events []event.AppEvent
+	err    error
+}
+
+func (f *fakeRouter) Normalize(transport.RawEvent) (event.AppEvent, bool) {
+	return event.AppEvent{}, false
+}
+
+func (f *fakeRouter) Subscribe(context.Context, string, transport.EventFilter) (<-chan event.AppEvent, <-chan error) {
+	events := make(chan event.AppEvent, len(f.events))
+	errs := make(chan error, 1)
+	for _, evt := range f.events {
+		events <- evt
+	}
+	close(events)
+	if f.err != nil {
+		errs <- f.err
+	}
+	close(errs)
+	return events, errs
+}
+
+type fakeTextRenderer struct {
+	deltas     []string
+	flushCount int
+}
+
+func (f *fakeTextRenderer) WriteDelta(_ context.Context, delta string) error {
+	f.deltas = append(f.deltas, delta)
+	return nil
+}
+
+func (f *fakeTextRenderer) Flush(context.Context) error {
+	f.flushCount++
+	return nil
+}
+
+type fakePresenter struct {
+	events []event.AppEventKind
+}
+
+func (f *fakePresenter) PresentEvent(_ context.Context, evt event.AppEvent) error {
+	f.events = append(f.events, evt.Kind)
+	return nil
+}
+
+func (f *fakePresenter) PresentStepStarted(context.Context) error { return nil }
+func (f *fakePresenter) PresentStepEnded(context.Context, event.StepEndedPayload) error {
+	return nil
+}
+func (f *fakePresenter) PresentToolCalled(context.Context, event.ToolCalledPayload) error { return nil }
+func (f *fakePresenter) PresentToolSucceeded(context.Context, event.ToolResultPayload) error {
+	return nil
+}
+func (f *fakePresenter) PresentToolFailed(context.Context, event.ToolResultPayload) error { return nil }
+func (f *fakePresenter) PresentPermission(context.Context, event.PermissionAskedPayload) error {
+	return nil
+}
+func (f *fakePresenter) PresentQuestion(context.Context, event.QuestionAskedPayload) error {
+	return nil
+}
+func (f *fakePresenter) PresentError(context.Context, error) error { return nil }
+
+var _ renderer.TextRenderer = (*fakeTextRenderer)(nil)
+var _ presenterpkg.Presenter = (*fakePresenter)(nil)
