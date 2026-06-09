@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 
 	"atomgit.com/openeuler/witty-cli/internal/config"
 	"atomgit.com/openeuler/witty-cli/internal/event"
+	permissionpkg "atomgit.com/openeuler/witty-cli/internal/permission"
 	presenterpkg "atomgit.com/openeuler/witty-cli/internal/presenter"
 	"atomgit.com/openeuler/witty-cli/internal/renderer"
 	"atomgit.com/openeuler/witty-cli/internal/session"
@@ -52,6 +54,9 @@ func TestNew_LoadsConfigAndVersion(t *testing.T) {
 	}
 	if container.Presenter() == nil {
 		t.Fatal("Presenter() = nil, want wired presenter")
+	}
+	if container.Permission() == nil {
+		t.Fatal("Permission() = nil, want wired permission manager")
 	}
 }
 
@@ -166,6 +171,46 @@ func TestAsk_DispatchesRendererAndPresenter(t *testing.T) {
 	}
 }
 
+func TestAsk_DelegatesInteractionEventsToPermissionManager(t *testing.T) {
+	trace := []string{}
+	renderer := &fakeTextRenderer{trace: &trace}
+	presenter := &fakePresenter{}
+	permission := &fakePermissionManager{trace: &trace}
+	app := &App{
+		cfg:       config.Default(),
+		transport: &fakeTransport{},
+		events: &fakeRouter{events: []event.AppEvent{
+			{Kind: event.EventTextDelta, Payload: event.TextDeltaPayload{Delta: "hello"}},
+			{Kind: event.EventPermissionAsked, Payload: event.PermissionAskedPayload{RequestID: "per_1", Permission: "tool"}},
+			{Kind: event.EventQuestionAsked, Payload: event.QuestionAskedPayload{RequestID: "que_1", Questions: []event.QuestionInfo{{Question: "Continue?"}}}},
+			{Kind: event.EventSessionIdle},
+		}},
+		sessions:   &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
+		renderer:   renderer,
+		presenter:  presenter,
+		permission: permission,
+	}
+
+	if err := app.Ask(context.Background(), "hello"); err != nil {
+		t.Fatalf("Ask() error = %v", err)
+	}
+	if !reflect.DeepEqual(permission.events, []event.AppEventKind{event.EventPermissionAsked, event.EventQuestionAsked}) {
+		t.Fatalf("interaction events = %#v, want permission/question", permission.events)
+	}
+	if !reflect.DeepEqual(presenter.events, []event.AppEventKind{event.EventPermissionAsked, event.EventQuestionAsked}) {
+		t.Fatalf("presented interaction events = %#v, want permission/question", presenter.events)
+	}
+	if renderer.flushCount != 3 {
+		t.Fatalf("renderer flush count = %d, want 3", renderer.flushCount)
+	}
+	if indexOf(trace, "flush:1") == -1 || indexOf(trace, "flush:1") > indexOf(trace, "interaction:permission.asked") {
+		t.Fatalf("trace = %#v, want first flush before permission handling", trace)
+	}
+	if indexOf(trace, "flush:2") == -1 || indexOf(trace, "flush:2") > indexOf(trace, "interaction:question.asked") {
+		t.Fatalf("trace = %#v, want second flush before question handling", trace)
+	}
+}
+
 func TestAsk_EOFBeforeIdleFlushesAndReturnsError(t *testing.T) {
 	renderer := &fakeTextRenderer{}
 	app := &App{
@@ -208,6 +253,15 @@ func TestLogger_DebugWritesToNonTTYStderr(t *testing.T) {
 	if !strings.Contains(stderr.String(), "debug message") {
 		t.Fatalf("debug log = %q, want debug message", stderr.String())
 	}
+}
+
+func indexOf(values []string, target string) int {
+	for index, value := range values {
+		if value == target {
+			return index
+		}
+	}
+	return -1
 }
 
 type fakeSessions struct {
@@ -295,15 +349,22 @@ func (f *fakeRouter) Subscribe(context.Context, string, transport.EventFilter) (
 type fakeTextRenderer struct {
 	deltas     []string
 	flushCount int
+	trace      *[]string
 }
 
 func (f *fakeTextRenderer) WriteDelta(_ context.Context, delta string) error {
 	f.deltas = append(f.deltas, delta)
+	if f.trace != nil {
+		*f.trace = append(*f.trace, "render:"+delta)
+	}
 	return nil
 }
 
 func (f *fakeTextRenderer) Flush(context.Context) error {
 	f.flushCount++
+	if f.trace != nil {
+		*f.trace = append(*f.trace, fmt.Sprintf("flush:%d", f.flushCount))
+	}
 	return nil
 }
 
@@ -333,5 +394,28 @@ func (f *fakePresenter) PresentQuestion(context.Context, event.QuestionAskedPayl
 }
 func (f *fakePresenter) PresentError(context.Context, error) error { return nil }
 
+type fakePermissionManager struct {
+	events []event.AppEventKind
+	trace  *[]string
+	err    error
+}
+
+func (f *fakePermissionManager) HandleEvent(_ context.Context, evt event.AppEvent) error {
+	f.events = append(f.events, evt.Kind)
+	if f.trace != nil {
+		*f.trace = append(*f.trace, "interaction:"+string(evt.Kind))
+	}
+	return f.err
+}
+
+func (f *fakePermissionManager) HandlePermission(context.Context, event.PermissionAskedPayload) error {
+	return f.err
+}
+
+func (f *fakePermissionManager) HandleQuestion(context.Context, event.QuestionAskedPayload) error {
+	return f.err
+}
+
 var _ renderer.TextRenderer = (*fakeTextRenderer)(nil)
 var _ presenterpkg.Presenter = (*fakePresenter)(nil)
+var _ permissionpkg.Manager = (*fakePermissionManager)(nil)

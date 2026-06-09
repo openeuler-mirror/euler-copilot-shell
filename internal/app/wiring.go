@@ -9,6 +9,7 @@ import (
 
 	"atomgit.com/openeuler/witty-cli/internal/config"
 	"atomgit.com/openeuler/witty-cli/internal/event"
+	"atomgit.com/openeuler/witty-cli/internal/permission"
 	"atomgit.com/openeuler/witty-cli/internal/presenter"
 	"atomgit.com/openeuler/witty-cli/internal/renderer"
 	"atomgit.com/openeuler/witty-cli/internal/session"
@@ -40,6 +41,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 	stdout := stdoutWriter(opts.Stdout)
 	stdoutFile := writerFile(stdout)
 	isTTY := terminal.IsTerminal(stdoutFile)
+	interactiveTTY := isTTY && terminal.IsTerminal(os.Stdin)
 
 	logger := newLogger(cfg, stderrWriter(opts.Stderr))
 	transportClient, err := transport.NewClient(transport.Options{
@@ -74,16 +76,30 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		IsTTY:   isTTY,
 		NoColor: cfg.NoColor,
 	})
+	var prompt terminal.Prompter
+	if interactiveTTY {
+		prompt = terminal.NewPrompter(os.Stdin, stdout)
+	}
+	permissionService, err := permission.NewManager(permission.Options{
+		Transport:   transportClient,
+		Prompt:      prompt,
+		Writer:      stdout,
+		Interactive: interactiveTTY,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create permission manager: %w", err)
+	}
 
 	return &App{
-		cfg:       cfg,
-		logger:    logger,
-		transport: transportClient,
-		events:    eventRouter,
-		sessions:  sessionResolver,
-		renderer:  rendererService,
-		presenter: presenterService,
-		version:   opts.Version,
+		cfg:        cfg,
+		logger:     logger,
+		transport:  transportClient,
+		events:     eventRouter,
+		sessions:   sessionResolver,
+		renderer:   rendererService,
+		presenter:  presenterService,
+		permission: permissionService,
+		version:    opts.Version,
 	}, nil
 }
 

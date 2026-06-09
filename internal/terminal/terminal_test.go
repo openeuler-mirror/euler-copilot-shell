@@ -5,7 +5,9 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"testing"
+	"time"
 )
 
 func TestWidthWithFallback_NilFileUsesFallback(t *testing.T) {
@@ -53,5 +55,34 @@ func TestPrompter_ReadLineContextCanceled(t *testing.T) {
 	_, err := prompt.ReadLine(ctx, "")
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("ReadLine() error = %v, want context.Canceled", err)
+	}
+}
+
+func TestPrompter_ReadLineCancelsBlockedRead(t *testing.T) {
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() error = %v", err)
+	}
+	defer reader.Close()
+	defer writer.Close()
+
+	prompt := NewPrompter(reader, io.Discard)
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() {
+		_, err := prompt.ReadLine(ctx, "")
+		result <- err
+	}()
+
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("ReadLine() error = %v, want context.Canceled", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("ReadLine() did not return after cancel")
 	}
 }

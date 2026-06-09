@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,6 +10,7 @@ import (
 
 	"atomgit.com/openeuler/witty-cli/internal/config"
 	"atomgit.com/openeuler/witty-cli/internal/event"
+	"atomgit.com/openeuler/witty-cli/internal/permission"
 	"atomgit.com/openeuler/witty-cli/internal/presenter"
 	"atomgit.com/openeuler/witty-cli/internal/renderer"
 	"atomgit.com/openeuler/witty-cli/internal/session"
@@ -18,11 +18,7 @@ import (
 	"atomgit.com/openeuler/witty-cli/internal/version"
 )
 
-var (
-	ErrNotImplemented            = errors.New("not implemented yet")
-	ErrInteractionNotImplemented = errors.New("permission/question handling is not implemented yet")
-	ErrStreamEndedWithoutIdle    = errors.New("event stream ended before session.idle")
-)
+var ErrStreamEndedWithoutIdle = fmt.Errorf("event stream ended before session.idle")
 
 // Container exposes the narrow application surface used by CLI commands.
 type Container interface {
@@ -33,6 +29,7 @@ type Container interface {
 	Sessions() session.Resolver
 	Renderer() renderer.TextRenderer
 	Presenter() presenter.Presenter
+	Permission() permission.Manager
 	Version() version.Info
 	Ask(ctx context.Context, prompt string) error
 	InitBash(ctx context.Context) (string, error)
@@ -42,14 +39,15 @@ type Container interface {
 }
 
 type App struct {
-	cfg       config.Config
-	logger    *slog.Logger
-	transport transport.Client
-	events    event.Router
-	sessions  session.Resolver
-	renderer  renderer.TextRenderer
-	presenter presenter.Presenter
-	version   version.Info
+	cfg        config.Config
+	logger     *slog.Logger
+	transport  transport.Client
+	events     event.Router
+	sessions   session.Resolver
+	renderer   renderer.TextRenderer
+	presenter  presenter.Presenter
+	permission permission.Manager
+	version    version.Info
 }
 
 func (a *App) Config() config.Config {
@@ -78,6 +76,10 @@ func (a *App) Renderer() renderer.TextRenderer {
 
 func (a *App) Presenter() presenter.Presenter {
 	return a.presenter
+}
+
+func (a *App) Permission() permission.Manager {
+	return a.permission
 }
 
 func (a *App) Version() version.Info {
@@ -165,12 +167,18 @@ func (a *App) handleAskEvent(ctx context.Context, evt event.AppEvent) (bool, err
 		}
 		return false, a.presenter.PresentEvent(ctx, evt)
 	case event.EventPermissionAsked, event.EventQuestionAsked:
+		if err := a.flushRenderer(ctx); err != nil {
+			return false, err
+		}
 		if a.presenter != nil {
 			if err := a.presenter.PresentEvent(ctx, evt); err != nil {
 				return false, err
 			}
 		}
-		return false, fmt.Errorf("ask interaction: %w", ErrInteractionNotImplemented)
+		if a.permission == nil {
+			return false, fmt.Errorf("ask interaction: permission manager is not configured")
+		}
+		return false, a.permission.HandleEvent(ctx, evt)
 	case event.EventSessionIdle:
 		return true, nil
 	default:

@@ -1,7 +1,6 @@
 package terminal
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/muesli/cancelreader"
 	"golang.org/x/term"
 )
 
@@ -62,8 +62,8 @@ type Prompter interface {
 }
 
 type linePrompter struct {
-	reader *bufio.Reader
-	out    io.Writer
+	in  io.Reader
+	out io.Writer
 }
 
 // NewPrompter creates a reusable line prompt for permission, question, and REPL flows.
@@ -74,7 +74,7 @@ func NewPrompter(in io.Reader, out io.Writer) Prompter {
 	if out == nil {
 		out = io.Discard
 	}
-	return &linePrompter{reader: bufio.NewReader(in), out: out}
+	return &linePrompter{in: in, out: out}
 }
 
 func (p *linePrompter) ReadLine(ctx context.Context, label string) (string, error) {
@@ -90,13 +90,48 @@ func (p *linePrompter) ReadLine(ctx context.Context, label string) (string, erro
 		}
 	}
 
-	line, err := p.reader.ReadString('\n')
-	line = strings.TrimRight(line, "\r\n")
+	reader := p.in
+	cancelable, err := cancelreader.NewReader(p.in)
+	if err == nil {
+		reader = cancelable
+		defer cancelable.Close()
+		done := make(chan struct{})
+		go func() {
+			select {
+			case <-ctx.Done():
+				cancelable.Cancel()
+			case <-done:
+			}
+		}()
+		defer close(done)
+	}
+
+	line, err := readPromptLine(reader)
 	if err != nil {
+		if errors.Is(err, cancelreader.ErrCanceled) && ctx.Err() != nil {
+			return "", ctx.Err()
+		}
 		if errors.Is(err, io.EOF) && line != "" {
 			return line, nil
 		}
 		return "", fmt.Errorf("read prompt: %w", err)
 	}
 	return line, nil
+}
+
+func readPromptLine(reader io.Reader) (string, error) {
+	var builder strings.Builder
+	one := make([]byte, 1)
+	for {
+		n, err := reader.Read(one)
+		if n > 0 {
+			if one[0] == '\n' {
+				return strings.TrimRight(builder.String(), "\r"), nil
+			}
+			builder.WriteByte(one[0])
+		}
+		if err != nil {
+			return strings.TrimRight(builder.String(), "\r"), err
+		}
+	}
 }
