@@ -354,6 +354,32 @@
 - [ ] opencode server 不可用时错误包含 server URL 与排查建议，不 panic。
 - [ ] stdout 只包含用户期望内容；debug/log 不污染 stdout。
 
+### P1-9B：Provider 管理 `witty provider` [增补阶段]
+
+增补背景：`opencode serve` 与 opencode TUI 进程独立，TUI 中 connect 的 provider 不会自动对 server 生效。
+需要通过 `witty provider` 命令让用户在终端内完成 provider 连接，避免打开 TUI 或手动构造 curl 请求。
+
+- [ ] `witty provider list` 列出支持 API Key 认证的 provider，标注 connected 状态。
+- [ ] `witty provider list --connected` 仅列出已连接且支持 API Key 认证的 provider。
+- [ ] `witty provider connect <provider> --key <api-key>` 通过 API Key 连接 provider（调用 `PUT /auth/{providerID}`），支持 provider id / name 解析。
+- [ ] `connect` 前先查询 `/provider` 解析输入，再查询 `/provider/auth` 过滤出支持 `type=api` 的 provider。
+- [ ] `--key` 未提供时提示从 stdin 或环境变量读取。
+- [ ] `connect` 成功后重新查询 provider 列表确认 connected 状态已更新。
+- [ ] provider 不存在时给出友好错误提示（不是裸 HTTP 状态码）。
+- [ ] provider 存在但 `/provider/auth` 不支持 `type=api` 时，返回明确错误：`当前 Provider 暂不支持 API Key 认证方式`。
+- [ ] 连接失败（如 key 无效）时错误信息包含排查建议。
+
+#### 验收 checkpoint：C1-9B
+
+- [ ] `witty provider list` 输出仅包含支持 API Key 认证的 provider 条目，connected 状态正确。
+- [ ] `witty provider list --connected` 仅显示 connected 且支持 API Key 认证的 provider（初始可能为空或仅有 opencode）。
+- [ ] `witty provider connect deepseek --key <valid-key>` 成功，再次 `list --connected` 可见 deepseek。
+- [ ] `witty provider connect nonexistent --key sk-xxx` 返回可读错误，exit code 非 0。
+- [ ] `witty provider connect <provider-without-api-auth> --key sk-xxx` 返回明确错误：`当前 Provider 暂不支持 API Key 认证方式`。
+- [ ] `witty provider connect deepseek`（无 `--key`）给出明确的使用说明，不 panic。
+- [ ] `go test -count=1 ./internal/cli/ ./internal/transport/ ./internal/app/` 通过。
+- [ ] VM 环境验证：使用 `witty provider connect` 连接 deepseek 后，`witty ask --model deepseek/deepseek-v4-falsh --variant reasoning-high --new "hello"` 能正常完成。
+
 ### P1-10：Shell Init 模板 `internal/shellinit`
 
 - [ ] `witty init bash` 输出 Bash 集成脚本。

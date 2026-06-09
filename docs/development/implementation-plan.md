@@ -224,7 +224,12 @@ graph TD
     H --> F
     J --> G
     I --> P[embedded bash template]
+    B --> G
 ```
+
+> `internal/cli/provider.go` 直接依赖 `app.Container`（通过 `ListProviders`、`ConnectProviderWithAPIKey`），
+> Container 进而调用 `transport.Client` 的 `ListProviders`、`ListProviderAuthMethods`、`SetProviderAPIKey`。
+> 不需要新增独立的 `internal/provider` 业务模块。
 
 ---
 
@@ -278,6 +283,7 @@ type App struct {
 
 - 子命令不自行 new 各类 client/service。
 - 所有运行时对象都从 `app` 层统一装配。
+- `app.Container` 接口新增 `ListProviders`、`ConnectProviderWithAPIKey` 方法，供 `internal/cli/provider.go` 调用。
 
 ---
 
@@ -304,6 +310,8 @@ type App struct {
 | `witty session list` | 列出会话 | 支持当前目录过滤 |
 | `witty session continue <id>` | 切换会话 | 可写入本地状态 |
 | `witty new` 或 `/new` | 显式新会话 | 可选公开命令 |
+| `witty provider list` | 列出支持 API Key 的 AI provider | 标注 connected 状态 |
+| `witty provider connect <provider>` | 连接 provider | 支持 provider id/name 解析与 `--key` 传入 API key |
 | `witty init bash` | 输出 Bash 初始化脚本 | 用于 `eval "$(witty init bash)"` |
 | `witty doctor` | 自检 server / config / auth / tty | 产品化阶段关键命令 |
 | `witty shell-control` | 处理 slash 控制命令 | hidden，仅供 Shell Adapter 调用 |
@@ -520,13 +528,25 @@ type Client interface {
     ReplyQuestion(ctx context.Context, requestID string, answers [][]string) error
     RejectQuestion(ctx context.Context, requestID string) error
     SubscribeEvents(ctx context.Context) (<-chan RawEvent, <-chan error)
+    ListProviders(ctx context.Context, directory string) (ProviderList, error)
+    ListProviderAuthMethods(ctx context.Context, directory string) (ProviderAuthMethods, error)
+    SetProviderAPIKey(ctx context.Context, providerID string, apiKey string) error
 }
 ```
+
+> **Provider 相关方法说明**：
+>
+> - `ListProviders` 调用 `GET /provider`，返回 `all`（全部 provider）、`connected`（已连接列表）、`default`（默认模型）三个字段。
+> - `ListProviderAuthMethods` 调用 `GET /provider/auth`，返回各 provider 可用认证方式；CLI 首版只暴露支持 `type=api` 的 provider。
+> - `SetProviderAPIKey` 调用 `PUT /auth/{providerID}`，请求体固定为 `{"type": "api", "key": "..."}`。
+> - `witty provider connect <provider>` 先用 `GET /provider` 按 `id/name` 解析输入；若 provider 存在但 `GET /provider/auth` 不包含 `type=api`，返回明确错误：`当前 Provider 暂不支持 API Key 认证方式`。
 
 > **SubscribeEvents 实现注意**：
 >
 > - `/event` 端点接受 `directory` query param（`GET /event?directory=<cwd>`），可在服务端做初步过滤；但 SSE 流仍是所有会话共享，**客户端仍需按 sessionID 做二次过滤**。
 > - `prompt_async` 端点在服务端接受请求后**立即返回 HTTP 204**，不阻塞等待 AI 响应；实际的流式响应通过 `/event` SSE 流获得。
+
+**Provider 相关类型**（`transport/types.go`）：`ProviderList`（All + Connected + Default）对应 `/provider` 响应；`ProviderAuthMethods` 对应 `/provider/auth` 响应。首版不暴露通用 `AuthRequest`，由 `SetProviderAPIKey` 在 transport 内部固定构造 API key 请求体。
 
 ### 实现约束
 
@@ -1010,6 +1030,8 @@ var TemplateFS embed.FS  // 嵌入整个目录（递归）
 | `POST /question/{requestID}/reject` | 拒绝问题 |
 | `GET /agent` | 列出可用 agent |
 | `GET /provider` | 列出可用 provider |
+| `GET /provider/auth` | 列出各 provider 支持的认证方式 |
+| `PUT /auth/{providerID}` | 为指定 provider 写入 API Key 凭据（首版固定发送 `{type:"api", key:"..."}`） |
 
 **安全注意**：`opencode serve --port 4096` 默认无认证（`OPENCODE_SERVER_PASSWORD` 未设置时服务端会打印警告）；如设置了 password，所有请求头需携带对应认证信息。
 
