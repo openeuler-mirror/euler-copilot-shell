@@ -43,28 +43,35 @@
 
 ### QG-0：每次提交前快速检查
 
-- [ ] `go fmt ./...`
-- [ ] `go test -count=1 ./...`
-- [ ] `go build -ldflags="-s -w" ./cmd/witty`
-- [ ] 如果修改 Bash 模板：`shellcheck internal/shellinit/templates/*.bash.tmpl`
+- [x] `go fmt ./...`
+- [x] `go test -count=1 ./...`
+- [x] `go build -ldflags="-s -w" ./cmd/witty`
+- [x] 如果修改 Bash 模板：`shellcheck internal/shellinit/templates/*.bash.tmpl`
 
 ### QG-1：PR 前完整检查
 
-- [ ] `go test -count=1 ./...`
-- [ ] `golangci-lint run ./...`
-- [ ] `shellcheck internal/shellinit/templates/*.bash.tmpl`
-- [ ] 如修改 OpenAPI spec：执行接口回归测试并确认生成代码仅在允许目录变更。
-- [ ] 如修改 Renderer：执行 Markdown golden tests，人工确认快照变化合理。
-- [ ] 如修改 Shell Adapter：执行 PTY 集成测试。
+- [x] `go test -count=1 ./...`
+- [x] `golangci-lint run ./...`
+- [x] `shellcheck internal/shellinit/templates/*.bash.tmpl`
+- [x] 如修改 OpenAPI spec：执行接口回归测试并确认生成代码仅在允许目录变更。
+- [x] 如修改 Renderer：执行 Markdown golden tests，人工确认快照变化合理。
+- [x] 如修改 Shell Adapter：执行 PTY 集成测试。
+
+### QG-3：集成测试（opencode 可用时）
+
+> 当 opencode server 在 `127.0.0.1:4096` 可达时，执行真实环境集成测试。
+
+- [x] 确认 opencode server 可达：`curl -s http://127.0.0.1:4096/global/health`
+- [x] 运行集成测试：`go test -v -tags=integration -count=1 -timeout 300s ./test/integration/`
 
 ### QG-2：openEuler 最终验证
 
 > 连接方式由 `.agents/config.yaml` 决定。若文件不存在，先按 `.agents/config.template.yaml` 配置 OrbStack / WSL / SSH 环境。
 
-- [ ] 在 openEuler 上执行 `go test -count=1 ./...`
-- [ ] 在 openEuler 上执行 `go build -ldflags="-s -w" ./cmd/witty`
-- [ ] 在 openEuler 上执行 `TERM=xterm-256color go test -v -tags=pty ./test/pty/`
-- [ ] 发布前执行 `goreleaser release --snapshot --clean --skip=publish`
+- [x] 在 openEuler 上执行 `go test -count=1 ./...`
+- [x] 在 openEuler 上执行 `go build -ldflags="-s -w" ./cmd/witty`
+- [x] 在 openEuler 上执行 `TERM=xterm-256color go test -v -tags=pty ./test/pty/`
+- [x] 发布前执行 `goreleaser release --snapshot --clean --skip=publish`
 
 ---
 
@@ -74,128 +81,128 @@
 
 ### P0-1：初始化 Go module 与目录结构
 
-- [ ] 创建 `go.mod`，声明 Go 版本与模块路径。
-- [ ] 建立目录：
-  - [ ] `cmd/witty/`
-  - [ ] `internal/app/`
-  - [ ] `internal/cli/`
-  - [ ] `internal/config/`
-  - [ ] `internal/terminal/`
-  - [ ] `internal/version/`
-  - [ ] `test/testdata/`
-  - [ ] `test/pty/`
-- [ ] 添加 `.gitignore` 覆盖本地配置、构建产物与临时文件。
-- [ ] 确认 `CGO_ENABLED=0` 构建路径可用。
+- [x] 创建 `go.mod`，声明 Go 版本与模块路径。
+- [x] 建立目录：
+  - [x] `cmd/witty/`
+  - [x] `internal/app/`
+  - [x] `internal/cli/`
+  - [x] `internal/config/`
+  - [x] `internal/terminal/`
+  - [x] `internal/version/`
+  - [x] `test/testdata/`
+  - [x] `test/pty/`
+- [x] 添加 `.gitignore` 覆盖本地配置、构建产物与临时文件。
+- [x] 确认 `CGO_ENABLED=0` 构建路径可用。
 
 #### 验收 checkpoint：C0-1
 
-- [ ] `go mod tidy` 成功。
-- [ ] `go test ./...` 成功，即使暂时只有空测试或基础测试。
-- [ ] `CGO_ENABLED=0 go build ./cmd/witty` 成功。
-- [ ] 仓库中不包含 `.agents/config.yaml`、token、密钥或本机路径敏感信息。
+- [x] `go mod tidy` 成功。
+- [x] `go test ./...` 成功，即使暂时只有空测试或基础测试。
+- [x] `CGO_ENABLED=0 go build ./cmd/witty` 成功。
+- [x] 仓库中不包含 `.agents/config.yaml`、token、密钥或本机路径敏感信息。
 
 ### P0-2：`cmd/witty` 程序入口
 
-- [ ] `main.go` 只负责调用 `app.New()` / `cli.Execute()`，不放业务逻辑。
-- [ ] 版本信息通过 `ldflags` 注入，默认值可在开发态显示。
-- [ ] 业务错误以用户可读方式输出，debug 模式下保留更多上下文。
+- [x] `main.go` 只负责调用 `app.New()` / `cli.Execute()`，不放业务逻辑。
+- [x] 版本信息通过 `ldflags` 注入，默认值可在开发态显示。
+- [x] 业务错误以用户可读方式输出，debug 模式下保留更多上下文。
 
 #### 验收 checkpoint：C0-2
 
-- [ ] `witty --help` 正常显示命令帮助。
-- [ ] `witty version` 输出 version / commit / date，未注入时显示 dev fallback。
-- [ ] `cmd/witty/main.go` 无直接依赖 transport、renderer、session 等业务包。
+- [x] `witty --help` 正常显示命令帮助。
+- [x] `witty version` 输出 version / commit / date，未注入时显示 dev fallback。
+- [x] `cmd/witty/main.go` 无直接依赖 transport、renderer、session 等业务包。
 
 ### P0-3：Cobra 命令树
 
-- [ ] 根命令 `witty`。
-- [ ] 子命令占位：
-  - [ ] `ask`
-  - [ ] `init bash`
-  - [ ] `session list`
-  - [ ] `session continue <id>`
-  - [ ] `continue <id>`
-  - [ ] `doctor`
-  - [ ] `version`
-- [ ] 全局 flags：
-  - [ ] `--config`
-  - [ ] `--server-url`
-  - [ ] `--agent`
-  - [ ] `--model`
-  - [ ] `--debug`
-  - [ ] `--no-color`
-- [ ] 命令参数错误返回可读提示，不 panic。
+- [x] 根命令 `witty`。
+- [x] 子命令占位：
+  - [x] `ask`
+  - [x] `init bash`
+  - [x] `session list`
+  - [x] `session continue <id>`
+  - [x] `continue <id>`
+  - [x] `doctor`
+  - [x] `version`
+- [x] 全局 flags：
+  - [x] `--config`
+  - [x] `--server-url`
+  - [x] `--agent`
+  - [x] `--model`
+  - [x] `--debug`
+  - [x] `--no-color`
+- [x] 命令参数错误返回可读提示，不 panic。
 
 #### 验收 checkpoint：C0-3
 
-- [ ] `witty --help`、`witty ask --help`、`witty init bash --help` 输出稳定。
-- [ ] 参数错误时返回非 0 退出码。
-- [ ] CLI 层只做参数解析和调用 app service，不直接实现核心业务。
+- [x] `witty --help`、`witty ask --help`、`witty init bash --help` 输出稳定。
+- [x] 参数错误时返回非 0 退出码。
+- [x] CLI 层只做参数解析和调用 app service，不直接实现核心业务。
 
 ### P0-4：配置加载 `internal/config`
 
-- [ ] 使用 koanf v2，实现三层加载：默认值 → 配置文件 → 环境变量 / CLI override。
-- [ ] 支持用户配置路径：`~/.config/witty/config.toml`。
-- [ ] 支持系统配置路径：`/etc/witty/config.toml`。
-- [ ] 字段覆盖：
-  - [ ] `server_url`
-  - [ ] `default_agent`
-  - [ ] `default_model`
-  - [ ] `debug`
-  - [ ] `theme`
-  - [ ] `repl.auto_resume`
-  - [ ] `shell.enabled`
-  - [ ] `doctor.timeout_seconds`
-- [ ] 环境变量建议：`WITTY_SERVER_URL`、`WITTY_AGENT`、`WITTY_MODEL`、`WITTY_DEBUG`、`NO_COLOR`。
-- [ ] key 大小写保持敏感，不引入 viper 风格隐式转换。
+- [x] 使用 koanf v2，实现三层加载：默认值 → 配置文件 → 环境变量 / CLI override。
+- [x] 支持用户配置路径：`~/.config/witty/config.toml`。
+- [x] 支持系统配置路径：`/etc/witty/config.toml`。
+- [x] 字段覆盖：
+  - [x] `server_url`
+  - [x] `default_agent`
+  - [x] `default_model`
+  - [x] `debug`
+  - [x] `theme`
+  - [x] `repl.auto_resume`
+  - [x] `shell.enabled`
+  - [x] `doctor.timeout_seconds`
+- [x] 环境变量建议：`WITTY_SERVER_URL`、`WITTY_AGENT`、`WITTY_MODEL`、`WITTY_DEBUG`、`NO_COLOR`。
+- [x] key 大小写保持敏感，不引入 viper 风格隐式转换。
 
 #### 验收 checkpoint：C0-4
 
-- [ ] 配置优先级测试覆盖默认值、文件、环境变量、CLI override。
-- [ ] 配置文件不存在时可使用默认值启动。
-- [ ] 无效配置返回带上下文的错误：`fmt.Errorf("load config: %w", err)`。
-- [ ] 非 TTY 场景日志默认降级，不污染管道输出。
+- [x] 配置优先级测试覆盖默认值、文件、环境变量、CLI override。
+- [x] 配置文件不存在时可使用默认值启动。
+- [x] 无效配置返回带上下文的错误：`fmt.Errorf("load config: %w", err)`。
+- [x] 非 TTY 场景日志默认降级，不污染管道输出。
 
 ### P0-5：终端能力 `internal/terminal`
 
-- [ ] TTY 检测。
-- [ ] 终端宽度探测。
-- [ ] color/no-color 判定。
-- [ ] prompt 输入抽象，供 permission/question/repl 复用。
-- [ ] CJK 宽度处理预留 `go-runewidth` 集成点。
+- [x] TTY 检测。
+- [x] 终端宽度探测。
+- [x] color/no-color 判定。
+- [x] prompt 输入抽象，供 permission/question/repl 复用。
+- [x] CJK 宽度处理预留 `go-runewidth` 集成点。
 
 #### 验收 checkpoint：C0-5
 
-- [ ] TTY 与非 TTY 单元测试覆盖。
-- [ ] 宽度不可用时回退到安全默认值。
-- [ ] `NO_COLOR` 生效。
+- [x] TTY 与非 TTY 单元测试覆盖。
+- [x] 宽度不可用时回退到安全默认值。
+- [x] `NO_COLOR` 生效。
 
 ### P0-6：OpenAPI spec 与 generated models
 
-- [ ] 从 `opencode /doc` 固化 OpenAPI 3.1.0 spec 到 `api/opencode/openapi.json`。
-- [ ] 使用 oapi-codegen v3 生成 models/types；不得使用生成 client 处理 SSE。
-- [ ] 将生成代码隔离在约定目录，后续禁止人工编辑 `transport/generated/`。
-- [ ] 记录 spec 来源版本、更新时间和更新命令。
+- [x] 从 `opencode /doc` 固化 OpenAPI 3.1.0 spec 到 `api/opencode/openapi.json`。
+- [x] 使用 oapi-codegen v3 生成 models/types；不得使用生成 client 处理 SSE。
+- [x] 将生成代码隔离在约定目录，后续禁止人工编辑 `transport/generated/`。
+- [x] 记录 spec 来源版本、更新时间和更新命令。
 
 #### 验收 checkpoint：C0-6
 
-- [ ] `api/opencode/openapi.json` 是有效 JSON。
-- [ ] `go test ./...` 编译通过。
-- [ ] 生成代码 diff 与 spec 变更对应；无手写逻辑混入 generated 目录。
-- [ ] 文档中明确 OpenAPI 3.1.0 与 oapi-codegen v3 约束。
+- [x] `api/opencode/openapi.json` 是有效 JSON。
+- [x] `go test ./...` 编译通过。
+- [x] 生成代码 diff 与 spec 变更对应；无手写逻辑混入 generated 目录。
+- [x] 文档中明确 OpenAPI 3.1.0 与 oapi-codegen v3 约束。
 
 ### P0-7：应用组装 `internal/app`
 
-- [ ] 定义 App / Container 结构，统一持有 config、logger、transport、session、core、renderer、presenter、permission、repl、doctor。
-- [ ] 构造函数返回接口或窄类型，避免 CLI 直接 new 各模块实现。
-- [ ] logger 在非 TTY 或非 debug 场景避免污染 stdout。
-- [ ] wiring 中只做依赖装配，不塞业务流程。
+- [x] 定义 App / Container 结构，统一持有 config、logger、transport、session、core、renderer、presenter、permission、repl、doctor。
+- [x] 构造函数返回接口或窄类型，避免 CLI 直接 new 各模块实现。
+- [x] logger 在非 TTY 或非 debug 场景避免污染 stdout。
+- [x] wiring 中只做依赖装配，不塞业务流程。
 
 #### 验收 checkpoint：C0-7
 
-- [ ] `internal/app/wiring.go` 可读且无循环依赖。
-- [ ] CLI 命令只通过 app 暴露的 service 调用业务。
-- [ ] 单元测试可用 fake dependency 构造 app。
+- [x] `internal/app/wiring.go` 可读且无循环依赖。
+- [x] CLI 命令只通过 app 暴露的 service 调用业务。
+- [x] 单元测试可用 fake dependency 构造 app。
 
 ---
 
@@ -205,72 +212,76 @@
 
 ### P1-1：Transport HTTP Client
 
-- [ ] 实现基础 HTTP client：base URL、timeout、User-Agent、debug logging。
-- [ ] 实现健康检查 / server 信息探测。
-- [ ] 实现 session 创建、列表、继续。
-- [ ] 实现发送 prompt 的 API 调用。
-- [ ] 实现 permission reply / question reply / question reject。
-- [ ] HTTP 错误返回结构化错误类型，包含 status code、endpoint、响应摘要。
+- [x] 实现基础 HTTP client：base URL、timeout、User-Agent、debug logging。
+- [x] 实现健康检查 / server 信息探测。
+- [x] 实现 session 创建、列表、继续。
+- [x] 实现发送 prompt 的 API 调用。
+- [x] 实现 permission reply / question reply / question reject。
+- [x] HTTP 错误返回结构化错误类型，包含 status code、endpoint、响应摘要。
 
 #### 验收 checkpoint：C1-1
 
-- [ ] transport 单元测试覆盖请求路径、方法、body、错误响应。
-- [ ] context cancel 能中断请求。
-- [ ] debug 日志不输出 token、session secret 等敏感字段。
+- [x] transport 单元测试覆盖请求路径、方法、body、错误响应。
+- [x] context cancel 能中断请求。
+- [x] debug 日志不输出 token、session secret 等敏感字段。
+- [x] **集成测试**：真实 opencode 上验证 Health、CreateSession、ListSessions、SendPromptAsync、ReplyPermission。
 
 ### P1-2：手写 SSE Parser
 
-- [ ] 用 `bufio.Reader` 实现 SSE 行解析。
-- [ ] 支持字段：`event:`、`data:`、`id:`、`retry:`。
-- [ ] 支持多行 `data:` 拼接。
-- [ ] 支持注释行 `:` 忽略。
-- [ ] 支持空行触发 event dispatch。
-- [ ] 解析与 HTTP 连接生命周期分离，便于单元测试。
+- [x] 用 `bufio.Reader` 实现 SSE 行解析。
+- [x] 支持字段：`event:`、`data:`、`id:`、`retry:`。
+- [x] 支持多行 `data:` 拼接。
+- [x] 支持注释行 `:` 忽略。
+- [x] 支持空行触发 event dispatch。
+- [x] 解析与 HTTP 连接生命周期分离，便于单元测试。
 
 #### 验收 checkpoint：C1-2
 
-- [ ] 单元测试覆盖单事件、多行 data、注释、空 data、EOF 前残留、畸形 retry。
-- [ ] 代码中不存在 `ClientWithResponses` 处理 SSE 的路径。
-- [ ] reader 返回 `io.EOF` 时不直接等价为业务完成；业务完成以 `session.idle` 为准。
+- [x] 单元测试覆盖单事件、多行 data、注释、空 data、EOF 前残留、畸形 retry。
+- [x] 代码中不存在 `ClientWithResponses` 处理 SSE 的路径。
+- [x] reader 返回 `io.EOF` 时不直接等价为业务完成；业务完成以 `session.idle` 为准。
+- [x] **集成测试**：真实 SSE 事件流正确解析（`message.part.delta`、`session.idle` 等）。
 
 ### P1-3：Event 归一化 `internal/event`
 
-- [ ] 定义 `AppEventKind`：
-  - [ ] `EventTextDelta`
-  - [ ] `EventReasoningDelta`
-  - [ ] `EventStepStarted`
-  - [ ] `EventStepEnded`
-  - [ ] `EventToolCalled`
-  - [ ] `EventToolSucceeded`
-  - [ ] `EventToolFailed`
-  - [ ] `EventPermissionAsked`
-  - [ ] `EventQuestionAsked`
-  - [ ] `EventSessionIdle`
-  - [ ] `EventUnknown`
-- [ ] 以 `message.part.delta` / `message.part.updated` 为主路径解析文本、工具、步骤状态。
-- [ ] 兼容 `session.next.*` 类事件，但不让其绕过统一 AppEvent。
-- [ ] 实现 sessionID 过滤；`GET /event` 是全局事件总线，不可默认全量消费。
-- [ ] Unknown 事件保留摘要，debug 模式可展示。
+- [x] 定义 `AppEventKind`：
+  - [x] `EventTextDelta`
+  - [x] `EventReasoningDelta`
+  - [x] `EventStepStarted`
+  - [x] `EventStepEnded`
+  - [x] `EventToolCalled`
+  - [x] `EventToolSucceeded`
+  - [x] `EventToolFailed`
+  - [x] `EventPermissionAsked`
+  - [x] `EventQuestionAsked`
+  - [x] `EventSessionIdle`
+  - [x] `EventUnknown`
+- [x] 以 `message.part.delta` / `message.part.updated` 为主路径解析文本、工具、步骤状态。
+- [x] 兼容 `session.next.*` 类事件，但不让其绕过统一 AppEvent。
+- [x] 实现 sessionID 过滤；`GET /event` 是全局事件总线，不可默认全量消费。
+- [x] Unknown 事件保留摘要，debug 模式可展示。
 
 #### 验收 checkpoint：C1-3
 
-- [ ] fixture 测试覆盖 text delta、reasoning delta、tool call/result、permission、question、idle、unknown。
-- [ ] sessionID 不匹配的事件被过滤。
-- [ ] schema 漂移不会 panic；返回 unknown 或带上下文错误。
+- [x] fixture 测试覆盖 text delta、reasoning delta、tool call/result、permission、question、idle、unknown。
+- [x] sessionID 不匹配的事件被过滤。
+- [x] schema 漂移不会 panic；返回 unknown 或带上下文错误。
+- [x] **集成测试**：真实 opencode 事件归一化正确（step → reasoning(×32) → text → step ended → idle）。
 
 ### P1-4：Session Manager
 
-- [ ] 当前默认 session 解析策略。
-- [ ] `--new` / ForceNew 创建新 session。
-- [ ] `continue <id>` 指定 session。
-- [ ] `session list` 展示历史会话摘要。
-- [ ] 本地状态文件最小化，避免过早引入 DB。
+- [x] 当前默认 session 解析策略。
+- [x] `--new` / ForceNew 创建新 session。
+- [x] `continue <id>` 指定 session。
+- [x] `session list` 展示历史会话摘要。
+- [x] 本地状态文件最小化，避免过早引入 DB。
 
 #### 验收 checkpoint：C1-4
 
-- [ ] 创建、继续、列表逻辑有 fake transport 测试。
-- [ ] session id 不存在时错误清晰。
-- [ ] 状态文件路径符合 XDG 或项目约定，不写入仓库。
+- [x] 创建、继续、列表逻辑有 fake transport 测试。
+- [x] session id 不存在时错误清晰。
+- [x] 状态文件路径符合 XDG 或项目约定，不写入仓库。
+- [x] **集成测试**：真实 opencode 上验证 Resolve(复用) + ForceNew + Continue + List + 无效ID报错。
 
 ### P1-5：Renderer Phase 1：块边界渲染
 
