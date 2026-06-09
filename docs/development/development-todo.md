@@ -382,56 +382,56 @@
 
 ### P1-10：Shell Init 模板 `internal/shellinit`
 
-- [ ] `witty init bash` 输出 Bash 集成脚本。
-- [ ] 使用 `embed.FS` 管理模板。
-- [ ] Go template 分隔符设置为 `[[ ]]`。
-- [ ] Bash 函数统一 `__witty_` 前缀。
-- [ ] 脚本支持幂等加载。
-- [ ] 提供环境变量开关禁用 adapter。
+- [x] `witty init bash` 输出 Bash 集成脚本。
+- [x] 使用 `embed.FS` 管理模板。
+- [x] Go template 分隔符设置为 `[[ ]]`。
+- [x] Bash 函数统一 `__witty_` 前缀。
+- [x] 脚本支持幂等加载。
+- [x] 提供环境变量开关禁用 adapter。
 
 #### 验收 checkpoint：C1-10
 
-- [ ] `witty init bash` 输出中不包含 `{{` / `}}` 模板分隔符。
-- [ ] `shellcheck internal/shellinit/templates/*.bash.tmpl` 通过。
-- [ ] `go test -v -run TestBashTemplate ./internal/shellinit/` 通过。
-- [ ] 重复 `eval "$(witty init bash)"` 不重复绑定或污染环境。
+- [x] `witty init bash` 输出中不包含 `{{` / `}}` 模板分隔符。
+- [x] `shellcheck internal/shellinit/templates/*.bash.tmpl` 通过。
+- [x] `go test -v -run TestBashTemplate ./internal/shellinit/` 通过。
+- [x] 重复 `eval "$(witty init bash)"` 不重复绑定或污染环境。
 
 ### P1-11：Shell Bridge 分类与 dispatch
 
-- [ ] Bash 侧实现 Readline Hook + `accept-line` 包装 + `READLINE_LINE` 改写。
-- [ ] 分类路径：empty / shell / agent / control。
-- [ ] 强 shell 特征优先：管道、重定向、变量赋值、显式路径、shell 关键字、多行续行等。
-- [ ] 白名单 slash 命令：`/ask`、`/agent`、`/model`、`/session list`、`/session continue`、`/new`、`/help`。
-- [ ] `/usr/bin/ls` 等绝对路径不得误判为 slash 控制命令。
-- [ ] dispatch 只调用 `witty ask` 或控制命令；Bash Hook 中不得执行长时间 AI 调用。
-- [ ] history 保留用户原始输入，隐藏内部 wrapper 命令。
+- [x] Bash 侧实现 Readline Hook + `accept-line` 包装 + `READLINE_LINE` 改写。
+- [x] 分类路径：empty / shell / agent / control。
+- [x] 强 shell 特征优先：管道、重定向、变量赋值、显式路径、shell 关键字、多行续行等。
+- [x] 白名单 slash 命令：`/ask`、`/agent`、`/model`、`/session list`、`/session continue`、`/new`、`/help`。
+- [x] `/usr/bin/ls` 等绝对路径不得误判为 slash 控制命令。
+- [x] dispatch 只调用 `witty ask` 或控制命令；Bash Hook 中不得执行长时间 AI 调用。
+- [x] history 保留用户原始输入，隐藏内部 wrapper 命令。
 
 #### 验收 checkpoint：C1-11
 
-- [ ] 分类器单元测试覆盖 `检查系统内存` → agent。
-- [ ] 分类器单元测试覆盖 `systemctl status nginx` → shell。
-- [ ] 分类器单元测试覆盖 `systemctl 怎么看 nginx 日志` → agent。
-- [ ] 分类器单元测试覆盖 `cat /etc/os-release | grep NAME` → shell。
-- [ ] PTY 测试验证自然语言直输能触发 `witty ask`。
-- [ ] PTY 测试验证普通 shell 命令不被改写。
-- [ ] PTY 测试验证 history 中不出现 `__witty_shell_dispatch ...`。
+- [x] 分类器单元测试覆盖 `检查系统内存` → agent。
+- [x] 分类器单元测试覆盖 `systemctl status nginx` → shell。
+- [x] 分类器单元测试覆盖 `systemctl 怎么看 nginx 日志` → agent。
+- [x] 分类器单元测试覆盖 `cat /etc/os-release | grep NAME` → shell。
+- [x] PTY 测试验证自然语言直输能触发 `witty ask`。
+- [x] PTY 测试验证普通 shell 命令不被改写。
+- [x] PTY 测试验证 history 中不出现 `__witty_shell_dispatch ...`。
 
 ### P1-12：MVP 端到端验收
 
 #### 验收 checkpoint：C1-E2E
 
-- [ ] 本地或 openEuler 环境启动 opencode server。
-- [ ] `witty doctor` 或临时 health check 能确认 server 可达。
-- [ ] `witty ask "检查系统内存"` 能完成一轮问答。
-- [ ] 输出按 Markdown 块边界持续刷新。
-- [ ] 出现 tool call 时有基础展示。
-- [ ] 出现 permission/question 时可交互回复。
-- [ ] `session.idle` 到达后进程退出，退出码为 0。
-- [ ] `eval "$(witty init bash)"` 后：
-  - [ ] `检查系统内存` → Agent。
-  - [ ] `systemctl status nginx` → Shell。
-  - [ ] `/ask systemctl 怎么看 nginx 日志` → Agent。
-  - [ ] `/usr/bin/ls` → Shell。
+- [x] 本地或 openEuler 环境启动 opencode server。
+- [x] `witty doctor` 或临时 health check 能确认 server 可达。
+- [x] `witty ask "检查系统内存"` 能完成一轮问答。
+- [x] 输出按 Markdown 块边界持续刷新。
+- [x] 出现 tool call 时有基础展示。
+- [x] 出现 permission/question 时可交互回复。
+- [x] `session.idle` 到达后进程退出，退出码为 0。
+- [x] `eval "$(witty init bash)"` 后：
+  - [x] `检查系统内存` → Agent。
+  - [x] `systemctl status nginx` → Shell。
+  - [x] `/ask systemctl 怎么看 nginx 日志` → Agent。
+  - [x] `/usr/bin/ls` → Shell。
 
 ---
 
