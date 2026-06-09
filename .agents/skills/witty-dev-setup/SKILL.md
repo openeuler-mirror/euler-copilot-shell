@@ -53,6 +53,8 @@ cp .agents/config.template.yaml .agents/config.yaml
 编辑 `.agents/config.yaml`，根据你的环境修改 `active` 和对应的 `envs` 配置。
 此文件已被 `.gitignore` 排除，不会提交到仓库。
 
+> **重要（对 Agent）**：检查该文件时，直接读取已知路径 `shell/.agents/config.yaml`；不要先用 `find_path`、目录扫描或其它发现型工具判断存在性。gitignore 可能让搜索结果为空，但文件实际存在。
+
 支持的连接类型:
 
 - `orbstack` — macOS OrbStack VM
@@ -61,7 +63,8 @@ cp .agents/config.template.yaml .agents/config.yaml
 
 ## 步骤 3：验证环境
 
-Agent 将自动读取 `.agents/config.yaml` 并在远程环境中执行验证:
+Agent 将自动读取 `.agents/config.yaml` 并在远程环境中执行验证。
+若直接读取 `shell/.agents/config.yaml` 失败，再回退参考 `shell/.agents/config.template.yaml`：
 
 ```bash
 go version

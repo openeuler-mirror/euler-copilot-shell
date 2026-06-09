@@ -19,6 +19,17 @@ description: 构建、测试、lint、质量门禁与跨平台验证。只要用
 - **未来会派上用场的检查不要删掉**；
 - 但在当前仓库里尚未接入的检查，也**不要硬跑到失败**。
 
+## 读取 `.agents/config.yaml`（重要）
+
+`.agents/config.yaml` 通常被 `.gitignore` 排除；某些路径搜索或目录扫描结果可能看不到它，**但文件仍然真实存在**。
+
+涉及 openEuler 远程验证时，遵循下面规则：
+
+1. **不要**先用 `find_path`、目录扫描或其它“发现文件”的方式判断它是否存在。
+2. 直接尝试读取已知路径 `shell/.agents/config.yaml`。
+3. 如果直接读取失败，再回退读取 `shell/.agents/config.template.yaml`，并明确提示开发者补齐本地配置。
+4. 不要因为搜索结果为空就宣称“`.agents/config.yaml` 不存在”。
+
 ## 构建产物目录
 
 所有显式构建产物写入 `build/<GOOS>-<GOARCH>/witty`，按平台隔离：
@@ -127,6 +138,8 @@ TERM=xterm-256color go test -v -tags=pty ./test/pty/
 ## openEuler 远程验证（必须）
 
 Agent 根据 `.agents/config.yaml` 自动连接远程 openEuler 环境并执行最终验证。
+
+> 在开始远程验证前，先**直接读取** `shell/.agents/config.yaml`；不要先依赖文件搜索结果判断其是否存在。
 
 ### 当前阶段必跑项
 

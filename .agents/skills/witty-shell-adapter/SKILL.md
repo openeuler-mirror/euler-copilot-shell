@@ -38,6 +38,8 @@ description: 开发 Shell Adapter 的 Bash 模板和 Go 桥接层。包括 witty
 
 4. **运行 PTY 测试** (必须在 openEuler 环境中执行):
 
+   在进入 openEuler 远程环境前，先直接读取 `shell/.agents/config.yaml`；不要先依赖 `find_path` 或目录扫描判断文件是否存在。该文件可能被 `.gitignore` 隐藏，但仍然真实存在。若直接读取失败，再回退参考 `shell/.agents/config.template.yaml`。
+
    ```bash
    go test -v -tags=pty ./test/pty/
    ```

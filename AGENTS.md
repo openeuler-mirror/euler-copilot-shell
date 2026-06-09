@@ -37,7 +37,9 @@ Go 1.26+ CLI 工具，对接 opencode MCP Server，为 openEuler 提供终端 AI
 
 ### openEuler 远程执行
 
-连接方式由 `.agents/config.yaml` 定义。Agent 读取该配置后，通过对应的方式（orb/wsl/ssh）在 openEuler 环境中执行命令。典型用法：
+连接方式由 `.agents/config.yaml` 定义。**重要**：该文件通常被 `.gitignore` 排除，某些文件搜索或目录扫描结果可能看不到它，但文件仍然真实存在。Agent 在需要 openEuler 远程执行时，应**直接读取已知路径** `shell/.agents/config.yaml`，不要先用 `find_path`、目录扫描或其它发现型工具判断是否存在；若直接读取失败，再回退参考 `.agents/config.template.yaml`。
+
+Agent 读取该配置后，通过对应的方式（orb/wsl/ssh）在 openEuler 环境中执行命令。典型用法：
 
 ```bash
 # OrbStack:  orb -m <vm> -u <user> "cd <work_dir> && go test ./..."
@@ -186,8 +188,8 @@ Agent 将自动读取此配置，在 openEuler 环境中执行测试和构建。
    YAML frontmatter（`name` 和 `description` 字段）。这将告诉你有哪些领域技能可用。
    当后续任务匹配某个 skill 的 description 时，再加载该 SKILL.md 的完整 body。
 
-3. **读取远程环境配置**：如果任务涉及在 openEuler 上运行测试或构建，读取 `.agents/config.yaml`
-   以确定远程连接方式。如果该文件不存在，提示开发者参考 `.agents/config.template.yaml` 完成配置。
+3. **读取远程环境配置**：如果任务涉及在 openEuler 上运行测试或构建，**直接读取已知路径** `shell/.agents/config.yaml`
+   以确定远程连接方式；不要先依赖 `find_path`、目录扫描或其它发现型工具判断存在性。该文件可能被 `.gitignore` 隐藏但仍然真实存在。只有在直接读取失败时，才提示开发者参考 `.agents/config.template.yaml` 完成配置。
 
 **Rules 文件清单（必须全部读取）：**
 
