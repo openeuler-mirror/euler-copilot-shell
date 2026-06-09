@@ -1,0 +1,11 @@
+[1;94m[step][m started
+[1;94m[step][m finished cost=1.25 tokens=input:1 output:2 reasoning:3
+[1;96m[tool][m bash call=call_1 input={"cmd":"ls"}
+[1;92m[tool][m success call=call_1 output=ok
+[1;91m[tool][m failed call=call_2 error=permission denied
+[1;93m[permission][m tool patterns=bash,read request=per_1
+[1;95m[question][m Continue? options=yes (do it) custom=true request=que_1
+[1;93m[user][m ask: prompt is required
+[1;96m[network][m Get "http://127.0.0.1:4096": connection refused
+[1;91m[server][m http /session: status 500: boom
+[1;95m[schema][m normalize event: invalid json
