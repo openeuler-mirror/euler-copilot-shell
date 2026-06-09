@@ -21,6 +21,7 @@ type rootOptions struct {
 	version    version.Info
 	stdout     io.Writer
 	stderr     io.Writer
+	loadAppFn  func(ctx context.Context, cmd *cobra.Command) (app.Container, error)
 }
 
 // Execute builds and runs the Cobra command tree.
@@ -32,8 +33,10 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer, info 
 
 // NewRootCommand returns the complete public CLI tree.
 func NewRootCommand(info version.Info, stdout, stderr io.Writer) *cobra.Command {
-	opts := &rootOptions{version: info, stdout: stdout, stderr: stderr}
+	return newRootCommandWithOptions(&rootOptions{version: info, stdout: stdout, stderr: stderr})
+}
 
+func newRootCommandWithOptions(opts *rootOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "witty",
 		Short:         "openEuler terminal AI assistant",
@@ -43,17 +46,17 @@ func NewRootCommand(info version.Info, stdout, stderr io.Writer) *cobra.Command 
 			return cmd.Help()
 		},
 	}
-	cmd.SetOut(stdout)
-	cmd.SetErr(stderr)
+	cmd.SetOut(opts.stdout)
+	cmd.SetErr(opts.stderr)
 	cmd.CompletionOptions.DisableDefaultCmd = true
-	cmd.Version = info.Version
-	cmd.SetVersionTemplate(info.String() + "\n")
+	cmd.Version = opts.version.Version
+	cmd.SetVersionTemplate(opts.version.String() + "\n")
 
 	flags := cmd.PersistentFlags()
 	flags.StringVar(&opts.configPath, "config", "", "path to config file")
 	flags.StringVar(&opts.serverURL, "server-url", "", "opencode server URL")
 	flags.StringVar(&opts.agent, "agent", "", "default opencode agent")
-	flags.StringVar(&opts.model, "model", "", "default opencode model")
+	flags.StringVar(&opts.model, "model", "", "default opencode model (provider/model)")
 	flags.BoolVar(&opts.debug, "debug", false, "enable debug logs")
 	flags.BoolVar(&opts.noColor, "no-color", false, "disable colored output")
 
@@ -67,6 +70,9 @@ func NewRootCommand(info version.Info, stdout, stderr io.Writer) *cobra.Command 
 }
 
 func (o *rootOptions) loadApp(ctx context.Context, cmd *cobra.Command) (app.Container, error) {
+	if o.loadAppFn != nil {
+		return o.loadAppFn(ctx, cmd)
+	}
 	flags := cmd.Root().PersistentFlags()
 	overrides := config.Overrides{}
 	if flags.Changed("server-url") {

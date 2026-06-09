@@ -23,6 +23,7 @@ type Client interface {
 	CreateSession(ctx context.Context, req CreateSessionRequest) (Session, error)
 	GetSession(ctx context.Context, sessionID string) (Session, error)
 	ListSessions(ctx context.Context, filter SessionFilter) ([]Session, error)
+	ProviderDefaults(ctx context.Context, directory, workspace string) (ProviderDefaults, error)
 	SendPromptAsync(ctx context.Context, sessionID string, req PromptRequest) error
 	ReplyPermission(ctx context.Context, requestID string, decision PermissionDecision) (bool, error)
 	ReplyQuestion(ctx context.Context, requestID string, answers [][]string) (bool, error)
@@ -143,6 +144,23 @@ func (c *client) ListSessions(ctx context.Context, filter SessionFilter) ([]Sess
 		return nil, err
 	}
 	return sessions, nil
+}
+
+func (c *client) ProviderDefaults(ctx context.Context, directory, workspace string) (ProviderDefaults, error) {
+	query := url.Values{}
+	addString(query, "directory", directory)
+	addString(query, "workspace", workspace)
+	var defaults ProviderDefaults
+	if err := c.doJSON(ctx, http.MethodGet, "/provider", query, nil, &defaults, http.StatusOK); err != nil {
+		return ProviderDefaults{}, err
+	}
+	if defaults.Default == nil {
+		defaults.Default = map[string]string{}
+	}
+	if defaults.Connected == nil {
+		defaults.Connected = []string{}
+	}
+	return defaults, nil
 }
 
 func (c *client) SendPromptAsync(ctx context.Context, sessionID string, req PromptRequest) error {

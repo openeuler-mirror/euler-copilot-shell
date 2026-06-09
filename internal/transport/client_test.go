@@ -88,6 +88,32 @@ func TestClient_ListSessionsBuildsQuery(t *testing.T) {
 	}
 }
 
+func TestClient_ProviderDefaults(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/provider" {
+			t.Fatalf("request = %s %s, want GET /provider", r.Method, r.URL.Path)
+		}
+		if r.URL.Query().Get("directory") != "/work" {
+			t.Fatalf("directory query = %q, want /work", r.URL.Query().Get("directory"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"default":{"zhipuai":"glm-5v-turbo"},"connected":["zhipuai"]}`))
+	}))
+	defer server.Close()
+
+	client := mustClient(t, Options{BaseURL: server.URL})
+	defaults, err := client.ProviderDefaults(context.Background(), "/work", "")
+	if err != nil {
+		t.Fatalf("ProviderDefaults() error = %v", err)
+	}
+	if len(defaults.Connected) != 1 || defaults.Connected[0] != "zhipuai" {
+		t.Fatalf("connected = %#v, want zhipuai", defaults.Connected)
+	}
+	if defaults.Default["zhipuai"] != "glm-5v-turbo" {
+		t.Fatalf("default map = %#v, want zhipuai default", defaults.Default)
+	}
+}
+
 func TestClient_CreateGetSessionAndPrompt(t *testing.T) {
 	var sawCreate, sawGet, sawPrompt bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

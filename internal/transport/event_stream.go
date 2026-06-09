@@ -134,23 +134,32 @@ func newSSEHTTPClient(connectTimeout time.Duration) *http.Client {
 func (c *client) SubscribeEvents(ctx context.Context, filter EventFilter) (<-chan RawEvent, <-chan error) {
 	events := make(chan RawEvent, 64)
 	errs := make(chan error, 1)
+
+	body, err := c.openEventStream(ctx, filter)
+	if err != nil {
+		close(events)
+		errs <- err
+		close(errs)
+		return events, errs
+	}
+
 	go func() {
 		defer close(events)
 		defer close(errs)
-		if err := c.connectAndStream(ctx, filter, events); err != nil && ctx.Err() == nil {
+		if err := c.streamEvents(ctx, body, events); err != nil && ctx.Err() == nil {
 			errs <- err
 		}
 	}()
 	return events, errs
 }
 
-func (c *client) connectAndStream(ctx context.Context, filter EventFilter, out chan<- RawEvent) error {
+func (c *client) openEventStream(ctx context.Context, filter EventFilter) (io.ReadCloser, error) {
 	query := url.Values{}
 	addString(query, "directory", filter.Directory)
 	addString(query, "workspace", filter.Workspace)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.endpointURL("/event", query), nil)
 	if err != nil {
-		return fmt.Errorf("build sse request: %w", err)
+		return nil, fmt.Errorf("build sse request: %w", err)
 	}
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Cache-Control", "no-cache")
@@ -159,18 +168,23 @@ func (c *client) connectAndStream(ctx context.Context, filter EventFilter, out c
 
 	resp, err := c.sseClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("sse connect: %w", err)
+		return nil, fmt.Errorf("sse connect: %w", err)
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return c.httpError("/event", resp)
+		defer resp.Body.Close()
+		return nil, c.httpError("/event", resp)
 	}
+	return resp.Body, nil
+}
+
+func (c *client) streamEvents(ctx context.Context, body io.ReadCloser, out chan<- RawEvent) error {
+	defer body.Close()
 
 	raw := make(chan SSEEvent, 32)
 	parseErr := make(chan error, 1)
 	go func() {
 		defer close(raw)
-		parseErr <- ParseStream(ctx, resp.Body, raw)
+		parseErr <- ParseStream(ctx, body, raw)
 		close(parseErr)
 	}()
 

@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -110,6 +111,82 @@ func TestClient_SubscribeEvents(t *testing.T) {
 	if err, ok := <-errs; ok && err != nil {
 		t.Fatalf("error channel got %v, want none", err)
 	}
+}
+
+func TestClient_SubscribeEvents_WaitsForConnectionBeforeReturn(t *testing.T) {
+	transport := &blockingSSETransport{
+		started: make(chan struct{}),
+		proceed: make(chan struct{}),
+	}
+	transport.reader, transport.writer = io.Pipe()
+	client := mustClient(t, Options{
+		BaseURL:   "http://example.test",
+		SSEClient: &http.Client{Transport: transport},
+	})
+
+	result := make(chan struct {
+		events <-chan RawEvent
+		errs   <-chan error
+	}, 1)
+	go func() {
+		events, errs := client.SubscribeEvents(context.Background(), EventFilter{Directory: "/work"})
+		result <- struct {
+			events <-chan RawEvent
+			errs   <-chan error
+		}{events: events, errs: errs}
+	}()
+
+	select {
+	case <-transport.started:
+	case <-time.After(time.Second):
+		t.Fatal("SubscribeEvents() did not start the SSE request")
+	}
+
+	select {
+	case <-result:
+		t.Fatal("SubscribeEvents() returned before the SSE connection was established")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	close(transport.proceed)
+	_ = transport.writer.Close()
+
+	var subscribed struct {
+		events <-chan RawEvent
+		errs   <-chan error
+	}
+	select {
+	case subscribed = <-result:
+	case <-time.After(time.Second):
+		t.Fatal("SubscribeEvents() did not return after the SSE connection was established")
+	}
+	if _, ok := <-subscribed.events; ok {
+		t.Fatal("events channel still open after SSE body EOF")
+	}
+	if err, ok := <-subscribed.errs; ok && err != nil {
+		t.Fatalf("error channel got %v, want none", err)
+	}
+}
+
+type blockingSSETransport struct {
+	started chan struct{}
+	proceed chan struct{}
+	reader  *io.PipeReader
+	writer  *io.PipeWriter
+}
+
+func (t *blockingSSETransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL.Path != "/event" {
+		return nil, errors.New("unexpected path")
+	}
+	close(t.started)
+	<-t.proceed
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+		Body:       t.reader,
+		Request:    req,
+	}, nil
 }
 
 func parseSSE(input string) ([]SSEEvent, error) {

@@ -330,7 +330,7 @@ type App struct {
 
 ```toml
 server_url = "http://127.0.0.1:4096"
-default_agent = "default"
+default_agent = "build"
 default_model = ""
 debug = false
 theme = "auto"  # "auto" | "dark" | "light"

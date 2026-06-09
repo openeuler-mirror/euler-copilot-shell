@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"atomgit.com/openeuler/witty-cli/internal/config"
+	"atomgit.com/openeuler/witty-cli/internal/core"
 	"atomgit.com/openeuler/witty-cli/internal/event"
 	"atomgit.com/openeuler/witty-cli/internal/permission"
 	"atomgit.com/openeuler/witty-cli/internal/presenter"
@@ -89,6 +90,18 @@ func New(ctx context.Context, opts Options) (Container, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create permission manager: %w", err)
 	}
+	askRunner, err := core.NewAskRunner(core.Options{
+		Transport:  transportClient,
+		Events:     eventRouter,
+		Sessions:   sessionResolver,
+		Renderer:   rendererService,
+		Presenter:  presenterService,
+		Permission: permissionService,
+		ServerURL:  cfg.ServerURL,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create ask runner: %w", err)
+	}
 
 	return &App{
 		cfg:        cfg,
@@ -99,6 +112,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		renderer:   rendererService,
 		presenter:  presenterService,
 		permission: permissionService,
+		ask:        askRunner,
 		version:    opts.Version,
 	}, nil
 }

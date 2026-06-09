@@ -68,6 +68,11 @@ type PromptModel struct {
 	ModelID    string `json:"modelID"`
 }
 
+type ProviderDefaults struct {
+	Default   map[string]string `json:"default"`
+	Connected []string          `json:"connected"`
+}
+
 type PromptPart struct {
 	Type string `json:"type"`
 	Text string `json:"text,omitempty"`

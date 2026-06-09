@@ -53,8 +53,10 @@ func TestExecute_AskHelp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute(ask --help) error = %v", err)
 	}
-	if !strings.Contains(out.String(), "Ask opencode") {
-		t.Fatalf("ask help output = %q, want ask description", out.String())
+	for _, want := range []string{"stream the response", "--new", "--session", "provider/model"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("ask help output = %q, want %q", out.String(), want)
+		}
 	}
 }
 
