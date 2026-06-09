@@ -285,100 +285,100 @@
 
 ### P1-5：Renderer Phase 1：块边界渲染
 
-- [ ] 定义 `TextRenderer` 接口：`WriteDelta(ctx, delta)`、`Flush(ctx)`。
-- [ ] 实现 `BlockBuffer`，积累 delta 到完整 Markdown 块。
-- [ ] 识别段落、空行、ATX heading、列表、引用、围栏代码块、thematic break。
-- [ ] 使用 glamour v2 批量渲染完整块。
-- [ ] Flush 时渲染剩余未闭合内容。
-- [ ] 渲染错误降级为原文输出，不中断 ask 主流程。
+- [x] 定义 `TextRenderer` 接口：`WriteDelta(ctx, delta)`、`Flush(ctx)`。
+- [x] 实现 `BlockBuffer`，积累 delta 到完整 Markdown 块。
+- [x] 识别段落、空行、ATX heading、列表、引用、围栏代码块、thematic break。
+- [x] 使用 glamour v2 批量渲染完整块。
+- [x] Flush 时渲染剩余未闭合内容。
+- [x] 渲染错误降级为原文输出，不中断 ask 主流程。
 
 #### 验收 checkpoint：C1-5
 
-- [ ] 块边界单元测试覆盖段落、标题、列表、引用、代码围栏、未闭合代码块。
-- [ ] Golden test 覆盖典型 Markdown ANSI 输出。
-- [ ] `witty ask` 输出不是等完整回答结束后一次性打印，而是按完整块持续刷新。
-- [ ] 非 TTY 输出避免写 ANSI 控制码。
+- [x] 块边界单元测试覆盖段落、标题、列表、引用、代码围栏、未闭合代码块。
+- [x] Golden test 覆盖典型 Markdown ANSI 输出。
+- [x] `witty ask` 输出不是等完整回答结束后一次性打印，而是按完整块持续刷新。
+- [x] 非 TTY 输出避免写 ANSI 控制码。
 
 ### P1-6：Presenter 基础展示
 
-- [ ] 定义 tool/step/error/permission/question 的基础展示接口。
-- [ ] 工具调用开始、成功、失败有统一样式。
-- [ ] 错误展示区分用户错误、网络错误、server 错误、schema 错误。
-- [ ] 样式依赖 lipgloss v2，遵守 no-color。
+- [x] 定义 tool/step/error/permission/question 的基础展示接口。
+- [x] 工具调用开始、成功、失败有统一样式。
+- [x] 错误展示区分用户错误、网络错误、server 错误、schema 错误。
+- [x] 样式依赖 lipgloss v2，遵守 no-color。
 
 #### 验收 checkpoint：C1-6
 
-- [ ] presenter 单元测试或 golden test 覆盖主要输出。
-- [ ] 快捷模式与 REPL 复用同一 presenter。
-- [ ] 非 TTY 输出可读且无多余 ANSI。
+- [x] presenter 单元测试或 golden test 覆盖主要输出。
+- [x] 快捷模式与 REPL 复用同一 presenter。
+- [x] 非 TTY 输出可读且无多余 ANSI。
 
 ### P1-7：Permission / Question Manager
 
-- [ ] 接管 permission asked 事件。
-- [ ] 接管 question asked 事件。
-- [ ] TTY 中阻塞式提问，提交 reply API。
-- [ ] 非 TTY 场景给出明确错误或安全默认拒绝策略。
-- [ ] 支持 multiple choice / custom answer 的数据结构。
+- [x] 接管 permission asked 事件。
+- [x] 接管 question asked 事件。
+- [x] TTY 中阻塞式提问，提交 reply API。
+- [x] 非 TTY 场景给出明确错误或安全默认拒绝策略。
+- [x] 支持 multiple choice / custom answer 的数据结构。
 
 #### 验收 checkpoint：C1-7
 
-- [ ] fake transport 测试覆盖 approve/reject、question answer、question reject。
-- [ ] permission/question 出现时暂停正文渲染或保证输出不交错。
-- [ ] Ctrl+C 能取消当前交互并释放 goroutine。
+- [x] fake transport 测试覆盖 approve/reject、question answer、question reject。
+- [x] permission/question 出现时暂停正文渲染或保证输出不交错。
+- [x] Ctrl+C 能取消当前交互并释放 goroutine。
 
 ### P1-8：AskRunner 核心执行管线
 
-- [ ] 定义 `AskRequest`：prompt、cwd、session、force new、agent、model、mode。
-- [ ] 执行步骤：解析 session → 发送 prompt → 订阅/过滤事件 → 分发 renderer/presenter/permission → 等待 `session.idle` → flush。
-- [ ] 统一处理 context cancel、SIGINT、server error、stream EOF without idle。
-- [ ] 不在 core 中实现 CLI 参数解析或 Bash 分类逻辑。
+- [x] 定义 `AskRequest`：prompt、cwd、session、force new、agent、model、mode。
+- [x] 执行步骤：解析 session → 发送 prompt → 订阅/过滤事件 → 分发 renderer/presenter/permission → 等待 `session.idle` → flush。
+- [x] 统一处理 context cancel、SIGINT、server error、stream EOF without idle。
+- [x] 不在 core 中实现 CLI 参数解析或 Bash 分类逻辑。
 
 #### 验收 checkpoint：C1-8
 
-- [ ] AskRunner fake event stream 测试覆盖正常完成、EOF without idle、permission、question、tool failed、cancel。
-- [ ] 收到 `session.idle` 后一定调用 renderer `Flush()`。
-- [ ] ask 命令退出码符合结果：成功 0，用户取消/网络错误/服务端错误非 0。
+- [x] AskRunner fake event stream 测试覆盖正常完成、EOF without idle、permission、question、tool failed、cancel。
+- [x] 收到 `session.idle` 后一定调用 renderer `Flush()`。
+- [x] ask 命令退出码符合结果：成功 0，用户取消/网络错误/服务端错误非 0。
 
 ### P1-9：`witty ask` 命令闭环
 
-- [ ] 支持 `witty ask "prompt"`。
-- [ ] 支持 stdin prompt：`echo "..." | witty ask`。
-- [ ] 支持 cwd 传递。
-- [ ] 支持 `--new`、`--session`、`--agent`、`--model`。
-- [ ] 用户可读错误输出到 stderr。
+- [x] 支持 `witty ask "prompt"`。
+- [x] 支持 stdin prompt：`echo "..." | witty ask`。
+- [x] 支持 cwd 传递。
+- [x] 支持 `--new`、`--session`、`--agent`、`--model`。
+- [x] 用户可读错误输出到 stderr。
 
 #### 验收 checkpoint：C1-9
 
-- [ ] `witty ask --help` 完整。
-- [ ] `witty ask "检查系统内存"` 在 opencode server 可用时能流式输出。
-- [ ] opencode server 不可用时错误包含 server URL 与排查建议，不 panic。
-- [ ] stdout 只包含用户期望内容；debug/log 不污染 stdout。
+- [x] `witty ask --help` 完整。
+- [x] `witty ask "检查系统内存"` 在 opencode server 可用时能流式输出。
+- [x] opencode server 不可用时错误包含 server URL 与排查建议，不 panic。
+- [x] stdout 只包含用户期望内容；debug/log 不污染 stdout。
 
 ### P1-9B：Provider 管理 `witty provider` [增补阶段]
 
 增补背景：`opencode serve` 与 opencode TUI 进程独立，TUI 中 connect 的 provider 不会自动对 server 生效。
 需要通过 `witty provider` 命令让用户在终端内完成 provider 连接，避免打开 TUI 或手动构造 curl 请求。
 
-- [ ] `witty provider list` 列出支持 API Key 认证的 provider，标注 connected 状态。
-- [ ] `witty provider list --connected` 仅列出已连接且支持 API Key 认证的 provider。
-- [ ] `witty provider connect <provider> --key <api-key>` 通过 API Key 连接 provider（调用 `PUT /auth/{providerID}`），支持 provider id / name 解析。
-- [ ] `connect` 前先查询 `/provider` 解析输入，再查询 `/provider/auth` 过滤出支持 `type=api` 的 provider。
-- [ ] `--key` 未提供时提示从 stdin 或环境变量读取。
-- [ ] `connect` 成功后重新查询 provider 列表确认 connected 状态已更新。
-- [ ] provider 不存在时给出友好错误提示（不是裸 HTTP 状态码）。
-- [ ] provider 存在但 `/provider/auth` 不支持 `type=api` 时，返回明确错误：`当前 Provider 暂不支持 API Key 认证方式`。
-- [ ] 连接失败（如 key 无效）时错误信息包含排查建议。
+- [x] `witty provider list` 列出支持 API Key 认证的 provider，标注 connected 状态。
+- [x] `witty provider list --connected` 仅列出已连接且支持 API Key 认证的 provider。
+- [x] `witty provider connect <provider> --key <api-key>` 通过 API Key 连接 provider（调用 `PUT /auth/{providerID}`），支持 provider id / name 解析。
+- [x] `connect` 前先查询 `/provider` 解析输入，再查询 `/provider/auth` 过滤出支持 `type=api` 的 provider。
+- [x] `--key` 未提供时提示从 stdin 或环境变量读取。
+- [x] `connect` 成功后重新查询 provider 列表确认 connected 状态已更新。
+- [x] provider 不存在时给出友好错误提示（不是裸 HTTP 状态码）。
+- [x] provider 存在但 `/provider/auth` 不支持 `type=api` 时，返回明确错误：`当前 Provider 暂不支持 API Key 认证方式`。
+- [x] 连接失败（如 key 无效）时错误信息包含排查建议。
 
 #### 验收 checkpoint：C1-9B
 
-- [ ] `witty provider list` 输出仅包含支持 API Key 认证的 provider 条目，connected 状态正确。
-- [ ] `witty provider list --connected` 仅显示 connected 且支持 API Key 认证的 provider（初始可能为空或仅有 opencode）。
-- [ ] `witty provider connect deepseek --key <valid-key>` 成功，再次 `list --connected` 可见 deepseek。
-- [ ] `witty provider connect nonexistent --key sk-xxx` 返回可读错误，exit code 非 0。
-- [ ] `witty provider connect <provider-without-api-auth> --key sk-xxx` 返回明确错误：`当前 Provider 暂不支持 API Key 认证方式`。
-- [ ] `witty provider connect deepseek`（无 `--key`）给出明确的使用说明，不 panic。
-- [ ] `go test -count=1 ./internal/cli/ ./internal/transport/ ./internal/app/` 通过。
-- [ ] VM 环境验证：使用 `witty provider connect` 连接 deepseek 后，`witty ask --model deepseek/deepseek-v4-falsh --variant reasoning-high --new "hello"` 能正常完成。
+- [x] `witty provider list` 输出仅包含支持 API Key 认证的 provider 条目，connected 状态正确。
+- [x] `witty provider list --connected` 仅显示 connected 且支持 API Key 认证的 provider（初始可能为空或仅有 opencode）。
+- [x] `witty provider connect deepseek --key <valid-key>` 成功，再次 `list --connected` 可见 deepseek。
+- [x] `witty provider connect nonexistent --key sk-xxx` 返回可读错误，exit code 非 0。
+- [x] `witty provider connect <provider-without-api-auth> --key sk-xxx` 返回明确错误：`当前 Provider 暂不支持 API Key 认证方式`。
+- [x] `witty provider connect deepseek`（无 `--key`）给出明确的使用说明，不 panic。
+- [x] `go test -count=1 ./internal/cli/ ./internal/transport/ ./internal/app/` 通过。
+- [x] VM 环境验证：使用 `witty provider connect` 连接 deepseek 后，`witty ask --model deepseek/deepseek-v4-flash --variant reasoning-high --new "hello"` 能正常完成。
 
 ### P1-10：Shell Init 模板 `internal/shellinit`
 
