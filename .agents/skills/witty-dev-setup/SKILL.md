@@ -20,9 +20,16 @@ description: 搭建 Witty 开发与测试环境。引导开发者安装 OrbStack
 
 3. 在 VM 中安装基础开发依赖:
 
+   交互式进入 VM：
+
    ```bash
    orb -m witty-openeuler -u root
-   yum install -y golang git make
+   ```
+
+   或非交互执行单条命令（对 Agent 更重要）：
+
+   ```bash
+   orb -m witty-openeuler -u root sh -lc 'yum install -y golang git make'
    ```
 
 4. ShellCheck 和 shfmt 不在 openEuler 默认仓库中，需手动安装。推荐直接运行一键脚本（自动检测架构）:
@@ -64,7 +71,11 @@ cp .agents/config.template.yaml .agents/config.yaml
 ## 步骤 3：验证环境
 
 Agent 将自动读取 `.agents/config.yaml` 并在远程环境中执行验证。
-若直接读取 `shell/.agents/config.yaml` 失败，再回退参考 `shell/.agents/config.template.yaml`：
+若直接读取 `shell/.agents/config.yaml` 失败，再回退参考 `shell/.agents/config.template.yaml`。
+
+> **重要（对 Agent）**：OrbStack / WSL 的非交互命令必须显式经 shell 执行，例如 `orb -m witty-openeuler -u root sh -lc 'cd /path/to/repo && go test ./...'`；不要把整段 `cd ... && go test ...` 直接作为 `orb` / `wsl` 的命令参数，否则很容易出现 `No such file or directory`。
+
+验证示例：
 
 ```bash
 go version
