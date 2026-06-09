@@ -120,8 +120,9 @@ func TestAsk_DelegatesToRunnerWithConfigDefaults(t *testing.T) {
 	runner := &fakeAskRunner{}
 	app := &App{
 		cfg: config.Config{
-			DefaultAgent: "build",
-			DefaultModel: "opencode/gpt-5.1-codex",
+			DefaultAgent:   "build",
+			DefaultModel:   "opencode/gpt-5.1-codex",
+			DefaultVariant: "reasoning-high",
 		},
 		ask: runner,
 	}
@@ -139,6 +140,9 @@ func TestAsk_DelegatesToRunnerWithConfigDefaults(t *testing.T) {
 	if runner.req.Model != "opencode/gpt-5.1-codex" {
 		t.Fatalf("model = %q, want config default", runner.req.Model)
 	}
+	if runner.req.Variant != "reasoning-high" {
+		t.Fatalf("variant = %q, want config default", runner.req.Variant)
+	}
 	if runner.req.Mode != core.ModeAsk {
 		t.Fatalf("mode = %q, want %q", runner.req.Mode, core.ModeAsk)
 	}
@@ -148,17 +152,19 @@ func TestAsk_PreservesExplicitAgentAndModel(t *testing.T) {
 	runner := &fakeAskRunner{}
 	app := &App{
 		cfg: config.Config{
-			DefaultAgent: "default",
-			DefaultModel: "opencode/default-model",
+			DefaultAgent:   "default",
+			DefaultModel:   "opencode/default-model",
+			DefaultVariant: "default-variant",
 		},
 		ask: runner,
 	}
 
 	err := app.Ask(context.Background(), core.AskRequest{
-		Prompt: "hello",
-		Agent:  "custom-agent",
-		Model:  "custom/provider-model",
-		Mode:   core.ModeAsk,
+		Prompt:  "hello",
+		Agent:   "custom-agent",
+		Model:   "custom/provider-model",
+		Variant: "custom-variant",
+		Mode:    core.ModeAsk,
 	})
 	if err != nil {
 		t.Fatalf("Ask() error = %v", err)
@@ -168,6 +174,9 @@ func TestAsk_PreservesExplicitAgentAndModel(t *testing.T) {
 	}
 	if runner.req.Model != "custom/provider-model" {
 		t.Fatalf("model = %q, want explicit override", runner.req.Model)
+	}
+	if runner.req.Variant != "custom-variant" {
+		t.Fatalf("variant = %q, want explicit override", runner.req.Variant)
 	}
 }
 

@@ -49,6 +49,7 @@ func newAskCommand(opts *rootOptions) *cobra.Command {
 				ForceNew:  forceNew,
 				Agent:     container.Config().DefaultAgent,
 				Model:     container.Config().DefaultModel,
+				Variant:   container.Config().DefaultVariant,
 				Mode:      core.ModeAsk,
 			}
 			if err := container.Ask(cmd.Context(), req); err != nil {

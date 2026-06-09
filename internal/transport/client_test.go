@@ -97,7 +97,7 @@ func TestClient_ProviderDefaults(t *testing.T) {
 			t.Fatalf("directory query = %q, want /work", r.URL.Query().Get("directory"))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"default":{"zhipuai":"glm-5v-turbo"},"connected":["zhipuai"]}`))
+		_, _ = w.Write([]byte(`{"all":[{"id":"zhipuai","name":"ZhipuAI","source":"api","env":["ZHIPUAI_API_KEY"],"options":{},"models":{}}],"default":{"zhipuai":"glm-5v-turbo"},"connected":["zhipuai"]}`))
 	}))
 	defer server.Close()
 
@@ -111,6 +111,69 @@ func TestClient_ProviderDefaults(t *testing.T) {
 	}
 	if defaults.Default["zhipuai"] != "glm-5v-turbo" {
 		t.Fatalf("default map = %#v, want zhipuai default", defaults.Default)
+	}
+}
+
+func TestClient_ListProvidersAndAuthMethods(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/provider":
+			if r.Method != http.MethodGet {
+				t.Fatalf("provider method = %s, want GET", r.Method)
+			}
+			_, _ = w.Write([]byte(`{"all":[{"id":"deepseek","name":"DeepSeek","source":"api","env":["DEEPSEEK_API_KEY"],"options":{},"models":{}}],"default":{"deepseek":"deepseek-chat"},"connected":["deepseek"]}`))
+		case "/provider/auth":
+			if r.Method != http.MethodGet {
+				t.Fatalf("provider auth method = %s, want GET", r.Method)
+			}
+			_, _ = w.Write([]byte(`{"deepseek":[{"type":"api","label":"API Key"}]}`))
+		default:
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	client := mustClient(t, Options{BaseURL: server.URL})
+	providers, err := client.ListProviders(context.Background(), "/work", "")
+	if err != nil {
+		t.Fatalf("ListProviders() error = %v", err)
+	}
+	if len(providers.All) != 1 || providers.All[0].ID != "deepseek" {
+		t.Fatalf("providers = %#v, want deepseek", providers.All)
+	}
+	methods, err := client.ListProviderAuthMethods(context.Background(), "/work", "")
+	if err != nil {
+		t.Fatalf("ListProviderAuthMethods() error = %v", err)
+	}
+	if len(methods["deepseek"]) != 1 || methods["deepseek"][0].Type != "api" {
+		t.Fatalf("methods = %#v, want deepseek api", methods)
+	}
+}
+
+func TestClient_SetProviderAPIKey(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/auth/deepseek" {
+			t.Fatalf("request = %s %s, want PUT /auth/deepseek", r.Method, r.URL.Path)
+		}
+		var body struct {
+			Type string `json:"type"`
+			Key  string `json:"key"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		if body.Type != "api" || body.Key != "sk-test" {
+			t.Fatalf("body = %#v, want api/sk-test", body)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`true`))
+	}))
+	defer server.Close()
+
+	client := mustClient(t, Options{BaseURL: server.URL})
+	if err := client.SetProviderAPIKey(context.Background(), "deepseek", "sk-test"); err != nil {
+		t.Fatalf("SetProviderAPIKey() error = %v", err)
 	}
 }
 

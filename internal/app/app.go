@@ -32,6 +32,8 @@ type Container interface {
 	Ask(ctx context.Context, req core.AskRequest) error
 	InitBash(ctx context.Context) (string, error)
 	ListSessions(ctx context.Context) ([]session.Summary, error)
+	ListProviders(ctx context.Context) ([]ProviderStatus, error)
+	ConnectProviderWithAPIKey(ctx context.Context, input, apiKey string) (ProviderStatus, error)
 	ContinueSession(ctx context.Context, id string) (session.Context, error)
 	Doctor(ctx context.Context) (string, error)
 }
@@ -97,6 +99,9 @@ func (a *App) Ask(ctx context.Context, req core.AskRequest) error {
 	}
 	if req.Model == "" {
 		req.Model = a.cfg.DefaultModel
+	}
+	if req.Variant == "" {
+		req.Variant = a.cfg.DefaultVariant
 	}
 	if req.Mode == "" {
 		req.Mode = core.ModeAsk

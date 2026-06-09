@@ -24,6 +24,9 @@ type Client interface {
 	GetSession(ctx context.Context, sessionID string) (Session, error)
 	ListSessions(ctx context.Context, filter SessionFilter) ([]Session, error)
 	ProviderDefaults(ctx context.Context, directory, workspace string) (ProviderDefaults, error)
+	ListProviders(ctx context.Context, directory, workspace string) (ProviderList, error)
+	ListProviderAuthMethods(ctx context.Context, directory, workspace string) (ProviderAuthMethods, error)
+	SetProviderAPIKey(ctx context.Context, providerID, apiKey string) error
 	SendPromptAsync(ctx context.Context, sessionID string, req PromptRequest) error
 	ReplyPermission(ctx context.Context, requestID string, decision PermissionDecision) (bool, error)
 	ReplyQuestion(ctx context.Context, requestID string, answers [][]string) (bool, error)
@@ -147,20 +150,69 @@ func (c *client) ListSessions(ctx context.Context, filter SessionFilter) ([]Sess
 }
 
 func (c *client) ProviderDefaults(ctx context.Context, directory, workspace string) (ProviderDefaults, error) {
+	providers, err := c.ListProviders(ctx, directory, workspace)
+	if err != nil {
+		return ProviderDefaults{}, err
+	}
+	return ProviderDefaults{Default: providers.Default, Connected: providers.Connected}, nil
+}
+
+func (c *client) ListProviders(ctx context.Context, directory, workspace string) (ProviderList, error) {
 	query := url.Values{}
 	addString(query, "directory", directory)
 	addString(query, "workspace", workspace)
-	var defaults ProviderDefaults
-	if err := c.doJSON(ctx, http.MethodGet, "/provider", query, nil, &defaults, http.StatusOK); err != nil {
-		return ProviderDefaults{}, err
+	var providers ProviderList
+	if err := c.doJSON(ctx, http.MethodGet, "/provider", query, nil, &providers, http.StatusOK); err != nil {
+		return ProviderList{}, err
 	}
-	if defaults.Default == nil {
-		defaults.Default = map[string]string{}
+	if providers.All == nil {
+		providers.All = []Provider{}
 	}
-	if defaults.Connected == nil {
-		defaults.Connected = []string{}
+	if providers.Default == nil {
+		providers.Default = map[string]string{}
 	}
-	return defaults, nil
+	if providers.Connected == nil {
+		providers.Connected = []string{}
+	}
+	return providers, nil
+}
+
+func (c *client) ListProviderAuthMethods(ctx context.Context, directory, workspace string) (ProviderAuthMethods, error) {
+	query := url.Values{}
+	addString(query, "directory", directory)
+	addString(query, "workspace", workspace)
+	var methods ProviderAuthMethods
+	if err := c.doJSON(ctx, http.MethodGet, "/provider/auth", query, nil, &methods, http.StatusOK); err != nil {
+		return nil, err
+	}
+	if methods == nil {
+		methods = ProviderAuthMethods{}
+	}
+	return methods, nil
+}
+
+func (c *client) SetProviderAPIKey(ctx context.Context, providerID, apiKey string) error {
+	providerID = strings.TrimSpace(providerID)
+	apiKey = strings.TrimSpace(apiKey)
+	if providerID == "" {
+		return fmt.Errorf("provider id is required")
+	}
+	if apiKey == "" {
+		return fmt.Errorf("api key is required")
+	}
+	var ok bool
+	endpoint := "/auth/" + url.PathEscape(providerID)
+	body := struct {
+		Type string `json:"type"`
+		Key  string `json:"key"`
+	}{Type: "api", Key: apiKey}
+	if err := c.doJSON(ctx, http.MethodPut, endpoint, nil, body, &ok, http.StatusOK); err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("provider %s was not connected", providerID)
+	}
+	return nil
 }
 
 func (c *client) SendPromptAsync(ctx context.Context, sessionID string, req PromptRequest) error {

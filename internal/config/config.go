@@ -9,15 +9,16 @@ const (
 
 // Config is the process-wide Witty runtime configuration.
 type Config struct {
-	ServerURL    string
-	DefaultAgent string
-	DefaultModel string
-	Debug        bool
-	Theme        string
-	NoColor      bool
-	REPL         REPLConfig
-	Shell        ShellConfig
-	Doctor       DoctorConfig
+	ServerURL      string
+	DefaultAgent   string
+	DefaultModel   string
+	DefaultVariant string
+	Debug          bool
+	Theme          string
+	NoColor        bool
+	REPL           REPLConfig
+	Shell          ShellConfig
+	Doctor         DoctorConfig
 }
 
 type REPLConfig struct {
@@ -35,21 +36,23 @@ type DoctorConfig struct {
 
 // Overrides are CLI-provided values that should win over defaults, files, and env.
 type Overrides struct {
-	ServerURL    string
-	DefaultAgent string
-	DefaultModel string
-	Debug        *bool
-	NoColor      *bool
+	ServerURL      string
+	DefaultAgent   string
+	DefaultModel   string
+	DefaultVariant string
+	Debug          *bool
+	NoColor        *bool
 }
 
 func Default() Config {
 	return Config{
-		ServerURL:    DefaultServerURL,
-		DefaultAgent: DefaultAgent,
-		DefaultModel: "",
-		Debug:        false,
-		Theme:        DefaultTheme,
-		NoColor:      false,
+		ServerURL:      DefaultServerURL,
+		DefaultAgent:   DefaultAgent,
+		DefaultModel:   "",
+		DefaultVariant: "",
+		Debug:          false,
+		Theme:          DefaultTheme,
+		NoColor:        false,
 		REPL: REPLConfig{
 			AutoResume: true,
 		},

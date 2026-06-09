@@ -32,6 +32,7 @@ func TestLoad_FileEnvAndCLIOverridePrecedence(t *testing.T) {
 	content := `server_url = "http://file:4096"
 default_agent = "file-agent"
 default_model = "file-model"
+default_variant = "file-variant"
 debug = false
 
 [repl]
@@ -72,6 +73,9 @@ enabled = false
 	}
 	if cfg.DefaultModel != "file-model" {
 		t.Fatalf("DefaultModel = %q, want file-model", cfg.DefaultModel)
+	}
+	if cfg.DefaultVariant != "file-variant" {
+		t.Fatalf("DefaultVariant = %q, want file-variant", cfg.DefaultVariant)
 	}
 	if cfg.Debug {
 		t.Fatal("Debug = true, want CLI override false")

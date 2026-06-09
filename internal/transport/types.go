@@ -31,6 +31,11 @@ type SessionFilter struct {
 // types scoped to transport.
 type Session = generated.Session
 
+type Provider = generated.Provider
+type ProviderAuthMethod = generated.ProviderAuthMethod
+
+type ProviderAuthMethods map[string][]ProviderAuthMethod
+
 type CreateSessionRequest struct {
 	Directory   string          `json:"-"`
 	Workspace   string          `json:"-"`
@@ -69,6 +74,12 @@ type PromptModel struct {
 }
 
 type ProviderDefaults struct {
+	Default   map[string]string `json:"default"`
+	Connected []string          `json:"connected"`
+}
+
+type ProviderList struct {
+	All       []Provider        `json:"all"`
 	Default   map[string]string `json:"default"`
 	Connected []string          `json:"connected"`
 }

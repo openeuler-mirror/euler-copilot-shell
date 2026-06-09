@@ -87,6 +87,7 @@ func (r *askRunner) Run(ctx context.Context, req AskRequest) error {
 	promptReq := transport.PromptRequest{
 		Directory: directory,
 		Agent:     strings.TrimSpace(req.Agent),
+		Variant:   strings.TrimSpace(req.Variant),
 		Parts:     []transport.PromptPart{{Type: "text", Text: prompt}},
 	}
 	if model != nil {
@@ -190,10 +191,21 @@ func (r *askRunner) defaultModel(ctx context.Context, directory string) (*transp
 	if err != nil {
 		return nil, decorateServerError(r.serverURL, fmt.Errorf("resolve default model: %w", err))
 	}
-	if modelID := strings.TrimSpace(defaults.Default["opencode"]); modelID != "" {
-		return &transport.PromptModel{ProviderID: "opencode", ModelID: modelID}, nil
+	for _, providerID := range defaults.Connected {
+		providerID = strings.TrimSpace(providerID)
+		if providerID == "" {
+			continue
+		}
+		modelID := strings.TrimSpace(defaults.Default[providerID])
+		if modelID == "" {
+			continue
+		}
+		if providerID == "opencode" {
+			return &transport.PromptModel{ProviderID: providerID, ModelID: modelID}, nil
+		}
 	}
 	for _, providerID := range defaults.Connected {
+		providerID = strings.TrimSpace(providerID)
 		modelID := strings.TrimSpace(defaults.Default[providerID])
 		if providerID == "" || modelID == "" {
 			continue

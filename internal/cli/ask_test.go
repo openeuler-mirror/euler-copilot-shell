@@ -27,11 +27,11 @@ func TestAskCommand_UsesArgumentPromptAndFlags(t *testing.T) {
 	fake := &fakeContainer{}
 	opts := &rootOptions{version: version.New("dev", "none", "unknown"), stdout: &out, stderr: &errOut}
 	opts.loadAppFn = func(context.Context, *cobra.Command) (app.Container, error) {
-		fake.cfg = config.Config{DefaultAgent: opts.agent, DefaultModel: opts.model}
+		fake.cfg = config.Config{DefaultAgent: opts.agent, DefaultModel: opts.model, DefaultVariant: opts.variant}
 		return fake, nil
 	}
 	cmd := newRootCommandWithOptions(opts)
-	cmd.SetArgs([]string{"--agent", "build", "--model", "opencode/gpt-5.1-codex", "ask", "--session", "ses_123", "hello", "world"})
+	cmd.SetArgs([]string{"--agent", "build", "--model", "opencode/gpt-5.1-codex", "--variant", "reasoning-high", "ask", "--session", "ses_123", "hello", "world"})
 
 	err := cmd.ExecuteContext(context.Background())
 	if err != nil {
@@ -49,6 +49,9 @@ func TestAskCommand_UsesArgumentPromptAndFlags(t *testing.T) {
 	if fake.askReq.Model != "opencode/gpt-5.1-codex" {
 		t.Fatalf("model = %q, want provider/model", fake.askReq.Model)
 	}
+	if fake.askReq.Variant != "reasoning-high" {
+		t.Fatalf("variant = %q, want reasoning-high", fake.askReq.Variant)
+	}
 	if fake.askReq.Mode != core.ModeAsk {
 		t.Fatalf("mode = %q, want %q", fake.askReq.Mode, core.ModeAsk)
 	}
@@ -63,7 +66,7 @@ func TestAskCommand_UsesArgumentPromptAndFlags(t *testing.T) {
 
 func TestAskCommand_ReadsPromptFromStdin(t *testing.T) {
 	var out, errOut bytes.Buffer
-	fake := &fakeContainer{cfg: config.Config{DefaultAgent: "default", DefaultModel: "opencode/default-model"}}
+	fake := &fakeContainer{cfg: config.Config{DefaultAgent: "default", DefaultModel: "opencode/default-model", DefaultVariant: "default-variant"}}
 	opts := &rootOptions{
 		version: version.New("dev", "none", "unknown"),
 		stdout:  &out,
@@ -118,9 +121,15 @@ func TestAskCommand_RejectsNewAndSessionTogether(t *testing.T) {
 }
 
 type fakeContainer struct {
-	cfg    config.Config
-	askReq core.AskRequest
-	askErr error
+	cfg                  config.Config
+	askReq               core.AskRequest
+	askErr               error
+	providers            []app.ProviderStatus
+	listProvidersErr     error
+	connectProvider      app.ProviderStatus
+	connectProviderErr   error
+	connectProviderInput string
+	connectProviderKey   string
 }
 
 func (f *fakeContainer) Config() config.Config           { return f.cfg }
@@ -138,6 +147,14 @@ func (f *fakeContainer) Ask(_ context.Context, req core.AskRequest) error {
 }
 func (f *fakeContainer) InitBash(context.Context) (string, error)                { return "", nil }
 func (f *fakeContainer) ListSessions(context.Context) ([]session.Summary, error) { return nil, nil }
+func (f *fakeContainer) ListProviders(context.Context) ([]app.ProviderStatus, error) {
+	return f.providers, f.listProvidersErr
+}
+func (f *fakeContainer) ConnectProviderWithAPIKey(_ context.Context, input, apiKey string) (app.ProviderStatus, error) {
+	f.connectProviderInput = input
+	f.connectProviderKey = apiKey
+	return f.connectProvider, f.connectProviderErr
+}
 func (f *fakeContainer) ContinueSession(context.Context, string) (session.Context, error) {
 	return session.Context{}, nil
 }

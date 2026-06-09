@@ -16,6 +16,7 @@ type rootOptions struct {
 	serverURL  string
 	agent      string
 	model      string
+	variant    string
 	debug      bool
 	noColor    bool
 	version    version.Info
@@ -57,6 +58,7 @@ func newRootCommandWithOptions(opts *rootOptions) *cobra.Command {
 	flags.StringVar(&opts.serverURL, "server-url", "", "opencode server URL")
 	flags.StringVar(&opts.agent, "agent", "", "default opencode agent")
 	flags.StringVar(&opts.model, "model", "", "default opencode model (provider/model)")
+	flags.StringVar(&opts.variant, "variant", "", "default model variant (e.g. reasoning level)")
 	flags.BoolVar(&opts.debug, "debug", false, "enable debug logs")
 	flags.BoolVar(&opts.noColor, "no-color", false, "disable colored output")
 
@@ -64,6 +66,7 @@ func newRootCommandWithOptions(opts *rootOptions) *cobra.Command {
 	cmd.AddCommand(newInitCommand(opts))
 	cmd.AddCommand(newSessionCommand(opts))
 	cmd.AddCommand(newContinueCommand(opts))
+	cmd.AddCommand(newProviderCommand(opts))
 	cmd.AddCommand(newDoctorCommand(opts))
 	cmd.AddCommand(newVersionCommand(opts))
 	return cmd
@@ -83,6 +86,9 @@ func (o *rootOptions) loadApp(ctx context.Context, cmd *cobra.Command) (app.Cont
 	}
 	if flags.Changed("model") {
 		overrides.DefaultModel = o.model
+	}
+	if flags.Changed("variant") {
+		overrides.DefaultVariant = o.variant
 	}
 	if flags.Changed("debug") {
 		overrides.Debug = &o.debug

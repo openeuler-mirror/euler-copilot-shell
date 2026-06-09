@@ -18,8 +18,10 @@ func TestExecute_Help(t *testing.T) {
 	if !strings.Contains(out.String(), "openEuler terminal AI assistant") {
 		t.Fatalf("help output = %q, want root short description", out.String())
 	}
-	if !strings.Contains(out.String(), "ask") || !strings.Contains(out.String(), "init") {
-		t.Fatalf("help output = %q, want subcommands", out.String())
+	for _, want := range []string{"ask", "init", "provider"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("help output = %q, want subcommand %q", out.String(), want)
+		}
 	}
 }
 
@@ -56,6 +58,19 @@ func TestExecute_AskHelp(t *testing.T) {
 	for _, want := range []string{"stream the response", "--new", "--session", "provider/model"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("ask help output = %q, want %q", out.String(), want)
+		}
+	}
+}
+
+func TestExecute_ProviderHelp(t *testing.T) {
+	var out, errOut bytes.Buffer
+	err := Execute(context.Background(), []string{"provider", "connect", "--help"}, &out, &errOut, version.New("dev", "none", "unknown"))
+	if err != nil {
+		t.Fatalf("Execute(provider connect --help) error = %v", err)
+	}
+	for _, want := range []string{"Connect a provider using API key", "--key", "provider env vars"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("provider help output = %q, want %q", out.String(), want)
 		}
 	}
 }

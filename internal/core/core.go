@@ -34,6 +34,7 @@ type AskRequest struct {
 	ForceNew  bool
 	Agent     string
 	Model     string
+	Variant   string
 	Mode      AskMode
 }
 

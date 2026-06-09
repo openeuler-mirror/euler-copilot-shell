@@ -41,6 +41,7 @@ func TestAskRunner_Run_CompletesAndBuildsPromptRequest(t *testing.T) {
 		ForceNew: true,
 		Agent:    "build",
 		Model:    "opencode/gpt-5.1-codex",
+		Variant:  "reasoning-high",
 		Mode:     ModeAsk,
 	})
 	if err != nil {
@@ -69,6 +70,9 @@ func TestAskRunner_Run_CompletesAndBuildsPromptRequest(t *testing.T) {
 	}
 	if transportClient.promptReq.Model == nil || transportClient.promptReq.Model.ProviderID != "opencode" || transportClient.promptReq.Model.ModelID != "gpt-5.1-codex" {
 		t.Fatalf("prompt model = %+v, want provider/model split", transportClient.promptReq.Model)
+	}
+	if transportClient.promptReq.Variant != "reasoning-high" {
+		t.Fatalf("prompt variant = %q, want reasoning-high", transportClient.promptReq.Variant)
 	}
 	if got := transportClient.promptReq.Parts; len(got) != 1 || got[0].Type != "text" || got[0].Text != "hello" {
 		t.Fatalf("prompt parts = %+v", got)
@@ -140,6 +144,32 @@ func TestAskRunner_Run_UsesConnectedDefaultModelWhenModelOmitted(t *testing.T) {
 	}
 	if transportClient.promptReq.Model.ProviderID != "opencode" || transportClient.promptReq.Model.ModelID != "big-pickle" {
 		t.Fatalf("prompt model = %+v, want opencode/big-pickle preference", transportClient.promptReq.Model)
+	}
+}
+
+func TestAskRunner_Run_SkipsDisconnectedOpencodeDefaultModel(t *testing.T) {
+	transportClient := &fakeTransport{providerDefaults: transport.ProviderDefaults{
+		Connected: []string{"deepseek"},
+		Default: map[string]string{
+			"opencode": "big-pickle",
+			"deepseek": "deepseek-v4-pro",
+		},
+	}}
+	runner := mustRunner(t, Options{
+		Transport: transportClient,
+		Events:    &fakeRouter{events: []event.AppEvent{{Kind: event.EventSessionIdle}}},
+		Sessions:  &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
+	})
+
+	err := runner.Run(context.Background(), AskRequest{Prompt: "hello", CWD: "/work"})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if transportClient.promptReq.Model == nil {
+		t.Fatal("prompt model = nil, want connected provider default")
+	}
+	if transportClient.promptReq.Model.ProviderID != "deepseek" || transportClient.promptReq.Model.ModelID != "deepseek-v4-pro" {
+		t.Fatalf("prompt model = %+v, want deepseek/deepseek-v4-pro", transportClient.promptReq.Model)
 	}
 }
 
