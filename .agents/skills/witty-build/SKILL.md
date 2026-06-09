@@ -107,17 +107,26 @@ golangci-lint run ./...
 
 下面这些检查**保留在 skill 中**，因为它们很快会派上用场；但只有在对应文件/目录已经存在时才应执行。
 
-### 1. Shell 模板检查
+### 1. Shell 脚本与模板检查
 
-当仓库中存在 `internal/shellinit/templates/*.bash.tmpl` 时，运行：
+当仓库中存在 shell 脚本（`*.sh`）或模板（`*.bash.tmpl`）时，先格式化再检查：
 
 ```bash
+# 格式化所有 shell 脚本和模板
+shfmt -w -i 2 internal/shellinit/templates/*.bash.tmpl
+git ls-files '*.sh' | xargs shfmt -w -i 2
+
+# 验证格式化无残余差异
+shfmt -d -i 2 internal/shellinit/templates/*.bash.tmpl
+git ls-files '*.sh' | xargs shfmt -d -i 2
+
+# 静态分析（仅模板文件）
 shellcheck internal/shellinit/templates/*.bash.tmpl
 ```
 
 如果模板目录尚不存在，应报告：
 
-- **跳过 shellcheck**：当前仓库尚未接入 `internal/shellinit/templates/*.bash.tmpl`
+- **跳过 shfmt / shellcheck**：当前仓库尚未接入 shell 脚本或模板
 
 ### 2. PTY 测试
 
@@ -182,6 +191,8 @@ go vet ./...
 如果仓库里已经有 Shell 模板：
 
 ```bash
+shfmt -w -i 2 internal/shellinit/templates/*.bash.tmpl
+shfmt -d -i 2 internal/shellinit/templates/*.bash.tmpl
 shellcheck internal/shellinit/templates/*.bash.tmpl
 ```
 

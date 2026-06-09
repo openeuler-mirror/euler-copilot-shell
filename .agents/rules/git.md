@@ -31,4 +31,4 @@
 - Force push 到 main 或 protected branches
 - 提交包含 secrets、token、credentials 的文件
 - 提交 `.agents/config.yaml`
-- 提交未格式化的代码（先运行 `go fmt ./...`）
+- 提交未格式化的代码（先运行 `go fmt ./...` 和 `shfmt -w -i 2` 对 shell 脚本）

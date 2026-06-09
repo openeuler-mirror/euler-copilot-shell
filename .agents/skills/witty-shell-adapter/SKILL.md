@@ -17,10 +17,12 @@ description: 开发 Shell Adapter 的 Bash 模板和 Go 桥接层。包括 witty
 1. **修改 Bash 模板** (`witty.bash.tmpl`)
    - 模板分隔符必须使用 `[[ ]]`（不是 `{{ }}`）
    - Go 模板层通过 `Delims("[[", "]]")` 设置自定义分隔符
+   - 修改后立即格式化：`shfmt -w -i 2 internal/shellinit/templates/*.bash.tmpl`
 
-2. **运行 ShellCheck**:
+2. **验证格式化与静态检查**:
 
    ```bash
+   shfmt -d -i 2 internal/shellinit/templates/*.bash.tmpl
    shellcheck internal/shellinit/templates/*.bash.tmpl
    ```
 
@@ -59,6 +61,7 @@ description: 开发 Shell Adapter 的 Bash 模板和 Go 桥接层。包括 witty
 
 - 模板分隔符 `[[ ]]`
 - Bash 函数前缀 `__witty_`
+- 所有模板和脚本变更后 `shfmt -w -i 2`（2 空格缩进）
 - 不在 Bash Hook 中执行长时间 AI 调用
 - 不将 wrapper 命令暴露到 history
 
