@@ -8,17 +8,17 @@ echo ""
 
 # 1. 检查是否在 openEuler 环境中
 if [ ! -f /etc/openEuler-release ] 2>/dev/null; then
-    if grep -qi openeuler /etc/os-release 2>/dev/null; then
-        :
-    else
-        echo "⚠️  当前不是 openEuler 系统。请确保在 openEuler WSL 发行版中运行此脚本。"
-        echo "   检测到的系统:"
-        cat /etc/os-release 2>/dev/null | head -3 || echo "  无法检测"
-        echo ""
-        echo "  继续安装？(y/n)"
-        read -r CONTINUE
-        [ "$CONTINUE" = "y" ] || exit 1
-    fi
+  if grep -qi openeuler /etc/os-release 2>/dev/null; then
+    :
+  else
+    echo "⚠️  当前不是 openEuler 系统。请确保在 openEuler WSL 发行版中运行此脚本。"
+    echo "   检测到的系统:"
+    cat /etc/os-release 2>/dev/null | head -3 || echo "  无法检测"
+    echo ""
+    echo "  继续安装？(y/n)"
+    read -r CONTINUE
+    [ "$CONTINUE" = "y" ] || exit 1
+  fi
 fi
 
 # 2. 安装开发依赖
@@ -27,13 +27,13 @@ yum makecache -q 2>/dev/null || true
 
 echo "📦 安装 Go..."
 yum install -y golang 2>/dev/null || {
-    echo "⚠️  go 不在默认仓库中，请手动安装 Go 1.26+"
-    echo "   参考: https://go.dev/doc/install"
+  echo "⚠️  go 不在默认仓库中，请手动安装 Go 1.26+"
+  echo "   参考: https://go.dev/doc/install"
 }
 
 echo "📦 安装开发工具..."
 yum install -y git make ShellCheck shfmt 2>/dev/null || {
-    echo "⚠️  部分工具安装失败，请手动检查"
+  echo "⚠️  部分工具安装失败，请手动检查"
 }
 
 # 3. 验证

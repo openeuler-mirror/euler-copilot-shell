@@ -13,22 +13,22 @@ echo ""
 
 # 1. 检查 OrbStack
 if ! command -v orb &>/dev/null; then
-    echo "❌ OrbStack 未安装。请从 https://orbstack.dev/download 下载安装后重试。"
-    exit 1
+  echo "❌ OrbStack 未安装。请从 https://orbstack.dev/download 下载安装后重试。"
+  exit 1
 fi
 echo "✅ OrbStack 已安装"
 
 # 2. 创建 openEuler VM
 if orb list 2>/dev/null | grep -q "^${VM_NAME} "; then
-    echo "✅ VM '${VM_NAME}' 已存在，跳过创建"
+  echo "✅ VM '${VM_NAME}' 已存在，跳过创建"
 else
-    echo "📦 创建 openEuler VM: ${VM_NAME}（版本: ${OPENEULER_VERSION}，架构: ${VM_ARCH}）..."
-    if [ "${VM_ARCH}" = "amd64" ]; then
-        orb create --arch amd64 "openeuler:${OPENEULER_VERSION}" "${VM_NAME}"
-    else
-        orb create "openeuler:${OPENEULER_VERSION}" "${VM_NAME}"
-    fi
-    echo "✅ VM 创建完成"
+  echo "📦 创建 openEuler VM: ${VM_NAME}（版本: ${OPENEULER_VERSION}，架构: ${VM_ARCH}）..."
+  if [ "${VM_ARCH}" = "amd64" ]; then
+    orb create --arch amd64 "openeuler:${OPENEULER_VERSION}" "${VM_NAME}"
+  else
+    orb create "openeuler:${OPENEULER_VERSION}" "${VM_NAME}"
+  fi
+  echo "✅ VM 创建完成"
 fi
 
 # 3. 安装开发依赖

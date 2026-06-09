@@ -8,24 +8,24 @@ GENERATED_PATH="${WITTY_OPENAPI_GENERATED_PATH:-internal/transport/generated/mod
 FETCH_SPEC="${WITTY_OPENAPI_FETCH:-1}"
 
 if [[ -n "${OAPI_CODEGEN:-}" ]]; then
-	GENERATOR="${OAPI_CODEGEN}"
+  GENERATOR="${OAPI_CODEGEN}"
 elif command -v oapi-codegen-exp >/dev/null 2>&1; then
-	GENERATOR="oapi-codegen-exp"
+  GENERATOR="oapi-codegen-exp"
 elif command -v oapi-codegen >/dev/null 2>&1; then
-	GENERATOR="oapi-codegen"
+  GENERATOR="oapi-codegen"
 else
-	cat >&2 <<'EOF'
+  cat >&2 <<'EOF'
 oapi-codegen v3 generator not found.
 Install the OpenAPI 3.1 capable generator first, for example:
   go install github.com/oapi-codegen/oapi-codegen-exp/experimental/cmd/oapi-codegen@latest
 EOF
-	exit 127
+  exit 127
 fi
 
 mkdir -p "$(dirname "${SPEC_PATH}")" "$(dirname "${GENERATED_PATH}")"
 
 if [[ "${FETCH_SPEC}" != "0" ]]; then
-	curl -fsSL -H "Accept: application/json" "${SERVER_URL%/}/doc" >"${SPEC_PATH}"
+  curl -fsSL -H "Accept: application/json" "${SERVER_URL%/}/doc" >"${SPEC_PATH}"
 fi
 
 NORMALIZED_SPEC="$(mktemp)"
