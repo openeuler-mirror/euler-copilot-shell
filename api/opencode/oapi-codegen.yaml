@@ -1,0 +1,13 @@
+package: generated
+output: internal/transport/generated/models.go
+
+# Generate schema models/types only. HTTP/SSE transport is handwritten.
+# scripts/update-openapi.sh feeds this generator a temporary normalized copy of
+# openapi.json with duplicate anyOf entries removed. The vendored spec remains
+# untouched; duplicate anyOf refs are semantically redundant but currently cause
+# duplicate Go helper methods in the experimental OpenAPI 3.1 generator.
+name-substitutions:
+  type-names:
+    # The spec has a schema named File, which conflicts with oapi-codegen v3's
+    # embedded helper type for binary payloads.
+    File: OpenCodeFile
