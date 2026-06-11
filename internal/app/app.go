@@ -13,6 +13,7 @@ import (
 	"atomgit.com/openeuler/witty-cli/internal/permission"
 	"atomgit.com/openeuler/witty-cli/internal/presenter"
 	"atomgit.com/openeuler/witty-cli/internal/renderer"
+	"atomgit.com/openeuler/witty-cli/internal/repl"
 	"atomgit.com/openeuler/witty-cli/internal/session"
 	"atomgit.com/openeuler/witty-cli/internal/shellinit"
 	"atomgit.com/openeuler/witty-cli/internal/transport"
@@ -36,6 +37,7 @@ type Container interface {
 	ListProviders(ctx context.Context) ([]ProviderStatus, error)
 	ConnectProviderWithAPIKey(ctx context.Context, input, apiKey string) (ProviderStatus, error)
 	ContinueSession(ctx context.Context, id string) (session.Context, error)
+	StartREPL(ctx context.Context) error
 	Doctor(ctx context.Context) (string, error)
 }
 
@@ -53,6 +55,7 @@ type App struct {
 	presenter  presenter.Presenter
 	permission permission.Manager
 	ask        core.Runner
+	repl       repl.Loop
 	shellInit  bashInitRenderer
 	version    version.Info
 }
@@ -143,6 +146,16 @@ func (a *App) ContinueSession(ctx context.Context, id string) (session.Context, 
 		return session.Context{}, err
 	}
 	return a.sessions.Continue(ctx, id)
+}
+
+func (a *App) StartREPL(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if a.repl == nil {
+		return fmt.Errorf("repl is not configured")
+	}
+	return a.repl.Run(ctx)
 }
 
 func (a *App) Doctor(ctx context.Context) (string, error) {

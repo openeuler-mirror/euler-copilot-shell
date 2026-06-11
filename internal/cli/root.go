@@ -44,7 +44,11 @@ func newRootCommandWithOptions(opts *rootOptions) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cmd.Help()
+			container, err := opts.loadApp(cmd.Context(), cmd)
+			if err != nil {
+				return err
+			}
+			return container.StartREPL(cmd.Context())
 		},
 	}
 	cmd.SetOut(opts.stdout)

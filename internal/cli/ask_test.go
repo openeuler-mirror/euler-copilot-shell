@@ -167,3 +167,4 @@ func (f *fakeContainer) ContinueSession(_ context.Context, id string) (session.C
 	return f.continuedSession, f.continueSessionErr
 }
 func (f *fakeContainer) Doctor(context.Context) (string, error) { return "", nil }
+func (f *fakeContainer) StartREPL(context.Context) error        { return nil }

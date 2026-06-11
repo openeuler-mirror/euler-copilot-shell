@@ -13,6 +13,7 @@ import (
 	"atomgit.com/openeuler/witty-cli/internal/permission"
 	"atomgit.com/openeuler/witty-cli/internal/presenter"
 	"atomgit.com/openeuler/witty-cli/internal/renderer"
+	"atomgit.com/openeuler/witty-cli/internal/repl"
 	"atomgit.com/openeuler/witty-cli/internal/session"
 	"atomgit.com/openeuler/witty-cli/internal/shellinit"
 	"atomgit.com/openeuler/witty-cli/internal/terminal"
@@ -104,6 +105,14 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		return nil, fmt.Errorf("create ask runner: %w", err)
 	}
 
+	replLoop, err := repl.New(repl.Options{
+		Runner: askRunner,
+		Config: cfg,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create repl: %w", err)
+	}
+
 	return &App{
 		cfg:        cfg,
 		logger:     logger,
@@ -114,6 +123,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		presenter:  presenterService,
 		permission: permissionService,
 		ask:        askRunner,
+		repl:       replLoop,
 		shellInit:  shellinit.NewRenderer(),
 		version:    opts.Version,
 	}, nil
