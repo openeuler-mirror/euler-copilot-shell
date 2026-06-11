@@ -540,7 +540,7 @@ type Client interface {
 > - `ListProviderAuthMethods` 调用 `GET /provider/auth`，返回各 provider 可用认证方式；CLI 首版只暴露支持 `type=api` 的 provider。
 > - `SetProviderAPIKey` 调用 `PUT /auth/{providerID}`，请求体固定为 `{"type": "api", "key": "..."}`。
 > - `witty provider connect <provider>` 先用 `GET /provider` 按 `id/name` 解析输入；若 provider 存在但 `GET /provider/auth` 不包含 `type=api`，返回明确错误：`当前 Provider 暂不支持 API Key 认证方式`。
-
+>
 > **SubscribeEvents 实现注意**：
 >
 > - `/event` 端点接受 `directory` query param（`GET /event?directory=<cwd>`），可在服务端做初步过滤；但 SSE 流仍是所有会话共享，**客户端仍需按 sessionID 做二次过滤**。
