@@ -399,11 +399,20 @@
 ### P1-11：Shell Bridge 分类与 dispatch
 
 - [x] Bash 侧实现 Readline Hook + `accept-line` 包装 + `READLINE_LINE` 改写。
+- [ ] **行改写方案**：`__witty_pre_accept` 中 agent/control 路由必须改写 `READLINE_LINE` 为 `__witty_shell_dispatch` 调用，由 `accept-line` 执行；**禁止**在 `bind -x` handler 中直接调用 `witty ask`。
 - [x] 分类路径：empty / shell / agent / control。
 - [x] 强 shell 特征优先：管道、重定向、变量赋值、显式路径、shell 关键字、多行续行等。
 - [x] 白名单 slash 命令：`/ask`、`/agent`、`/model`、`/session list`、`/session continue`、`/new`、`/help`。
+- [ ] **slash 命令参数校验**：Bash 侧分类器对 `/exit`、`/new`、`/help` 只匹配无参数版本；`/ask` 必须带参数；裸 `/ask` 不应匹配为 control（见 shell-adapter.md §6.7）。
 - [x] `/usr/bin/ls` 等绝对路径不得误判为 slash 控制命令。
 - [x] dispatch 只调用 `witty ask` 或控制命令；Bash Hook 中不得执行长时间 AI 调用。
+- [ ] **英文自然语言触发词**：Bash 侧 `__witty_classify` 补充英文触发词（`how`、`what`、`why`、`explain`、`tell me`、`show me`、`please`、`help me`、`can you`），与 Go 侧 `hasNaturalLanguageSignal` 对齐。
+- [ ] **`witty` 前缀显式检测**：分类器中显式检测首个 token 为 `witty` 时走 shell，避免默认路由变更后误判。
+- [ ] **命令存在性检查**：当首个 token 既不在已知命令列表中，也无 NL 特征时，用 `type -t` 检查命令是否存在；存在 → shell，不存在 → agent。
+- [ ] **`command_not_found_handle` 兜底**：安装 `__witty_command_not_found_handle`，Shell 执行 `command not found` 时转交 Agent；保存用户已有 handler 并链式调用。
+- [ ] **`HISTIGNORE` 设置**：初始化时追加 `__witty_shell_dispatch *` 到 `HISTIGNORE`，确保 wrapper 不进入 history。
+- [ ] **History 统一写入点**：`__witty_pre_accept` 中不做 history 操作，只在 `__witty_shell_dispatch` 中 `history -s "$raw"`。
+- [ ] **`__witty_contains` 安全修复**：将 `case "$1" in *"$2"*)` 改为 `[[ "$1" == *"$2"* ]]`，避免 glob 字符误匹配。
 - [x] history 保留用户原始输入，隐藏内部 wrapper 命令。
 
 #### 验收 checkpoint：C1-11
@@ -412,9 +421,18 @@
 - [x] 分类器单元测试覆盖 `systemctl status nginx` → shell。
 - [x] 分类器单元测试覆盖 `systemctl 怎么看 nginx 日志` → agent。
 - [x] 分类器单元测试覆盖 `cat /etc/os-release | grep NAME` → shell。
+- [ ] 分类器单元测试覆盖 `explain how to check memory` → agent（英文触发词）。
+- [ ] 分类器单元测试覆盖 `how do I restart nginx` → agent（英文触发词）。
+- [ ] 分类器单元测试覆盖 `my_custom_script arg1` → shell（命令存在性检查通过）。
+- [ ] 分类器单元测试覆盖 `some_unknown_nonsense` → agent（命令存在性检查失败）。
+- [ ] 分类器单元测试覆盖 `/exit foo` → shell（slash 命令参数校验）。
+- [ ] 分类器单元测试覆盖 `/ask` → shell（裸 `/ask` 不匹配为 control）。
+- [ ] 分类器单元测试覆盖 `witty ask "something"` → shell（`witty` 前缀显式检测）。
 - [x] PTY 测试验证自然语言直输能触发 `witty ask`。
 - [x] PTY 测试验证普通 shell 命令不被改写。
+- [ ] PTY 测试验证 `__witty_pre_accept` 使用行改写（`READLINE_LINE` 改写为 dispatch 调用），而非直接调用 `witty ask`。
 - [x] PTY 测试验证 history 中不出现 `__witty_shell_dispatch ...`。
+- [ ] PTY 测试验证 `command_not_found_handle` 兜底：未知命令走 Agent。
 
 ### P1-12：MVP 端到端验收
 
@@ -502,13 +520,18 @@
 - [ ] Shell Adapter debug 模式可输出路由决策到 stderr 或日志。
 - [ ] 提供环境变量禁用 Shell Adapter。
 - [ ] history 保真：用户看到和检索的是原始输入。
-- [ ] 内部 dispatch 命令不进入历史或可被清理。
+- [ ] 内部 dispatch 命令不进入历史或可被清理（`HISTIGNORE` 设置）。
+- [ ] `vi-insert` keymap 绑定：支持 `set -o vi` 用户。
+- [ ] 只绑定 `\C-m`（CR）和 `\C-j`（LF），许多 PTY 环境发送 LF 而非 CR，两者都必须绑定。
+- [ ] `__witty_uninstall_bindings` 函数：支持运行时卸载绑定，恢复 Bash 默认 Enter 行为。
 
 #### 验收 checkpoint：C2-5
 
 - [ ] PTY 测试验证 history。
 - [ ] debug 模式能解释为什么某一行走 shell/agent/control。
 - [ ] 禁用开关生效后 Enter 行为恢复 Bash 默认。
+- [ ] `set -o vi` 模式下自然语言直输能触发 Agent。
+- [ ] heredoc 输入（`cat <<EOF`）不受 `\C-j` 绑定影响。
 
 ### P2-6：Phase 2 端到端验收
 
@@ -715,8 +738,13 @@
 
 - [ ] Shell 路由时不改写 `READLINE_LINE`。
 - [ ] Agent/control 路由只改写为 dispatch，仍交给 `accept-line` 执行。
+- [ ] **禁止**在 `bind -x` handler 中直接调用 `witty ask`（行改写方案）。
 - [ ] 长时间 AI 调用不在 Bash Hook 内执行。
 - [ ] 提供禁用开关与 doctor 检查。
+- [ ] 同时绑定 `\C-m` 和 `\C-j`（PTY 环境发送 LF 而非 CR）。
+- [ ] `vi-insert` keymap 绑定验证。
+- [ ] `HISTIGNORE` 隐藏 wrapper 命令。
+- [ ] `command_not_found_handle` 兜底验证。
 
 ### 9.3 Renderer 输出错乱
 

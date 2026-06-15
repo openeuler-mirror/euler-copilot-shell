@@ -98,30 +98,38 @@ Shell 直输自然语言是 witty 的一级能力。实现上通过 Bash Readlin
 
 ### 4.1 路由决策概要
 
+Adapter 采用"Shell 优先、Agent 兜底"原则——Adapter 无法识别的输入交给 Shell 尝试执行，Shell 也无法解析时再由 `command_not_found_handle` 兜底到 Agent。详细规则见 [shell-adapter.md §6](shell-adapter.md#6-路由与分类器设计)。
+
 | 优先级 | 条件 | 路由 |
 | --- | --- | --- |
 | 1 | 空输入 | 直接回车 |
 | 2 | 白名单 slash 命令（`/ask`、`/session list` 等） | control / agent |
 | 3 | 显式 `witty ...` 命令 | shell（不拦截） |
 | 4 | 强 shell 特征（管道、重定向、变量赋值等） | shell |
-| 5 | 自然语言高置信度（中文、触发词、问句等） | agent |
-| 6 | 普通可执行命令 | shell |
-| 7 | 无法判断 | shell（默认） |
+| 5 | 自然语言高置信度（中文、英文触发词、问句等） | agent |
+| 6 | 首个 token 为已知 shell 命令且无 NL 特征 | shell |
+| 7 | 首个 token 通过命令存在性检查（`type -t`） | shell |
+| 8 | 首个 token 未通过命令存在性检查且无强 shell 特征 | agent（兜底） |
+| 9 | Shell 执行时 `command not found` | `command_not_found_handle` → agent（第二层兜底） |
 
 ### 4.2 典型路由示例
 
-| 输入 | 路由 |
-| ---- | ---- |
-| `检查系统内存` | Agent |
-| `systemctl 怎么看 nginx 日志` | Agent |
-| `systemctl status nginx` | Shell |
-| `grep error /var/log/messages` | Shell |
-| `cat /etc/os-release \| grep NAME` | Shell |
-| `/agent ops` | 控制命令 |
-| `/ask systemctl 怎么看 nginx 日志` | Agent |
-| `/usr/bin/ls` | Shell |
-| `FOO=bar env` | Shell |
-| `for i in 1; do` | Shell（进入多行继续输入） |
+| 输入 | 路由 | 判定依据 |
+| ---- | ---- | -------- |
+| `检查系统内存` | Agent | CJK 字符 |
+| `systemctl 怎么看 nginx 日志` | Agent | 中文触发词 |
+| `systemctl status nginx` | Shell | 已知命令 + 无 NL 特征 |
+| `grep error /var/log/messages` | Shell | 已知命令 + 无 NL 特征 |
+| `cat /etc/os-release \| grep NAME` | Shell | 管道 |
+| `/agent ops` | 控制命令 | 白名单 slash 命令 |
+| `/ask systemctl 怎么看 nginx 日志` | Agent | `/ask` 逃生口 |
+| `/usr/bin/ls` | Shell | 显式路径 |
+| `FOO=bar env` | Shell | 变量赋值 |
+| `for i in 1; do` | Shell | Shell 关键字 |
+| `explain how to check memory` | Agent | 英文触发词 |
+| `how do I restart nginx` | Agent | 英文触发词 |
+| `my_custom_script arg1` | Shell | 命令存在性检查通过 |
+| `some_unknown_thing` | Agent | 命令存在性检查失败 |
 
 > 详细的"强 shell 特征"判定列表、自然语言高置信度触发词、命令存在性检查规则、以及 `/ask` 逃生口机制见 [shell-adapter.md §6](shell-adapter.md#6-路由与分类器设计)。
 
@@ -174,6 +182,7 @@ REPL 与 Shell 快捷模式支持同一组控制命令（在 shell 中由 Adapte
 - 在 **REPL** 中，这些命令由 `witty` 自己解释
 - 在 **Shell 快捷模式** 中，这些命令由 Shell Adapter 识别后转发给 `witty`
 - 若用户输入的是普通 shell 绝对路径，如 `/usr/bin/ls`，不应误判为 slash 命令；仅对**白名单命令**进行拦截
+- slash 命令的参数格式在 Bash 侧和 Go 侧必须一致校验（如 `/exit` 不接受参数、`/ask` 必须带 prompt），详见 [shell-adapter.md §6.7](shell-adapter.md#67-slash-命令参数校验)
 
 ---
 

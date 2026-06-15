@@ -918,13 +918,17 @@ sequenceDiagram
 
 应由模板输出的 Bash 脚本负责：
 
-- Enter 包装
-- 分类器
-- shell / agent / control 路由决策
-- `READLINE_LINE` 改写
-- history 保真
+- Enter 包装（只绑定 `\C-m`，不绑定 `\C-j`）
+- 分类器（含英文/中文自然语言触发词、命令存在性检查 `type -t`）
+- shell / agent / control 路由决策（遵循"Shell 优先、Agent 兜底"原则）
+- `READLINE_LINE` 改写（agent/control 路由改写为 `__witty_shell_dispatch` 调用，由 `accept-line` 执行）
+- history 保真（`HISTIGNORE` 隐藏 wrapper + dispatch 内 `history -s` 写入原始输入）
+- `command_not_found_handle` 兜底（Shell 执行 `command not found` 时转交 Agent）
+- slash 命令参数校验（`/exit`、`/new` 不接受参数，`/ask` 必须带参数）
+- `witty` 前缀显式检测（确保 `witty ask ...` 始终走 shell）
 - 环境变量开关
 - debug 输出
+- `vi-insert` keymap 绑定
 
 ## 7.2 Go 侧负责的事情
 
@@ -935,7 +939,7 @@ sequenceDiagram
 
 ## 7.3 明确禁止的实现方式
 
-1. 不在 Bash Hook 中直接跑长时间的 Agent 调用。
+1. **禁止在 `bind -x` handler 中直接调用 `witty ask`**——必须通过 `READLINE_LINE` 行改写 + `accept-line` 执行 `__witty_shell_dispatch`。
 2. 不把自然语言翻译成本地 shell 再偷偷执行。
 3. 不在 Go 中试图接管 Bash 的交互式输入循环。
 4. 不把 wrapper 命令暴露到 history 里。
@@ -950,6 +954,8 @@ sequenceDiagram
 - `__witty_shell_dispatch`
 - `__witty_debug`
 - `__witty_install_bindings`
+- `__witty_command_not_found_handle`
+- `__witty_uninstall_bindings`
 
 这样便于：
 
