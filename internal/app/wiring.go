@@ -106,26 +106,30 @@ func New(ctx context.Context, opts Options) (Container, error) {
 	}
 
 	replLoop, err := repl.New(repl.Options{
-		Runner: askRunner,
-		Config: cfg,
+		Runner:       askRunner,
+		Sessions:     sessionResolver,
+		Transport:    transportClient,
+		Config:       cfg,
+		ConfigWriter: config.NewWriter(nil),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create repl: %w", err)
 	}
 
 	return &App{
-		cfg:        cfg,
-		logger:     logger,
-		transport:  transportClient,
-		events:     eventRouter,
-		sessions:   sessionResolver,
-		renderer:   rendererService,
-		presenter:  presenterService,
-		permission: permissionService,
-		ask:        askRunner,
-		repl:       replLoop,
-		shellInit:  shellinit.NewRenderer(),
-		version:    opts.Version,
+		cfg:          cfg,
+		logger:       logger,
+		transport:    transportClient,
+		events:       eventRouter,
+		sessions:     sessionResolver,
+		renderer:     rendererService,
+		presenter:    presenterService,
+		permission:   permissionService,
+		ask:          askRunner,
+		repl:         replLoop,
+		shellInit:    shellinit.NewRenderer(),
+		version:      opts.Version,
+		configWriter: config.NewWriter(nil),
 	}, nil
 }
 

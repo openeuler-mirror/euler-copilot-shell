@@ -42,6 +42,10 @@ func newAskCommand(opts *rootOptions) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// When auto_resume is disabled, force a new session for each ask.
+			if !container.Config().REPL.AutoResume && strings.TrimSpace(sessionID) == "" {
+				forceNew = true
+			}
 			req := core.AskRequest{
 				Prompt:    prompt,
 				CWD:       cwd,

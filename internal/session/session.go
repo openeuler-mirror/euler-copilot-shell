@@ -48,6 +48,7 @@ type Summary struct {
 	Title     string
 	Directory string
 	Agent     string
+	Updated   int // Unix timestamp
 }
 
 type service struct {
@@ -195,5 +196,6 @@ func summaryFromSession(session transport.Session) Summary {
 		Title:     session.Title,
 		Directory: session.Directory,
 		Agent:     agent,
+		Updated:   session.Time.Updated,
 	}
 }

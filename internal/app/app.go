@@ -39,6 +39,7 @@ type Container interface {
 	ContinueSession(ctx context.Context, id string) (session.Context, error)
 	StartREPL(ctx context.Context) error
 	Doctor(ctx context.Context) (string, error)
+	WriteConfig(ctx context.Context) config.Writer
 }
 
 type bashInitRenderer interface {
@@ -46,18 +47,19 @@ type bashInitRenderer interface {
 }
 
 type App struct {
-	cfg        config.Config
-	logger     *slog.Logger
-	transport  transport.Client
-	events     event.Router
-	sessions   session.Resolver
-	renderer   renderer.TextRenderer
-	presenter  presenter.Presenter
-	permission permission.Manager
-	ask        core.Runner
-	repl       repl.Loop
-	shellInit  bashInitRenderer
-	version    version.Info
+	cfg          config.Config
+	logger       *slog.Logger
+	transport    transport.Client
+	events       event.Router
+	sessions     session.Resolver
+	renderer     renderer.TextRenderer
+	presenter    presenter.Presenter
+	permission   permission.Manager
+	ask          core.Runner
+	repl         repl.Loop
+	shellInit    bashInitRenderer
+	version      version.Info
+	configWriter config.Writer
 }
 
 func (a *App) Config() config.Config {
@@ -126,8 +128,12 @@ func (a *App) InitBash(ctx context.Context) (string, error) {
 	if renderer == nil {
 		renderer = shellinit.NewRenderer()
 	}
+	binaryPath := "witty"
+	if exe, err := os.Executable(); err == nil {
+		binaryPath = exe
+	}
 	return renderer.RenderBash(ctx, shellinit.BashOptions{
-		BinaryPath:   "witty",
+		BinaryPath:   binaryPath,
 		Version:      a.version.Version,
 		ShellEnabled: a.cfg.Shell.Enabled,
 		ShellDebug:   a.cfg.Shell.Debug,
@@ -139,6 +145,10 @@ func (a *App) ListSessions(ctx context.Context) ([]session.Summary, error) {
 		return nil, err
 	}
 	return a.sessions.List(ctx, session.Scope{})
+}
+
+func (a *App) WriteConfig(ctx context.Context) config.Writer {
+	return a.configWriter
 }
 
 func (a *App) ContinueSession(ctx context.Context, id string) (session.Context, error) {

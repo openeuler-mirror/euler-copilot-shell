@@ -25,7 +25,7 @@ func newSessionCommand(opts *rootOptions) *cobra.Command {
 				return fmt.Errorf("session list: %w", err)
 			}
 			for _, summary := range summaries {
-				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\n", summary.ID, summary.Title, summary.Directory); err != nil {
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\t%d\n", summary.ID, summary.Title, summary.Directory, summary.Updated); err != nil {
 					return err
 				}
 			}
