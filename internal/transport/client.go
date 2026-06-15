@@ -32,6 +32,7 @@ type Client interface {
 	ReplyQuestion(ctx context.Context, requestID string, answers [][]string) (bool, error)
 	RejectQuestion(ctx context.Context, requestID string) (bool, error)
 	SubscribeEvents(ctx context.Context, filter EventFilter) (<-chan RawEvent, <-chan error)
+	ListAgents(ctx context.Context, directory, workspace string) ([]Agent, error)
 }
 
 type Options struct {
@@ -189,6 +190,17 @@ func (c *client) ListProviderAuthMethods(ctx context.Context, directory, workspa
 		methods = ProviderAuthMethods{}
 	}
 	return methods, nil
+}
+
+func (c *client) ListAgents(ctx context.Context, directory, workspace string) ([]Agent, error) {
+	query := url.Values{}
+	addString(query, "directory", directory)
+	addString(query, "workspace", workspace)
+	var agents []Agent
+	if err := c.doJSON(ctx, http.MethodGet, "/agent", query, nil, &agents, http.StatusOK); err != nil {
+		return nil, err
+	}
+	return agents, nil
 }
 
 func (c *client) SetProviderAPIKey(ctx context.Context, providerID, apiKey string) error {

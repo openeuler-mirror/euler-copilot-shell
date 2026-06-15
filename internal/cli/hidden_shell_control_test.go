@@ -66,7 +66,7 @@ func TestShellControlCommand_HelpDoesNotLoadApp(t *testing.T) {
 
 func TestShellControlCommand_SessionControls(t *testing.T) {
 	fake := &fakeContainer{
-		sessions:         []session.Summary{{ID: "ses_1", Title: "One", Directory: "/work"}},
+		sessions:         []session.Summary{{ID: "ses_1", Title: "One", Directory: "/work", Updated: 1718000000}},
 		continuedSession: session.Context{ID: "ses_1"},
 	}
 	cmd, out, _ := shellControlTestCommand(fake)
@@ -104,4 +104,74 @@ func shellControlTestCommand(fake *fakeContainer) (*cobra.Command, *bytes.Buffer
 	}
 	cmd := newRootCommandWithOptions(opts)
 	return cmd, &out, &errOut
+}
+
+func TestShellControlCommand_Agent_Show(t *testing.T) {
+	// /agent without args requires interactive terminal; test error case.
+	var out, errOut bytes.Buffer
+	opts := &rootOptions{version: version.New("dev", "none", "unknown"), stdout: &out, stderr: &errOut}
+	opts.loadAppFn = func(context.Context, *cobra.Command) (app.Container, error) {
+		return &fakeContainer{}, nil
+	}
+	cmd := newRootCommandWithOptions(opts)
+	cmd.SetArgs([]string{"shell-control", "--", "/agent"})
+
+	err := cmd.ExecuteContext(context.Background())
+	if err == nil {
+		t.Fatal("Expected error for /agent without TTY")
+	}
+	if !strings.Contains(err.Error(), "terminal") {
+		t.Fatalf("error = %v, want terminal hint", err)
+	}
+}
+
+func TestShellControlCommand_Agent_Set(t *testing.T) {
+	var out, errOut bytes.Buffer
+	opts := &rootOptions{version: version.New("dev", "none", "unknown"), stdout: &out, stderr: &errOut}
+	opts.loadAppFn = func(context.Context, *cobra.Command) (app.Container, error) {
+		return &fakeContainer{}, nil
+	}
+	cmd := newRootCommandWithOptions(opts)
+	cmd.SetArgs([]string{"shell-control", "--", "/agent", "build"})
+
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("Execute(shell-control /agent build) error = %v", err)
+	}
+	if !strings.Contains(out.String(), `[agent] set to "build"`) {
+		t.Fatalf("agent set output = %q, want agent confirmation", out.String())
+	}
+}
+
+func TestShellControlCommand_Model_Set(t *testing.T) {
+	var out, errOut bytes.Buffer
+	opts := &rootOptions{version: version.New("dev", "none", "unknown"), stdout: &out, stderr: &errOut}
+	opts.loadAppFn = func(context.Context, *cobra.Command) (app.Container, error) {
+		return &fakeContainer{}, nil
+	}
+	cmd := newRootCommandWithOptions(opts)
+	cmd.SetArgs([]string{"shell-control", "--", "/model", "opencode/gpt-4"})
+
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("Execute(shell-control /model) error = %v", err)
+	}
+	if !strings.Contains(out.String(), `[model] set to "opencode/gpt-4"`) {
+		t.Fatalf("model set output = %q, want model confirmation", out.String())
+	}
+}
+
+func TestShellControlCommand_Exit_NoOp(t *testing.T) {
+	for _, cmd := range []string{"/exit", "/quit", "/q"} {
+		t.Run(cmd, func(t *testing.T) {
+			var out, errOut bytes.Buffer
+			opts := &rootOptions{version: version.New("dev", "none", "unknown"), stdout: &out, stderr: &errOut}
+			opts.loadAppFn = func(context.Context, *cobra.Command) (app.Container, error) {
+				return &fakeContainer{}, nil
+			}
+			c := newRootCommandWithOptions(opts)
+			c.SetArgs([]string{"shell-control", "--", cmd})
+			if err := c.ExecuteContext(context.Background()); err != nil {
+				t.Fatalf("Execute(shell-control %s) error = %v", cmd, err)
+			}
+		})
+	}
 }

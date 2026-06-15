@@ -33,8 +33,36 @@ type Session = generated.Session
 
 type Provider = generated.Provider
 type ProviderAuthMethod = generated.ProviderAuthMethod
+type Agent = generated.Agent
+type Model = generated.Model
 
 type ProviderAuthMethods map[string][]ProviderAuthMethod
+
+// ProviderModels extracts Model objects from a Provider's Models map.
+func ProviderModels(p Provider) ([]Model, error) {
+	if p.Models == nil {
+		return nil, nil
+	}
+	result := make([]Model, 0, len(p.Models))
+	for modelID, raw := range p.Models {
+		data, err := json.Marshal(raw)
+		if err != nil {
+			continue
+		}
+		var m Model
+		if err := json.Unmarshal(data, &m); err != nil {
+			continue
+		}
+		if m.ID == "" {
+			m.ID = modelID
+		}
+		if m.ProviderID == "" {
+			m.ProviderID = p.ID
+		}
+		result = append(result, m)
+	}
+	return result, nil
+}
 
 type CreateSessionRequest struct {
 	Directory   string          `json:"-"`

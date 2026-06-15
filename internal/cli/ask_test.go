@@ -135,6 +135,7 @@ type fakeContainer struct {
 	continuedSession     session.Context
 	continueSessionID    string
 	continueSessionErr   error
+	configWriter         config.Writer
 }
 
 func (f *fakeContainer) Config() config.Config           { return f.cfg }
@@ -146,6 +147,12 @@ func (f *fakeContainer) Renderer() renderer.TextRenderer { return nil }
 func (f *fakeContainer) Presenter() presenter.Presenter  { return nil }
 func (f *fakeContainer) Permission() permission.Manager  { return nil }
 func (f *fakeContainer) Version() version.Info           { return version.New("dev", "none", "unknown") }
+func (f *fakeContainer) WriteConfig(context.Context) config.Writer {
+	if f.configWriter != nil {
+		return f.configWriter
+	}
+	return &fakeConfigWriter{}
+}
 func (f *fakeContainer) Ask(_ context.Context, req core.AskRequest) error {
 	f.askReq = req
 	return f.askErr
@@ -168,3 +175,10 @@ func (f *fakeContainer) ContinueSession(_ context.Context, id string) (session.C
 }
 func (f *fakeContainer) Doctor(context.Context) (string, error) { return "", nil }
 func (f *fakeContainer) StartREPL(context.Context) error        { return nil }
+
+type fakeConfigWriter struct{}
+
+func (f *fakeConfigWriter) SetDefaultAgent(agent string) error { return nil }
+func (f *fakeConfigWriter) SetDefaultModel(model string) error { return nil }
+func (f *fakeConfigWriter) SetDefaultVariant(v string) error   { return nil }
+func (f *fakeConfigWriter) ConfigPath() string                 { return "/fake/config.toml" }
