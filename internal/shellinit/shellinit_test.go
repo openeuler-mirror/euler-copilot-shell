@@ -31,6 +31,7 @@ func TestBashTemplate(t *testing.T) {
 		"__witty_classify()",
 		"__witty_pre_accept()",
 		"__witty_shell_dispatch()",
+			"__witty_deferred_dispatch()",
 		"__witty_debug()",
 		"__witty_install_bindings()",
 		`bind -x '"\C-x\C-w": __witty_pre_accept'`,

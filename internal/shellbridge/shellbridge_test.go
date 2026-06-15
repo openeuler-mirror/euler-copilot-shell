@@ -31,6 +31,9 @@ func TestClassify_RoutingRules(t *testing.T) {
 	}{
 		{line: "   ", want: RouteEmpty},
 		{line: "/help", want: RouteControl},
+		{line: "/exit", want: RouteControl},
+		{line: "/quit", want: RouteControl},
+		{line: "/q", want: RouteControl},
 		{line: "/ask explain rpm macros", want: RouteControl},
 		{line: "/session list", want: RouteControl},
 		{line: "/session continue ses_1", want: RouteControl},
@@ -64,6 +67,8 @@ func TestParseControl(t *testing.T) {
 		{name: "help", raw: "/help", want: ControlAction{Kind: ControlHelp, Raw: "/help"}},
 		{name: "session list", raw: "/session list", want: ControlAction{Kind: ControlSessionList, Raw: "/session list"}},
 		{name: "session continue", raw: "/session continue ses_1", want: ControlAction{Kind: ControlSessionContinue, Raw: "/session continue ses_1", SessionID: "ses_1"}},
+		{name: "exit", raw: "/exit", want: ControlAction{Kind: ControlExit, Raw: "/exit"}},
+		{name: "quit", raw: "/quit", want: ControlAction{Kind: ControlExit, Raw: "/quit"}},
 	}
 
 	for _, tt := range tests {
@@ -100,5 +105,56 @@ func TestWrapperLine(t *testing.T) {
 	}
 	if _, ok := WrapperLine(RouteShell, "ls"); ok {
 		t.Fatal("WrapperLine(RouteShell) ok = true, want false")
+	}
+}
+
+func TestIsExitSlash(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"/exit", true},
+		{"/EXIT", true},
+		{"/quit", true},
+		{"/q", true},
+		{" /exit ", true},
+		{"/Quit", true},
+		{"/help", false},
+		{"exit", false},
+		{"", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			if got := IsExitSlash(tt.input); got != tt.want {
+				t.Fatalf("IsExitSlash(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSuggestSlash(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"/hel", "did you mean /help?"},
+		{"/hepl", "did you mean /help?"},
+		{"/agnt", "did you mean /agent?"},
+		{"/exit", ""},       // exact match not suggested
+		{"/usr/bin/ls", ""}, // too different
+		{"", ""},
+		{"no-slash", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := SuggestSlash(tt.input)
+			// For exact matches or too-different inputs, SuggestSlash returns empty.
+			if tt.want == "" && got != "" {
+				t.Fatalf("SuggestSlash(%q) = %q, want empty", tt.input, got)
+			}
+			if tt.want != "" && got != tt.want {
+				t.Fatalf("SuggestSlash(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
 	}
 }

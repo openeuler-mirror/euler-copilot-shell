@@ -78,7 +78,7 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     fi
 
     case "$line" in
-    /ask | /ask\ * | /agent | /agent\ * | /model | /model\ * | /new | /new\ * | /help | /help\ * | /session\ list | /session\ list\ * | /session\ continue | /session\ continue\ *)
+    /ask | /ask\ * | /agent | /agent\ * | /model | /model\ * | /new | /new\ * | /help | /help\ * | /exit | /exit\ * | /quit | /quit\ * | /q | /q\ * | /session\ list | /session\ list\ * | /session\ continue | /session\ continue\ *)
       printf 'control\n'
       return 0
       ;;
@@ -126,7 +126,7 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       return 0
     fi
 
-    printf 'agent\n'
+    printf 'shell\n'
   }
 
   __witty_preserve_history() {
@@ -137,6 +137,8 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     history -s "$raw" 2>/dev/null || true
   }
 
+  # __witty_shell_dispatch is kept for compatibility but no longer called
+  # from the readline bindings flow (deferred dispatch via PROMPT_COMMAND is used instead).
   __witty_shell_dispatch() {
     local route="${1:-}"
     shift || true
@@ -159,6 +161,27 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     esac
   }
 
+  # __witty_deferred_dispatch runs from PROMPT_COMMAND.
+  # It picks up the route and raw text set by __witty_pre_accept
+  # and executes witty in the normal shell context — not inside bind -x.
+  __witty_deferred_dispatch() {
+    if [ -z "${__WITTY_DEFERRED_ROUTE:-}" ]; then
+      return 0
+    fi
+    local route="$__WITTY_DEFERRED_ROUTE"
+    local raw="$__WITTY_DEFERRED_RAW"
+    unset __WITTY_DEFERRED_ROUTE __WITTY_DEFERRED_RAW
+    history -s "$raw" 2>/dev/null || true
+    case "$route" in
+    agent)
+      command "$__WITTY_BINARY" ask -- "$raw"
+      ;;
+    control)
+      command "$__WITTY_BINARY" shell-control -- "$raw"
+      ;;
+    esac
+  }
+
   __witty_pre_accept() {
     local raw="${READLINE_LINE:-}"
     local route=""
@@ -169,9 +192,10 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       return 0
       ;;
     agent | control)
-      READLINE_LINE="__witty_shell_dispatch ${route} -- $(printf '%q' "$raw")"
-      READLINE_POINT=${#READLINE_LINE}
-      __witty_debug "rewrite ${route}: ${raw}"
+      __witty_debug "defer ${route}: ${raw}"
+      __WITTY_DEFERRED_ROUTE="$route"
+      __WITTY_DEFERRED_RAW="$raw"
+      READLINE_LINE=""
       ;;
     *)
       __witty_debug "unknown classification: ${route}"
@@ -188,6 +212,10 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     bind '"\C-x\C-a": accept-line' || return 0
     bind '"\C-m": "\C-x\C-w\C-x\C-a"' || return 0
     bind '"\C-j": "\C-x\C-w\C-x\C-a"' || return 0
+    case "${PROMPT_COMMAND:-}" in
+    *__witty_deferred_dispatch*) ;;
+    *) PROMPT_COMMAND="__witty_deferred_dispatch${PROMPT_COMMAND:+;$PROMPT_COMMAND}" ;;
+    esac
     __WITTY_BINDINGS_INSTALLED=1
     __witty_debug 'bindings installed'
   }

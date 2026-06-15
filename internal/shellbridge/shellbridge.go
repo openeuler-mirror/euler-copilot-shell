@@ -52,7 +52,7 @@ func Classify(input string) Classification {
 	if isKnownShellCommand(first) {
 		return Classification{Route: RouteShell, Reason: "known shell command"}
 	}
-	return Classification{Route: RouteAgent, Reason: "default agent route"}
+	return Classification{Route: RouteShell, Reason: "default shell route"}
 }
 
 func isSlashControl(line string) bool {
@@ -60,7 +60,9 @@ func isSlashControl(line string) bool {
 	if len(fields) == 0 {
 		return false
 	}
-	switch fields[0] {
+	switch strings.ToLower(fields[0]) {
+	case "/exit", "/quit", "/q":
+		return true
 	case "/ask", "/agent", "/model", "/new", "/help":
 		return true
 	case "/session":

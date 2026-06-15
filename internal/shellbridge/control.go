@@ -16,6 +16,7 @@ const (
 	ControlSessionContinue ControlKind = "session_continue"
 	ControlNew             ControlKind = "new"
 	ControlHelp            ControlKind = "help"
+	ControlExit            ControlKind = "exit"
 )
 
 // ControlAction is the normalized form of a whitelisted slash command.
@@ -25,6 +26,20 @@ type ControlAction struct {
 	Prompt    string
 	Value     string
 	SessionID string
+}
+
+// IsExitSlash returns true when the raw input is an exit slash command.
+func IsExitSlash(raw string) bool {
+	fields := strings.Fields(strings.TrimSpace(raw))
+	if len(fields) == 0 {
+		return false
+	}
+	switch strings.ToLower(fields[0]) {
+	case "/exit", "/quit", "/q":
+		return true
+	default:
+		return false
+	}
 }
 
 // ParseControl parses slash commands that the shell adapter is allowed to dispatch.
@@ -38,7 +53,13 @@ func ParseControl(raw string) (ControlAction, error) {
 		return ControlAction{}, fmt.Errorf("shell control command is required")
 	}
 
-	switch fields[0] {
+	lower := strings.ToLower(fields[0])
+	switch lower {
+	case "/exit", "/quit", "/q":
+		if len(fields) != 1 {
+			return ControlAction{}, fmt.Errorf("%s does not accept arguments", fields[0])
+		}
+		return ControlAction{Kind: ControlExit, Raw: line}, nil
 	case "/ask":
 		prompt := strings.TrimSpace(strings.TrimPrefix(line, "/ask"))
 		if prompt == "" {
@@ -62,7 +83,7 @@ func ParseControl(raw string) (ControlAction, error) {
 	case "/session":
 		return parseSessionControl(line, fields)
 	default:
-		return ControlAction{}, fmt.Errorf("unsupported shell control command %q", fields[0])
+		return ControlAction{}, fmt.Errorf("unsupported shell control command %q; %s", fields[0], SuggestSlash(fields[0]))
 	}
 }
 
@@ -86,14 +107,88 @@ func parseSessionControl(line string, fields []string) (ControlAction, error) {
 	}
 }
 
-// HelpText returns the shell adapter slash command help shown by shell-control.
+var knownSlashCommands = []string{
+	"/ask", "/agent", "/model", "/new", "/help", "/exit", "/quit", "/q", "/session",
+}
+
+// SuggestSlash returns a suggestion for a mistyped slash command, or empty string.
+func SuggestSlash(input string) string {
+	if input == "" || !strings.HasPrefix(input, "/") {
+		return ""
+	}
+	lower := strings.ToLower(strings.TrimSpace(input))
+	best := ""
+	bestDist := 3
+	for _, cmd := range knownSlashCommands {
+		if lower == cmd {
+			return "" // exact match, not a suggestion
+		}
+		if strings.HasPrefix(cmd, lower) {
+			return "did you mean " + cmd + "?"
+		}
+		d := levenshteinDistance(lower, cmd)
+		if d < bestDist {
+			bestDist = d
+			best = cmd
+		}
+	}
+	if best != "" && bestDist <= 2 {
+		return "did you mean " + best + "?"
+	}
+	return ""
+}
+
+func levenshteinDistance(a, b string) int {
+	n, m := len(a), len(b)
+	if n == 0 {
+		return m
+	}
+	if m == 0 {
+		return n
+	}
+	dp := make([][]int, n+1)
+	for i := range dp {
+		dp[i] = make([]int, m+1)
+		dp[i][0] = i
+	}
+	for j := range dp[0] {
+		dp[0][j] = j
+	}
+	for i := 1; i <= n; i++ {
+		for j := 1; j <= m; j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			dp[i][j] = min3(
+				dp[i-1][j]+1,
+				dp[i][j-1]+1,
+				dp[i-1][j-1]+cost,
+			)
+		}
+	}
+	return dp[n][m]
+}
+
+func min3(a, b, c int) int {
+	if a <= b && a <= c {
+		return a
+	}
+	if b <= c {
+		return b
+	}
+	return c
+}
+
+// HelpText returns the slash command help text used by REPL and shell-control.
 func HelpText() string {
-	return strings.TrimSpace(`Witty shell controls:
+	return strings.TrimSpace(`Witty slash commands:
+  /help                      Show this help
+  /exit, /quit, /q           Exit the REPL
   /ask <prompt>              Ask opencode explicitly
-  /agent [name]              Show or set the default agent for future phases
-  /model [provider/model]    Show or set the default model for future phases
+  /agent [name]              Show or set the default agent
+  /model [provider/model]    Show or set the default model
+  /new                       Start a fresh session on the next prompt
   /session list              List opencode sessions
-  /session continue <id>     Continue a session by id
-  /new                       Start a fresh ask on the next prompt
-  /help                      Show this help`)
+  /session continue <id>     Continue a session by id`)
 }
