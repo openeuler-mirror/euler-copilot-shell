@@ -72,7 +72,7 @@ witty doctor           # 检查 server / config / auth 状态
 
 ```mermaid
 graph TD
-    A[普通 Bash 终端]:::accent0 --> B[Shell 集成层<br/>witty init bash]
+    A[普通 Bash 终端]:::accent0 --> B[Shell 集成层<br/>witty init bash<br/>DEBUG trap + extdebug]
     C[witty REPL]:::accent1 --> D[witty Core]:::accent2
     B --> D
     D --> E[Session Manager]:::accent3
@@ -94,7 +94,7 @@ graph TD
 
 ## 4. Shell 自然语言触发设计
 
-Shell 直输自然语言是 witty 的一级能力。实现上通过 Bash Readline Hook 在 Enter 时拦截 `READLINE_LINE`，包装 `accept-line` 完成预处理与行改写，由 Shell Adapter 按确定性优先级路由到 shell / agent / control 三路之一。完整实现细节、Bash 集成机制、分类规则与逃生口设计见 [shell-adapter.md](shell-adapter.md)。
+Shell 直输自然语言是 witty 的一级能力。实现上通过 Bash `DEBUG` trap（配合 `extdebug`）在命令执行前拦截，由 Shell Adapter 按确定性优先级路由到 shell / agent / control 三路之一。完整实现细节、Bash 集成机制、分类规则与逃生口设计见 [shell-adapter.md](shell-adapter.md)。
 
 ### 4.1 路由决策概要
 

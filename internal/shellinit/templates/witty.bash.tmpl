@@ -36,7 +36,6 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     *) return 1 ;;
     esac
     [ -t 0 ] && [ -t 1 ] || return 1
-    bind -V >/dev/null 2>&1 || return 1
     return 0
   }
 
@@ -51,18 +50,44 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
 
   __witty_is_shell_command() {
     case "$1" in
-    command | builtin | alias | unalias | type | hash | help | cd | pwd | exit | logout | history | jobs | fg | bg | disown | export | unset | readonly | local | declare | printf | echo | test | source | . | exec | eval | trap | set | shopt | umask | ulimit | dirs | pushd | popd | ls | cat | grep | egrep | fgrep | awk | sed | find | xargs | sort | uniq | head | tail | cut | tr | wc | tee | less | more | man | which | whereis | stat | file | touch | mkdir | rmdir | rm | cp | mv | ln | chmod | chown | tar | gzip | gunzip | zip | unzip | ssh | scp | rsync | curl | wget | git | go | make | gcc | dnf | yum | rpm | systemctl | journalctl | service | ps | top | free | df | du | ip | ss | ping | sudo | su | env | bash | sh | python | python3 | node | npm | docker | podman | kubectl)
+    command | builtin | alias | unalias | type | hash | help | cd | pwd | exit | logout | history | jobs | fg | bg | disown | export | unset | readonly | local | declare | printf | echo | test | source | . | exec | eval | trap | set | shopt | umask | ulimit | dirs | pushd | popd | ls | cat | grep | egrep | fgrep | awk | sed | find | xargs | sort | uniq | head | tail | cut | tr | wc | tee | less | more | man | which | whereis | stat | file | touch | mkdir | rmdir | rm | cp | mv | ln | chmod | chown | tar | gzip | gunzip | zip | unzip | ssh | scp | rsync | curl | wget | git | go | make | gcc | dnf | yum | rpm | systemctl | journalctl | service | ps | top | free | df | du | ip | ss | ping | sudo | su | env | bash | sh | python | python3 | node | npm | docker | podman | kubectl | jq | yq | helm | terraform | cargo | rustc | brew | apt | snap | pip | pip3 | conda | mvn | gradle | cmake | ninja | vim | nano | tmux | screen | code)
       return 0
       ;;
     esac
     return 1
   }
 
-  __witty_contains() {
-    case "$1" in
-    *"$2"*) return 0 ;;
-    *) return 1 ;;
+  __witty_has_nl_signal() {
+    local line="${1:-}"
+    local lower=""
+    lower="${line,,}"
+    case "$line" in
+    *'?'* | *'？'* | *[一-龥]*)
+      return 0
+      ;;
     esac
+    case "$lower" in
+    "how do "* | "how "* | "what's "* | "what "* | "why "* | "explain "* | "tell me "* | "show me "* | "please "* | "help me "* | "can you "* | "is there "* | *怎么* | *如何* | *帮我* | *请* | *分析* | *解释* | *排查* | *总结* | *检查* | *看看* | *为什么* | *是什么* | *能不能*)
+      return 0
+      ;;
+    esac
+    return 1
+  }
+
+  __witty_command_exists() {
+    local cmd="${1:-}"
+    if [ -z "$cmd" ]; then
+      return 1
+    fi
+    if [ -n "${__WITTY_CMD_CACHE[$cmd]+x}" ]; then
+      [ "${__WITTY_CMD_CACHE[$cmd]}" = "1" ] && return 0 || return 1
+    fi
+    if type -t -- "$cmd" >/dev/null 2>&1; then
+      __WITTY_CMD_CACHE["$cmd"]=1
+      return 0
+    fi
+    __WITTY_CMD_CACHE["$cmd"]=0
+    return 1
   }
 
   __witty_classify() {
@@ -78,14 +103,23 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     fi
 
     case "$line" in
-    /ask | /ask\ * | /agent | /agent\ * | /model | /model\ * | /new | /new\ * | /help | /help\ * | /exit | /exit\ * | /quit | /quit\ * | /q | /q\ * | /session\ list | /session\ list\ * | /session\ continue | /session\ continue\ *)
+    /ask\ * | /agent | /agent\ * | /model | /model\ * | /session\ list | /session\ continue\ *)
+      printf 'control\n'
+      return 0
+      ;;
+    /new | /help | /exit | /quit | /q)
       printf 'control\n'
       return 0
       ;;
     esac
 
     read -r first _ <<<"$line"
+
     case "$first" in
+    witty)
+      printf 'shell\n'
+      return 0
+      ;;
     /* | ./* | ../* | ~/* | */*)
       printf 'shell\n'
       return 0
@@ -95,10 +129,13 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     local backtick=$'\140'
     local dollar_paren="\$("
     local dollar_brace="\${"
-    if __witty_contains "$line" "|" || __witty_contains "$line" ">" || __witty_contains "$line" "<" || __witty_contains "$line" ";" || __witty_contains "$line" "&&" || __witty_contains "$line" "||" || __witty_contains "$line" "$backtick" || __witty_contains "$line" "$dollar_paren" || __witty_contains "$line" "$dollar_brace"; then
+    # shellcheck disable=SC2221,SC2222
+    case "$line" in
+    *"|"* | *">"* | *"<"* | *";"* | *"&&"* | *"||"* | *"$backtick"* | *"$dollar_paren"* | *"$dollar_brace"*)
       printf 'shell\n'
       return 0
-    fi
+      ;;
+    esac
     case "$line" in
     *\\)
       printf 'shell\n'
@@ -115,30 +152,25 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       printf 'shell\n'
       return 0
     fi
-    case "$line" in
-    *'?'* | *'？'* | *[一-龥]*)
+
+    if __witty_has_nl_signal "$line"; then
       printf 'agent\n'
       return 0
-      ;;
-    esac
+    fi
+
     if __witty_is_shell_command "$first"; then
       printf 'shell\n'
       return 0
     fi
 
-    printf 'shell\n'
-  }
-
-  __witty_preserve_history() {
-    local raw="${1:-}"
-    if [ -n "${HISTCMD:-}" ]; then
-      history -d "$((HISTCMD - 1))" 2>/dev/null || true
+    if __witty_command_exists "$first"; then
+      printf 'shell\n'
+      return 0
     fi
-    history -s "$raw" 2>/dev/null || true
+
+    printf 'agent\n'
   }
 
-  # __witty_shell_dispatch is kept for compatibility but no longer called
-  # from the readline bindings flow (deferred dispatch via PROMPT_COMMAND is used instead).
   __witty_shell_dispatch() {
     local route="${1:-}"
     shift || true
@@ -146,7 +178,7 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       shift || true
     fi
     local raw="$*"
-    __witty_preserve_history "$raw"
+    builtin history -s -- "$raw" 2>/dev/null || true
     case "$route" in
     agent)
       command "$__WITTY_BINARY" ask -- "$raw"
@@ -161,63 +193,83 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     esac
   }
 
-  # __witty_deferred_dispatch runs from PROMPT_COMMAND.
-  # It picks up the route and raw text set by __witty_pre_accept
-  # and executes witty in the normal shell context — not inside bind -x.
-  __witty_deferred_dispatch() {
-    if [ -z "${__WITTY_DEFERRED_ROUTE:-}" ]; then
-      return 0
-    fi
-    local route="$__WITTY_DEFERRED_ROUTE"
-    local raw="$__WITTY_DEFERRED_RAW"
-    unset __WITTY_DEFERRED_ROUTE __WITTY_DEFERRED_RAW
-    history -s "$raw" 2>/dev/null || true
-    case "$route" in
-    agent)
-      command "$__WITTY_BINARY" ask -- "$raw"
-      ;;
-    control)
-      command "$__WITTY_BINARY" shell-control -- "$raw"
-      ;;
-    esac
-  }
-
-  __witty_pre_accept() {
-    local raw="${READLINE_LINE:-}"
+  __witty_debug_hook() {
+    local cmd="${BASH_COMMAND:-}"
+    [ -z "$cmd" ] && return 0
     local route=""
-    route="$(__witty_classify "$raw")"
+    route="$(__witty_classify "$cmd")"
+    __witty_debug "classify ${route}: ${cmd}"
     case "$route" in
     empty | shell)
-      __witty_debug "keep ${route}: ${raw}"
       return 0
       ;;
     agent | control)
-      __witty_debug "defer ${route}: ${raw}"
-      __WITTY_DEFERRED_ROUTE="$route"
-      __WITTY_DEFERRED_RAW="$raw"
-      READLINE_LINE=""
-      ;;
-    *)
-      __witty_debug "unknown classification: ${route}"
+      __witty_shell_dispatch "$route" -- "$cmd"
+      return 1
       ;;
     esac
+    return 0
   }
+
+  __witty_command_not_found_handle() {
+    local cmd="$1"
+    shift || true
+    if __witty_should_enable 2>/dev/null; then
+      command "$__WITTY_BINARY" ask -- "$cmd $*"
+      return $?
+    fi
+    printf 'witty: command not found: %s\n' "$cmd" >&2
+    return 127
+  }
+
+  if [ "$(type -t command_not_found_handle 2>/dev/null)" = "function" ]; then
+    __witty_prev_command_not_found_handle=command_not_found_handle
+  fi
+  command_not_found_handle() { __witty_command_not_found_handle "$@"; }
 
   __witty_install_bindings() {
     if [ "${__WITTY_BINDINGS_INSTALLED:-}" = "1" ]; then
       return 0
     fi
     __witty_should_enable || return 0
-    bind -x '"\C-x\C-w": __witty_pre_accept' || return 0
-    bind '"\C-x\C-a": accept-line' || return 0
-    bind '"\C-m": "\C-x\C-w\C-x\C-a"' || return 0
-    bind '"\C-j": "\C-x\C-w\C-x\C-a"' || return 0
-    case "${PROMPT_COMMAND:-}" in
-    *__witty_deferred_dispatch*) ;;
-    *) PROMPT_COMMAND="__witty_deferred_dispatch${PROMPT_COMMAND:+;$PROMPT_COMMAND}" ;;
-    esac
+
+    declare -gA __WITTY_CMD_CACHE 2>/dev/null || true
+
+    shopt -s extdebug
+
+    local _wit_hig="__witty_shell_dispatch *"
+    if [ -n "${HISTIGNORE:-}" ]; then
+      case ":$HISTIGNORE:" in
+      *":$_wit_hig:"*) ;;
+      *) HISTIGNORE="${_wit_hig}:${HISTIGNORE}" ;;
+      esac
+    else
+      HISTIGNORE="${_wit_hig}"
+    fi
+    export HISTIGNORE
+
+    __witty_prev_debug_trap=""
+    if [ "$(trap -p DEBUG)" ]; then
+      __witty_prev_debug_trap=$(trap -p DEBUG)
+    fi
+    trap '__witty_debug_hook' DEBUG
+
     __WITTY_BINDINGS_INSTALLED=1
     __witty_debug 'bindings installed'
+  }
+
+  __witty_uninstall_bindings() {
+    if [ "${__WITTY_BINDINGS_INSTALLED:-}" != "1" ]; then
+      return 0
+    fi
+    if [ -n "$__witty_prev_debug_trap" ]; then
+      eval "$__witty_prev_debug_trap"
+    else
+      trap - DEBUG
+    fi
+    shopt -u extdebug
+    __WITTY_BINDINGS_INSTALLED=0
+    __witty_debug 'bindings uninstalled'
   }
 
   __witty_install_bindings

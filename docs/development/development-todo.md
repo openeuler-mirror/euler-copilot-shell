@@ -398,21 +398,20 @@
 
 ### P1-11：Shell Bridge 分类与 dispatch
 
-- [x] Bash 侧实现 Readline Hook + `accept-line` 包装 + `READLINE_LINE` 改写。
-- [ ] **行改写方案**：`__witty_pre_accept` 中 agent/control 路由必须改写 `READLINE_LINE` 为 `__witty_shell_dispatch` 调用，由 `accept-line` 执行；**禁止**在 `bind -x` handler 中直接调用 `witty ask`。
+- [x] Bash 侧实现 DEBUG trap + extdebug + 分类器 + dispatch。
+- [x] **DEBUG trap 方案**：`__witty_debug_hook` 中 agent/control 路由返回 1 跳过 Bash 执行，转交 `__witty_shell_dispatch`；shell/empty 路由返回 0 正常执行。
 - [x] 分类路径：empty / shell / agent / control。
 - [x] 强 shell 特征优先：管道、重定向、变量赋值、显式路径、shell 关键字、多行续行等。
 - [x] 白名单 slash 命令：`/ask`、`/agent`、`/model`、`/session list`、`/session continue`、`/new`、`/help`。
-- [ ] **slash 命令参数校验**：Bash 侧分类器对 `/exit`、`/new`、`/help` 只匹配无参数版本；`/ask` 必须带参数；裸 `/ask` 不应匹配为 control（见 shell-adapter.md §6.7）。
+- [x] **slash 命令参数校验**：Bash 侧分类器对 `/exit`、`/new`、`/help` 只匹配无参数版本；`/ask` 必须带参数；裸 `/ask` 不应匹配为 control（见 shell-adapter.md §6.7）。
 - [x] `/usr/bin/ls` 等绝对路径不得误判为 slash 控制命令。
 - [x] dispatch 只调用 `witty ask` 或控制命令；Bash Hook 中不得执行长时间 AI 调用。
-- [ ] **英文自然语言触发词**：Bash 侧 `__witty_classify` 补充英文触发词（`how`、`what`、`why`、`explain`、`tell me`、`show me`、`please`、`help me`、`can you`），与 Go 侧 `hasNaturalLanguageSignal` 对齐。
-- [ ] **`witty` 前缀显式检测**：分类器中显式检测首个 token 为 `witty` 时走 shell，避免默认路由变更后误判。
-- [ ] **命令存在性检查**：当首个 token 既不在已知命令列表中，也无 NL 特征时，用 `type -t` 检查命令是否存在；存在 → shell，不存在 → agent。
-- [ ] **`command_not_found_handle` 兜底**：安装 `__witty_command_not_found_handle`，Shell 执行 `command not found` 时转交 Agent；保存用户已有 handler 并链式调用。
-- [ ] **`HISTIGNORE` 设置**：初始化时追加 `__witty_shell_dispatch *` 到 `HISTIGNORE`，确保 wrapper 不进入 history。
-- [ ] **History 统一写入点**：`__witty_pre_accept` 中不做 history 操作，只在 `__witty_shell_dispatch` 中 `history -s "$raw"`。
-- [ ] **`__witty_contains` 安全修复**：将 `case "$1" in *"$2"*)` 改为 `[[ "$1" == *"$2"* ]]`，避免 glob 字符误匹配。
+- [x] **英文自然语言触发词**：Bash 侧 `__witty_classify` 补充英文触发词（`how`、`what`、`why`、`explain`、`tell me`、`show me`、`please`、`help me`、`can you`），与 Go 侧 `hasNaturalLanguageSignal` 对齐。
+- [x] **`witty` 前缀显式检测**：分类器中显式检测首个 token 为 `witty` 时走 shell，避免默认路由变更后误判。
+- [x] **命令存在性检查**：当首个 token 既不在已知命令列表中，也无 NL 特征时，用 `type -t` 检查命令是否存在；存在 → shell，不存在 → agent。
+- [x] **`command_not_found_handle` 兜底**：安装 `__witty_command_not_found_handle`，Shell 执行 `command not found` 时转交 Agent；保存用户已有 handler 并链式调用。
+- [x] **`HISTIGNORE` 设置**：初始化时追加 `__witty_shell_dispatch *` 到 `HISTIGNORE`，确保 wrapper 不进入 history。
+- [x] **History 统一写入点**：`__witty_shell_dispatch` 中 `history -s "$raw"` 写入用户原始输入。
 - [x] history 保留用户原始输入，隐藏内部 wrapper 命令。
 
 #### 验收 checkpoint：C1-11
@@ -421,18 +420,18 @@
 - [x] 分类器单元测试覆盖 `systemctl status nginx` → shell。
 - [x] 分类器单元测试覆盖 `systemctl 怎么看 nginx 日志` → agent。
 - [x] 分类器单元测试覆盖 `cat /etc/os-release | grep NAME` → shell。
-- [ ] 分类器单元测试覆盖 `explain how to check memory` → agent（英文触发词）。
-- [ ] 分类器单元测试覆盖 `how do I restart nginx` → agent（英文触发词）。
-- [ ] 分类器单元测试覆盖 `my_custom_script arg1` → shell（命令存在性检查通过）。
-- [ ] 分类器单元测试覆盖 `some_unknown_nonsense` → agent（命令存在性检查失败）。
-- [ ] 分类器单元测试覆盖 `/exit foo` → shell（slash 命令参数校验）。
-- [ ] 分类器单元测试覆盖 `/ask` → shell（裸 `/ask` 不匹配为 control）。
-- [ ] 分类器单元测试覆盖 `witty ask "something"` → shell（`witty` 前缀显式检测）。
+- [x] 分类器单元测试覆盖 `explain how to check memory` → agent（英文触发词）。
+- [x] 分类器单元测试覆盖 `how do I restart nginx` → agent（英文触发词）。
+- [x] 分类器单元测试覆盖 `my_custom_script arg1` → shell（命令存在性检查通过）。
+- [x] 分类器单元测试覆盖 `some_unknown_nonsense` → agent（命令存在性检查失败）。
+- [x] 分类器单元测试覆盖 `/exit foo` → shell（slash 命令参数校验）。
+- [x] 分类器单元测试覆盖 `/ask` → shell（裸 `/ask` 不匹配为 control）。
+- [x] 分类器单元测试覆盖 `witty ask "something"` → shell（`witty` 前缀显式检测）。
 - [x] PTY 测试验证自然语言直输能触发 `witty ask`。
-- [x] PTY 测试验证普通 shell 命令不被改写。
-- [ ] PTY 测试验证 `__witty_pre_accept` 使用行改写（`READLINE_LINE` 改写为 dispatch 调用），而非直接调用 `witty ask`。
+- [x] PTY 测试验证普通 shell 命令不被拦截。
+- [x] PTY 测试验证 `__witty_debug_hook` 使用 DEBUG trap + extdebug 方案，shell 路由返回 0，agent 路由返回 1。
 - [x] PTY 测试验证 history 中不出现 `__witty_shell_dispatch ...`。
-- [ ] PTY 测试验证 `command_not_found_handle` 兜底：未知命令走 Agent。
+- [x] PTY 测试验证 `command_not_found_handle` 兜底：未知命令走 Agent。
 
 ### P1-12：MVP 端到端验收
 

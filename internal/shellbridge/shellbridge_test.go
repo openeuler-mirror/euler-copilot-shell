@@ -42,6 +42,18 @@ func TestClassify_RoutingRules(t *testing.T) {
 		{line: "FOO=bar go test ./...", want: RouteShell},
 		{line: "if true; then echo ok; fi", want: RouteShell},
 		{line: "explain how to check memory", want: RouteAgent},
+		{line: "how do I restart nginx", want: RouteAgent},
+		{line: "witty ask something", want: RouteShell},
+		{line: "/exit foo", want: RouteAgent},
+		{line: "/new extra", want: RouteAgent},
+		{line: "/help me", want: RouteAgent},
+		{line: "/ask", want: RouteAgent},
+		{line: "some_unknown_nonsense", want: RouteAgent},
+		{line: "please show me the logs", want: RouteAgent},
+		{line: "what is the kernel version", want: RouteAgent},
+		{line: "can you check the disk space", want: RouteAgent},
+		{line: "为什么服务启动失败", want: RouteAgent},
+		{line: "看看系统日志", want: RouteAgent},
 	}
 
 	for _, tt := range tests {

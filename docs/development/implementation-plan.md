@@ -40,7 +40,7 @@
 
 ### 为什么 Shell Adapter 保持 Bash 原生实现
 
-Shell Adapter 依赖 Bash 的 `bind -x`、`READLINE_LINE`、`READLINE_POINT`、`accept-line` 包装和 `history -s` 等 Readline 语义，由 `witty init bash` 输出为 Bash 初始化脚本。详见 [`../design/shell-adapter.md`](../design/shell-adapter.md)。
+Shell Adapter 依赖 Bash 的 `DEBUG` trap、`extdebug`、`BASH_COMMAND` 和 `history -s` 等 Bash 语义，由 `witty init bash` 输出为 Bash 初始化脚本。详见 [`../design/shell-adapter.md`](../design/shell-adapter.md)。
 
 ## 2.2 关键依赖建议
 
@@ -400,12 +400,12 @@ timeout_seconds = 5
 
 ### 模板内容应包含
 
-1. 安装前提检查：Bash / 交互式 / TTY / Readline
+1. 安装前提检查：Bash / 交互式 / TTY
 2. 幂等保护
-3. `__witty_pre_accept`
+3. `__witty_debug_hook`
 4. `__witty_classify`
 5. `__witty_shell_dispatch`
-6. Enter 包装与 key binding
+6. `shopt -s extdebug` 与 `trap '__witty_debug_hook' DEBUG`
 7. `WITTY_SHELL_ENABLE` / `WITTY_SHELL_DEBUG`
 8. history 处理
 
@@ -450,18 +450,20 @@ sequenceDiagram
     participant CLI as witty ask / shell-control
     participant CORE as Go Core
 
-    B->>A: 用户按 Enter
-    A->>A: 读取 READLINE_LINE
+    B->>A: 用户按 Enter，DEBUG trap 触发
+    A->>A: 读取 BASH_COMMAND
     A->>A: classify
     alt shell
-        A-->>B: 保留原始命令
+        A-->>B: 返回 0，Bash 正常执行
     else agent
-        A->>B: 改写为 __witty_shell_dispatch agent -- <raw>
-        B->>CLI: witty ask <raw>
+        A->>A: 调用 __witty_shell_dispatch agent -- <raw>
+        A-->>B: 返回 1，跳过 Bash 执行
+        A->>CLI: witty ask <raw>
         CLI->>CORE: 统一执行管线
     else control
-        A->>B: 改写为 __witty_shell_dispatch control -- <raw>
-        B->>CLI: witty shell-control <raw>
+        A->>A: 调用 __witty_shell_dispatch control -- <raw>
+        A-->>B: 返回 1，跳过 Bash 执行
+        A->>CLI: witty shell-control <raw>
     end
 ```
 

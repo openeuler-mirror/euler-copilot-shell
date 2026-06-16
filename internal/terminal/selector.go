@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mattn/go-runewidth"
 	"golang.org/x/term"
 )
 
@@ -41,17 +42,21 @@ func RunSelector(in *os.File, out *os.File, title string, options []ListOption) 
 		fmt.Fprint(out, "\r\n")
 	}()
 
+	termWidth := Width(out)
+
 	cursor := 0
 	render := func() {
 		var buf strings.Builder
-		// Clear screen area and move to top
-		buf.WriteString("\r")
 		if title != "" {
+			buf.WriteString("\x1b[G")  // move to column 1
 			buf.WriteString("\x1b[1m") // bold
 			buf.WriteString(title)
-			buf.WriteString("\x1b[0m\r\n")
+			buf.WriteString("\x1b[0m") // reset
+			buf.WriteString("\x1b[K")  // clear to end of line
+			buf.WriteString("\r\n")
 		}
 		for i, opt := range options {
+			buf.WriteString("\x1b[G") // move to column 1
 			if i == cursor {
 				buf.WriteString("\x1b[7m") // reverse video
 				buf.WriteString(" > ")
@@ -62,17 +67,19 @@ func RunSelector(in *os.File, out *os.File, title string, options []ListOption) 
 			if i == cursor {
 				buf.WriteString("\x1b[0m")
 			}
+			buf.WriteString("\x1b[K") // clear to end of line
 			buf.WriteString("\r\n")
 		}
-		// Move cursor back up to start for next render
-		lines := len(options)
-		if title != "" {
-			lines++
-		}
-		buf.WriteString(fmt.Sprintf("\x1b[%dA", lines))
+		// Move cursor back up to start for next render.
+		// Count physical screen lines, accounting for line wrapping.
+		totalLines := selectorScreenLines(title, options, termWidth)
+		buf.WriteString(fmt.Sprintf("\x1b[%dA", totalLines))
 		fmt.Fprint(out, buf.String())
 	}
 
+	// Initial render: clear from cursor to end of screen so stale prompt
+	// content does not interfere with the selector display.
+	fmt.Fprint(out, "\x1b[0J")
 	render()
 
 	buf := make([]byte, 6)
@@ -88,29 +95,13 @@ func RunSelector(in *os.File, out *os.File, title string, options []ListOption) 
 		seq := buf[:n]
 		switch {
 		case isKey(seq, 3), isKey(seq, 27): // Ctrl+C or Escape
-			// Clear the selector area
-			lines := len(options)
-			if title != "" {
-				lines++
-			}
-			fmt.Fprint(out, strings.Repeat("\x1b[B", lines))        // move down
-			fmt.Fprint(out, strings.Repeat("\x1b[A\x1b[2K", lines)) // clear lines
+			clearSelectorLines(out, title, options, termWidth)
 			return nil, nil
 		case isKey(seq, 'q'), isKey(seq, 'Q'):
-			lines := len(options)
-			if title != "" {
-				lines++
-			}
-			fmt.Fprint(out, strings.Repeat("\x1b[B", lines))
-			fmt.Fprint(out, strings.Repeat("\x1b[A\x1b[2K", lines))
+			clearSelectorLines(out, title, options, termWidth)
 			return nil, nil
 		case isEnter(seq):
-			// Move cursor to end of list before returning
-			lines := len(options)
-			if title != "" {
-				lines++
-			}
-			fmt.Fprint(out, strings.Repeat("\x1b[B", lines-cursor))
+			moveToSelectorEnd(out, title, options, cursor, termWidth)
 			fmt.Fprint(out, "\r\n")
 			return &SelectResult{Index: cursor, Value: options[cursor].Value}, nil
 		case isUpArrow(seq):
@@ -134,6 +125,60 @@ func RunSelector(in *os.File, out *os.File, title string, options []ListOption) 
 			}
 			render()
 		}
+	}
+}
+
+// selectorScreenLines computes how many physical screen lines the selector
+// occupies, accounting for line wrapping when termWidth is known.
+func selectorScreenLines(title string, options []ListOption, termWidth int) int {
+	total := 0
+	if title != "" {
+		total++
+	}
+	if termWidth <= 0 {
+		return total + len(options)
+	}
+	for _, opt := range options {
+		// +3 for the 3-char prefix (" > " or "   ")
+		labelW := runewidth.StringWidth(opt.Label) + 3
+		lines := (labelW + termWidth - 1) / termWidth
+		if lines < 1 {
+			lines = 1
+		}
+		total += lines
+	}
+	return total
+}
+
+// clearSelectorLines clears the area occupied by the selector.
+func clearSelectorLines(out *os.File, title string, options []ListOption, termWidth int) {
+	total := selectorScreenLines(title, options, termWidth)
+	fmt.Fprint(out, strings.Repeat("\x1b[B", total))
+	fmt.Fprint(out, strings.Repeat("\x1b[A\x1b[2K", total))
+}
+
+// moveToSelectorEnd moves the cursor past the selector display area.
+func moveToSelectorEnd(out *os.File, title string, options []ListOption, cursor int, termWidth int) {
+	totalLines := selectorScreenLines(title, options, termWidth)
+	cursorLine := 0
+	if title != "" {
+		cursorLine++
+	}
+	for i := 0; i < cursor; i++ {
+		labelW := runewidth.StringWidth(options[i].Label) + 3
+		if termWidth > 0 {
+			lines := (labelW + termWidth - 1) / termWidth
+			if lines < 1 {
+				lines = 1
+			}
+			cursorLine += lines
+		} else {
+			cursorLine++
+		}
+	}
+	remaining := totalLines - cursorLine
+	if remaining > 0 {
+		fmt.Fprint(out, strings.Repeat("\x1b[B", remaining))
 	}
 }
 

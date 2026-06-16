@@ -33,7 +33,11 @@ func Classify(input string) Classification {
 	if isSlashControl(line) {
 		return Classification{Route: RouteControl, Reason: "whitelisted slash control"}
 	}
-	if first := firstField(line); isExplicitPath(first) {
+	first := firstField(line)
+	if isWittyCommand(first) {
+		return Classification{Route: RouteShell, Reason: "witty command"}
+	}
+	if isExplicitPath(first) {
 		return Classification{Route: RouteShell, Reason: "explicit path"}
 	}
 	if hasStrongShellSyntax(line) {
@@ -42,7 +46,6 @@ func Classify(input string) Classification {
 	if assignmentPattern.MatchString(line) {
 		return Classification{Route: RouteShell, Reason: "assignment"}
 	}
-	first := firstField(line)
 	if isShellKeyword(first) {
 		return Classification{Route: RouteShell, Reason: "shell keyword"}
 	}
@@ -52,7 +55,7 @@ func Classify(input string) Classification {
 	if isKnownShellCommand(first) {
 		return Classification{Route: RouteShell, Reason: "known shell command"}
 	}
-	return Classification{Route: RouteShell, Reason: "default shell route"}
+	return Classification{Route: RouteAgent, Reason: "agent fallback: unknown command without NL signal"}
 }
 
 func isSlashControl(line string) bool {
@@ -62,14 +65,32 @@ func isSlashControl(line string) bool {
 	}
 	switch strings.ToLower(fields[0]) {
 	case "/exit", "/quit", "/q":
-		return true
-	case "/ask", "/agent", "/model", "/new", "/help":
+		return len(fields) == 1
+	case "/new", "/help":
+		return len(fields) == 1
+	case "/ask":
+		return len(fields) >= 2
+	case "/agent", "/model":
 		return true
 	case "/session":
-		return len(fields) >= 2 && (fields[1] == "list" || fields[1] == "continue")
+		if len(fields) < 2 {
+			return false
+		}
+		switch fields[1] {
+		case "list":
+			return len(fields) == 2
+		case "continue":
+			return len(fields) == 3
+		default:
+			return false
+		}
 	default:
 		return false
 	}
+}
+
+func isWittyCommand(first string) bool {
+	return first == "witty"
 }
 
 func firstField(line string) string {
@@ -81,11 +102,16 @@ func firstField(line string) string {
 }
 
 func isExplicitPath(first string) bool {
-	return strings.HasPrefix(first, "/") ||
-		strings.HasPrefix(first, "./") ||
-		strings.HasPrefix(first, "../") ||
-		strings.HasPrefix(first, "~/") ||
-		strings.Contains(first, "/")
+	if !strings.HasPrefix(first, "/") {
+		return strings.HasPrefix(first, "./") ||
+			strings.HasPrefix(first, "../") ||
+			strings.HasPrefix(first, "~/") ||
+			strings.Contains(first, "/")
+	}
+	if strings.HasPrefix(first, "/") && !strings.Contains(first[1:], "/") {
+		return false
+	}
+	return true
 }
 
 func hasStrongShellSyntax(line string) bool {
@@ -106,12 +132,16 @@ func hasNaturalLanguageSignal(line string) bool {
 			return true
 		}
 	}
-	lower := strings.ToLower(line)
 	if strings.ContainsAny(line, "?？") {
 		return true
 	}
+	lower := strings.ToLower(line)
 	for _, phrase := range []string{
-		"how ", "how do", "what ", "why ", "explain ", "tell me", "show me", "check ", "please ", "怎么看", "如何", "解释", "检查",
+		"how do ", "how ", "what's ", "what ", "why ", "explain ",
+		"tell me ", "show me ", "please ", "help me ",
+		"can you ", "is there ",
+		"怎么看", "如何", "帮我", "请", "分析", "解释",
+		"排查", "总结", "检查", "看看", "为什么", "是什么", "能不能",
 	} {
 		if strings.Contains(lower, phrase) {
 			return true
@@ -142,7 +172,10 @@ func isKnownShellCommand(first string) bool {
 		"gunzip", "zip", "unzip", "ssh", "scp", "rsync", "curl", "wget", "git", "go",
 		"make", "gcc", "dnf", "yum", "rpm", "systemctl", "journalctl", "service", "ps",
 		"top", "free", "df", "du", "ip", "ss", "ping", "sudo", "su", "env", "bash", "sh",
-		"python", "python3", "node", "npm", "docker", "podman", "kubectl":
+		"python", "python3", "node", "npm", "docker", "podman", "kubectl",
+		"jq", "yq", "helm", "terraform", "cargo", "rustc", "brew",
+		"apt", "snap", "pip", "pip3", "conda", "mvn", "gradle", "cmake", "ninja",
+		"vim", "nano", "tmux", "screen", "code":
 		return true
 	default:
 		return false
