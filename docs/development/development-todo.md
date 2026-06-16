@@ -433,6 +433,22 @@
 - [x] PTY 测试验证 history 中不出现 `__witty_shell_dispatch ...`。
 - [x] PTY 测试验证 `command_not_found_handle` 兜底：未知命令走 Agent。
 
+### P1-11B：全局 Shell 集成（`/etc/profile.d/witty.sh`）
+
+- [ ] 创建 `packaging/profile.d/witty.sh` 入口脚本，内容为 `eval "$(witty init bash 2>/dev/null)" || true`，带 `BASH_VERSION` 和幂等检查。
+- [ ] RPM spec 中声明 `%config(noreplace) /etc/profile.d/witty.sh`，安装/卸载不修改系统 bashrc。
+- [ ] 用户禁用机制：`WITTY_SHELL_ENABLE=0` 在 `~/.bashrc` 中设置后，`witty init bash` 内部跳过绑定。
+- [ ] 卸载验证：RPM 卸载后 `/etc/profile.d/witty.sh` 被删除，新打开的 shell 不再加载 witty 集成。
+- [ ] 升级验证：RPM 升级后 `/etc/profile.d/witty.sh` 被更新，新打开的 shell 加载新版本逻辑。
+
+#### 验收 checkpoint：C1-11B
+
+- [ ] 在 openEuler 上安装 RPM 后，新打开的交互式 Bash 自动加载 witty 集成。
+- [ ] 在 `~/.bashrc` 中加 `export WITTY_SHELL_ENABLE=0` 后，witty 集成不加载。
+- [ ] RPM 卸载后，新打开的 shell 无 witty 集成残留。
+- [ ] `witty` 二进制不存在时，`/etc/profile.d/witty.sh` 不报错（`2>/dev/null || true`）。
+- [ ] 非交互式 shell（如 `bash -c 'echo hello'`）不加载 witty 集成。
+
 ### P1-12：MVP 端到端验收
 
 #### 验收 checkpoint：C1-E2E
@@ -526,11 +542,13 @@
 
 #### 验收 checkpoint：C2-5
 
-- [ ] PTY 测试验证 history。
-- [ ] debug 模式能解释为什么某一行走 shell/agent/control。
-- [ ] 禁用开关生效后 Enter 行为恢复 Bash 默认。
+- [ ] PTY 测试验证 history：Agent 路由后 `history` 显示用户原始输入，不含 `__witty_shell_dispatch`。
+- [ ] debug 模式能解释为什么某一行走 shell/agent/control（`WITTY_SHELL_DEBUG=1` 输出路由决策）。
+- [ ] 禁用开关生效后 DEBUG trap 不安装，Bash 行为完全恢复默认。
+- [ ] `__witty_uninstall_bindings` 后 DEBUG trap 恢复为安装前的状态。
 - [ ] `set -o vi` 模式下自然语言直输能触发 Agent。
-- [ ] heredoc 输入（`cat <<EOF`）不受 `\C-j` 绑定影响。
+- [ ] 多命令和管道场景不被误路由。
+- [ ] RPM 安装后 `/etc/profile.d/witty.sh` 对所有新会话生效。
 
 ### P2-6：Phase 2 端到端验收
 

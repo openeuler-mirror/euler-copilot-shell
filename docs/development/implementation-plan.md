@@ -185,6 +185,8 @@ shell/
 
   packaging/
     rpm/
+    profile.d/
+      witty.sh
 
   docs/
     design/
@@ -412,8 +414,39 @@ timeout_seconds = 5
 ### 重要约束
 
 - 分类规则应尽量留在 Bash 模板中，与设计文档保持一致。
-- Go 侧不负责在运行时“远程控制”Readline。
+- Go 侧不负责在运行时"远程控制"Readline。
 - 输出脚本必须可被 `shellcheck` / `shfmt` 检查。
+
+### 全局集成机制
+
+RPM 安装时，通过 `/etc/profile.d/witty.sh` 实现对所有用户的默认集成，无需用户手动配置 `eval "$(witty init bash)"`：
+
+```bash
+# /etc/profile.d/witty.sh — 由 RPM 安装/卸载
+if [ -n "${BASH_VERSION:-}" ] && [ -z "${__WITTY_SHELL_INIT_LOADED:-}" ]; then
+    eval "$(witty init bash 2>/dev/null)" || true
+fi
+```
+
+设计要点：
+
+1. **不修改系统 bashrc**：RPM 仅安装/删除 `/etc/profile.d/witty.sh`
+2. **默认对所有用户生效**：`/etc/profile.d/*.sh` 由 `/etc/profile` 和 `/etc/bashrc` 自动 source
+3. **用户可关闭**：`~/.bashrc` 中加 `export WITTY_SHELL_ENABLE=0`
+4. **卸载即移除**：RPM 卸载时自动删除，零残留
+5. **优雅降级**：`2>/dev/null || true` 确保 witty 未安装时不报错
+
+RPM spec 中对应配置：
+
+```spec
+# 安装
+install -Dm 644 packaging/profile.d/witty.sh %{buildroot}/etc/profile.d/witty.sh
+
+# 文件声明
+/etc/profile.d/witty.sh
+```
+
+> **注意**：`/etc/profile.d/witty.sh` 是一个轻量级入口脚本，仅调用 `witty init bash`。实际的 Shell Adapter 逻辑（分类器、DEBUG trap、dispatch 等）仍由 `witty init bash` 动态输出，确保版本升级时逻辑自动更新。
 
 ### 测试建议
 
@@ -1052,7 +1085,7 @@ var TemplateFS embed.FS  // 嵌入整个目录（递归）
 | Phase | 核心交付 | 关键验收 |
 | --- | --- | --- |
 | 0：工程脚手架 | Go module、`cmd/witty`、Cobra 命令树、slog、config 加载、vendored OpenAPI spec | `witty --help` / `witty version` / `witty init bash` 占位模板 |
-| 1：核心 MVP | transport、session、event 归一化、AskRunner、Phase 1 渲染器、permission/question 处理、Bash Adapter | `witty ask` + Shell 直输闭环，按 Markdown 块边界持续输出 |
+| 1：核心 MVP | transport、session、event 归一化、AskRunner、Phase 1 渲染器、permission/question 处理、Shell Adapter（DEBUG trap + extdebug）、全局集成（`/etc/profile.d/witty.sh`） | `witty ask` + Shell 直输闭环，按 Markdown 块边界持续输出，RPM 安装后默认全局生效 |
 | 2：REPL 与控制命令 | REPL 循环、slash 命令、`shell-control`、会话管理 | REPL 与 ask 单轮输出一致，shell 模式 control 路径可用 |
 | 3：展示与流式增强 | presenter、Phase 2 渲染器（即时回显+ANSI 擦除）、错误重试/重连 | tool/step/agent/permission/question 展示完整，Phase 2 渲染可开关 |
 | 4：产品化与运维 | `witty doctor`、配置/日志完善、RPM 打包、兼容性诊断 | 可发布产物，doctor 可定位常见接入问题 |
