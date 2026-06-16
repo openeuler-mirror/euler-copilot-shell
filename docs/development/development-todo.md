@@ -474,81 +474,86 @@
 
 ### P2-1：REPL 基础循环
 
-- [ ] `witty` 无参数进入 REPL。
-- [ ] prompt 显示当前 session / agent / model 的简要状态。
-- [ ] 普通文本输入调用 AskRunner。
-- [ ] Ctrl+C 取消当前请求但不一定退出 REPL。
-- [ ] Ctrl+D / `/exit` 退出 REPL。
+- [x] `witty` 无参数进入 REPL。
+- [x] prompt 显示当前 session / agent / model 的简要状态。
+- [x] 普通文本输入调用 AskRunner。
+- [x] Ctrl+C 取消当前请求但不一定退出 REPL。
+- [x] Ctrl+D / `/exit` 退出 REPL。
 
 #### 验收 checkpoint：C2-1
 
-- [ ] REPL 中输入 `检查系统内存` 能得到与 `witty ask` 一致的输出。
-- [ ] 当前请求 Ctrl+C 后 goroutine 退出，无卡死。
-- [ ] Ctrl+D 返回 0 或约定退出码。
+- [x] REPL 中输入 `检查系统内存` 能得到与 `witty ask` 一致的输出。
+- [x] 当前请求 Ctrl+C 后 goroutine 退出，无卡死。
+- [x] Ctrl+D 返回 0 或约定退出码。
 
 ### P2-2：Slash 命令解释器
 
-- [ ] `/help`。
-- [ ] `/new`。
-- [ ] `/session list`。
-- [ ] `/session continue <id>`。
-- [ ] `/agent <name>`。
-- [ ] `/model <id>`。
-- [ ] `/ask <prompt>`。
-- [ ] `/exit`。
-- [ ] 未知 slash 命令给出建议。
+- [x] `/help`。
+- [x] `/new`。
+- [x] `/session list`。
+- [x] `/session continue <id>`。
+- [x] `/agent <name>`。
+- [x] `/model <id>`。
+- [x] `/ask <prompt>`。
+- [x] `/exit`。
+- [x] 未知 slash 命令给出建议。
 
 #### 验收 checkpoint：C2-2
 
-- [ ] REPL slash 命令 table-driven tests 覆盖。
-- [ ] Shell Adapter control 命令与 REPL 使用同一解析/执行逻辑或共享同一语义测试。
-- [ ] `/usr/bin/ls` 在 Shell 模式仍不被当成 slash 命令。
+- [x] REPL slash 命令 table-driven tests 覆盖。
+- [x] Shell Adapter control 命令与 REPL 使用同一解析/执行逻辑或共享同一语义测试。
+- [x] `/usr/bin/ls` 在 Shell 模式仍不被当成 slash 命令。
 
 ### P2-3：Session 控制与 auto resume
 
-- [ ] `repl.auto_resume` 生效。
-- [ ] `/new` 创建新 session 并设为当前。
-- [ ] `/session continue <id>` 切换当前 session。
-- [ ] session 列表输出包含 id、title/summary、更新时间。
+- [x] `repl.auto_resume` 生效。
+- [x] `/new` 创建新 session 并设为当前。
+- [x] `/session continue <id>` 切换当前 session。
+- [x] session 列表输出包含 id、title/summary、更新时间。
 
 #### 验收 checkpoint：C2-3
 
-- [ ] REPL 重启后按配置恢复或不恢复 session。
-- [ ] session id 无效时不改变当前 session。
-- [ ] session 列表非 TTY 输出可被脚本消费。
+- [x] REPL 重启后按配置恢复或不恢复 session。
+- [x] session id 无效时不改变当前 session。
+- [x] session 列表非 TTY 输出可被脚本消费。
 
 ### P2-4：Shell control 路径
 
-- [ ] Shell 直输 `/new` 转到 witty 控制命令。
-- [ ] Shell 直输 `/session list` 展示列表。
-- [ ] Shell 直输 `/session continue <id>` 切换后续默认 session。
-- [ ] Shell 直输 `/agent`、`/model` 更新默认值或当前 shell 会话状态。
+- [x] Shell 直输 `/new` 转到 witty 控制命令。
+- [x] Shell 直输 `/session list` 展示列表。
+- [x] Shell 直输 `/session continue <id>` 切换后续默认 session。
+- [x] Shell 直输 `/agent`、`/model` 更新默认值或当前 shell 会话状态。
 
 #### 验收 checkpoint：C2-4
 
-- [ ] PTY 测试覆盖 `/new`、`/session list`、`/session continue`。
-- [ ] 控制命令的退出码可被 Bash 正确感知。
-- [ ] 控制命令不会触发 AI 请求。
+- [x] PTY 测试覆盖 `/new`、`/session list`、`/session continue`。
+- [x] 控制命令的退出码可被 Bash 正确感知。
+- [x] 控制命令不会触发 AI 请求。
 
-### P2-5：History、debug 与可关闭性
+### P2-5：History、debug、可关闭性与全局集成
 
-- [ ] Shell Adapter debug 模式可输出路由决策到 stderr 或日志。
-- [ ] 提供环境变量禁用 Shell Adapter。
-- [ ] history 保真：用户看到和检索的是原始输入。
-- [ ] 内部 dispatch 命令不进入历史或可被清理（`HISTIGNORE` 设置）。
-- [ ] `vi-insert` keymap 绑定：支持 `set -o vi` 用户。
-- [ ] 只绑定 `\C-m`（CR）和 `\C-j`（LF），许多 PTY 环境发送 LF 而非 CR，两者都必须绑定。
-- [ ] `__witty_uninstall_bindings` 函数：支持运行时卸载绑定，恢复 Bash 默认 Enter 行为。
+- [x] Shell Adapter debug 模式可输出路由决策到 stderr（`__witty_debug` + `WITTY_SHELL_DEBUG`）。
+- [x] 提供环境变量禁用 Shell Adapter（`WITTY_SHELL_ENABLE=0` + `__witty_should_enable`）。
+- [x] history 保真：`__witty_shell_dispatch` 中 `history -s "$raw"` 写入用户原始输入。
+- [x] 内部 dispatch 命令不进入历史（`HISTIGNORE="__witty_shell_dispatch *"`）。
+- [x] `__witty_uninstall_bindings` 函数：恢复已有 DEBUG trap，关闭 `extdebug`。
+- [x] 已有 DEBUG trap 保存与链式调用（`__witty_prev_debug_trap`）。
+- [x] `extdebug` 安装与卸载（`shopt -s extdebug` / `shopt -u extdebug`）。
+- [x] 全局集成：创建 `packaging/profile.d/witty.sh` 入口脚本（见 P1-11B）。
+- [x] `set -o vi` 模式下自然语言直输能触发 Agent（DEBUG trap 不绑定 keymap，自动兼容；已验证 `set -o vi` + `extdebug` + DEBUG trap 正常工作）。
+- [x] 多条命令（`cmd1; cmd2`）和管道（`cmd1 | cmd2`）场景下 DEBUG trap 行为验证：`BASH_COMMAND` 逐条触发（非整行），但分类器中 `*";"*` / `*"|"*` 等强 shell 特征匹配在用户输入时即拦截整行，不会出现管道中某条命令被误分类为 agent 的情况。
+- [x] `witty init bash` 输出脚本中 `WITTY_SHELL_ENABLE` 和 `WITTY_SHELL_DEBUG` 的默认值与 `witty.yaml` 配置联动（`app.go` 中 `a.cfg.Shell.Enabled` / `a.cfg.Shell.Debug` 传入 `BashOptions`）。
+- [x] DEBUG trap 递归安全：Bash 的 DEBUG trap 在 trap handler 内部不会递归触发，`__witty_shell_dispatch` 中的 `command` 调用不会再次触发 `__witty_debug_hook`。
 
 #### 验收 checkpoint：C2-5
 
-- [ ] PTY 测试验证 history：Agent 路由后 `history` 显示用户原始输入，不含 `__witty_shell_dispatch`。
-- [ ] debug 模式能解释为什么某一行走 shell/agent/control（`WITTY_SHELL_DEBUG=1` 输出路由决策）。
-- [ ] 禁用开关生效后 DEBUG trap 不安装，Bash 行为完全恢复默认。
-- [ ] `__witty_uninstall_bindings` 后 DEBUG trap 恢复为安装前的状态。
-- [ ] `set -o vi` 模式下自然语言直输能触发 Agent。
-- [ ] 多命令和管道场景不被误路由。
-- [ ] RPM 安装后 `/etc/profile.d/witty.sh` 对所有新会话生效。
+- [x] PTY 测试验证 history：Agent 路由后 `history` 显示用户原始输入，不含 `__witty_shell_dispatch`。
+- [x] debug 模式能解释为什么某一行走 shell/agent/control（`WITTY_SHELL_DEBUG=1` 输出路由决策）。
+- [x] 禁用开关生效后 DEBUG trap 不安装，Bash 行为完全恢复默认。
+- [x] `__witty_uninstall_bindings` 后 DEBUG trap 恢复为安装前的状态。
+- [x] `set -o vi` 模式下自然语言直输能触发 Agent。
+- [x] 多命令和管道场景不被误路由。
+- [x] RPM 安装后 `/etc/profile.d/witty.sh` 对所有新会话生效。
 
 ### P2-6：Phase 2 端到端验收
 
