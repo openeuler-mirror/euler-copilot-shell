@@ -321,6 +321,146 @@ func TestShellbridge_ControlHistoryNoWrapper(t *testing.T) {
 	}
 }
 
+// TestShellbridge_DebugMode verifies that WITTY_SHELL_DEBUG=1 outputs routing
+// decisions (classify info) to stderr for agent-routed input.
+func TestShellbridge_DebugMode(t *testing.T) {
+	c := newConsole(t, 10*time.Second)
+	defer c.Close()
+
+	mockDir := setupMockWitty(t)
+	initPath := writeWittyInitScript(t, mockDir)
+	bashCmd, bashDone := startBashWithEnv(t, c, mockDir, []string{
+		"TERM=xterm-256color",
+		"WITTY_SHELL_ENABLE=1",
+		"WITTY_SHELL_DEBUG=1",
+	})
+	defer cleanupBash(t, bashCmd, bashDone, c)
+
+	waitForPrompt(t, c)
+	sourceWittyScript(t, c, initPath)
+
+	// Natural language input should be classified as agent with debug output.
+	c.SendLine(`检查系统内存`)
+	output, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String(`witty ask`))
+	if err != nil {
+		t.Fatalf("expected witty ask for natural language: %v", err)
+	}
+	// Debug output should contain classify routing decision on stderr.
+	if !strings.Contains(output, "classify") {
+		t.Fatalf("expected debug output containing 'classify', got: %q", output)
+	}
+}
+
+// TestShellbridge_DisableSwitch verifies that WITTY_SHELL_ENABLE=0 prevents
+// the DEBUG trap from installing and natural language falls through to bash's
+// command_not_found_handle.
+func TestShellbridge_DisableSwitch(t *testing.T) {
+	c := newConsole(t, 10*time.Second)
+	defer c.Close()
+
+	mockDir := setupMockWitty(t)
+	// Render script with ShellEnabled=false so the template default matches.
+	initPath := writeWittyInitScriptWithEnable(t, mockDir, false)
+	bashCmd, bashDone := startBashWithEnv(t, c, mockDir, []string{
+		"TERM=xterm-256color",
+		"WITTY_SHELL_ENABLE=0",
+	})
+	defer cleanupBash(t, bashCmd, bashDone, c)
+
+	waitForPrompt(t, c)
+	sourceWittyScript(t, c, initPath)
+
+	// Natural language input should NOT be intercepted by the DEBUG trap.
+	c.SendLine(`检查系统内存`)
+	output, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("command not found"))
+	if err != nil {
+		t.Fatalf("expected 'command not found' when shell adapter disabled: %v; output=%q", err, output)
+	}
+	// Must NOT dispatch through witty.
+	if strings.Contains(output, "witty ask") || strings.Contains(output, "witty shell-control") {
+		t.Fatal("disabled shell adapter should not dispatch to witty")
+	}
+}
+
+// TestShellbridge_UninstallBindings verifies __witty_uninstall_bindings restores
+// the previous DEBUG trap and subsequent natural language input is no longer
+// intercepted by the witty adapter.
+func TestShellbridge_UninstallBindings(t *testing.T) {
+	c := newConsole(t, 10*time.Second)
+	defer c.Close()
+
+	mockDir := setupMockWitty(t)
+	initPath := writeWittyInitScript(t, mockDir)
+	bashCmd, bashDone := startBashWithEnv(t, c, mockDir, []string{
+		"TERM=xterm-256color",
+		"WITTY_SHELL_ENABLE=1",
+	})
+	defer cleanupBash(t, bashCmd, bashDone, c)
+
+	waitForPrompt(t, c)
+	sourceWittyScript(t, c, initPath)
+
+	// First verify the adapter is active.
+	c.SendLine(`检查系统内存`)
+	_, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String(`witty ask`))
+	if err != nil {
+		t.Fatalf("expected witty ask before uninstall: %v", err)
+	}
+
+	// Uninstall the witty bindings.
+	c.SendLine(`__witty_uninstall_bindings`)
+	_, err = c.Expect(expect.WithTimeout(5*time.Second), expect.String("$ ", "# "))
+	if err != nil {
+		t.Fatalf("no prompt after uninstall: %v", err)
+	}
+
+	// Now natural language should fall through to bash's command_not_found_handle.
+	c.SendLine(`检查系统内存`)
+	output, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("command not found"))
+	if err != nil {
+		t.Fatalf("expected 'command not found' after uninstall: %v; output=%q", err, output)
+	}
+	if strings.Contains(output, "witty ask") || strings.Contains(output, "witty shell-control") {
+		t.Fatal("uninstalled shell adapter should not dispatch to witty")
+	}
+}
+
+// TestShellbridge_ViMode verifies that 'set -o vi' does not prevent natural
+// language input from being routed to the agent via the DEBUG trap. Since the
+// DEBUG trap does not bind to a specific keymap, vi mode should be transparent.
+func TestShellbridge_ViMode(t *testing.T) {
+	c := newConsole(t, 10*time.Second)
+	defer c.Close()
+
+	mockDir := setupMockWitty(t)
+	initPath := writeWittyInitScript(t, mockDir)
+	bashCmd, bashDone := startBashWithEnv(t, c, mockDir, []string{
+		"TERM=xterm-256color",
+		"WITTY_SHELL_ENABLE=1",
+	})
+	defer cleanupBash(t, bashCmd, bashDone, c)
+
+	waitForPrompt(t, c)
+
+	// Switch to vi mode before sourcing witty.
+	c.SendLine(`set -o vi`)
+	_, err := c.Expect(expect.WithTimeout(5*time.Second), expect.String("$ ", "# "))
+	if err != nil {
+		t.Fatalf("no prompt after set -o vi: %v", err)
+	}
+
+	sourceWittyScript(t, c, initPath)
+
+	// Natural language input (CJK) should still route to agent in vi mode.
+	c.SendLine(`检查系统内存`)
+	_, err = c.Expect(expect.WithTimeout(10*time.Second), expect.String(`witty ask`))
+	if err != nil {
+		t.Fatalf("expected witty ask in vi mode: %v", err)
+	}
+}
+
+// --- Helpers ---
+
 // setupMockWitty creates a temporary directory with a mock "witty" script.
 func setupMockWitty(t *testing.T) string {
 	t.Helper()
@@ -341,7 +481,23 @@ exit 0
 // to a temp file so bash can source it cleanly.
 func writeWittyInitScript(t *testing.T, mockDir string) string {
 	t.Helper()
-	script := renderBashScript(t, mockDir)
+	return writeWittyInitScriptWithEnable(t, mockDir, true)
+}
+
+// writeWittyInitScriptWithEnable renders the witty Bash integration script
+// with a specified ShellEnabled default and writes it to a temp file.
+func writeWittyInitScriptWithEnable(t *testing.T, mockDir string, enabled bool) string {
+	t.Helper()
+	r := shellinit.NewRenderer()
+	script, err := r.RenderBash(context.Background(), shellinit.BashOptions{
+		BinaryPath:   filepath.Join(mockDir, "witty"),
+		Version:      "test",
+		ShellEnabled: enabled,
+		ShellDebug:   false,
+	})
+	if err != nil {
+		t.Fatalf("render bash script: %v", err)
+	}
 	path := filepath.Join(t.TempDir(), "witty-init.bash")
 	if err := os.WriteFile(path, []byte(script), 0o644); err != nil {
 		t.Fatalf("write init script: %v", err)
@@ -368,13 +524,19 @@ func renderBashScript(t *testing.T, mockDir string) string {
 // startBash launches an interactive bash process using the console's Tty.
 func startBash(t *testing.T, c *expect.Console, mockDir string) (*exec.Cmd, <-chan struct{}) {
 	t.Helper()
-	done := make(chan struct{})
-	cmd := exec.Command("bash", "--norc", "--noprofile", "-i")
-	cmd.Env = append(os.Environ(),
+	return startBashWithEnv(t, c, mockDir, []string{
 		"TERM=xterm-256color",
 		"WITTY_SHELL_ENABLE=1",
-		"PATH="+mockDir+":"+os.Getenv("PATH"),
-	)
+	})
+}
+
+// startBashWithEnv launches an interactive bash process with custom environment variables.
+func startBashWithEnv(t *testing.T, c *expect.Console, mockDir string, extraEnv []string) (*exec.Cmd, <-chan struct{}) {
+	t.Helper()
+	done := make(chan struct{})
+	cmd := exec.Command("bash", "--norc", "--noprofile", "-i")
+	cmd.Env = append(os.Environ(), extraEnv...)
+	cmd.Env = append(cmd.Env, "PATH="+mockDir+":"+os.Getenv("PATH"))
 	cmd.Stdin = c.Tty()
 	cmd.Stdout = c.Tty()
 	cmd.Stderr = c.Tty()

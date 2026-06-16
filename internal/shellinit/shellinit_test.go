@@ -44,6 +44,7 @@ func TestBashTemplate(t *testing.T) {
 		`command "$__WITTY_BINARY" shell-control -- "$raw"`,
 		"HISTIGNORE",
 		"WITTY_SHELL_ENABLE",
+		"BASH_VERSINFO",
 	} {
 		if !strings.Contains(script, want) {
 			t.Fatalf("rendered script missing %q", want)

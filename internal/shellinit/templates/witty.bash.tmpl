@@ -31,6 +31,9 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       ;;
     esac
     [ -n "${BASH_VERSION:-}" ] || return 1
+    case "${BASH_VERSINFO[0]:-0}" in
+    [0-3]) return 1 ;;
+    esac
     case $- in
     *i*) ;;
     *) return 1 ;;
@@ -196,6 +199,15 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
   __witty_debug_hook() {
     local cmd="${BASH_COMMAND:-}"
     [ -z "$cmd" ] && return 0
+    local enabled="${WITTY_SHELL_ENABLE:-}"
+    if [ -z "$enabled" ]; then
+      enabled="$__WITTY_DEFAULT_ENABLE"
+    fi
+    case "$enabled" in
+    0 | false | FALSE | False | no | NO | No | off | OFF | Off)
+      return 0
+      ;;
+    esac
     local route=""
     route="$(__witty_classify "$cmd")"
     __witty_debug "classify ${route}: ${cmd}"
@@ -221,11 +233,6 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     printf 'witty: command not found: %s\n' "$cmd" >&2
     return 127
   }
-
-  if [ "$(type -t command_not_found_handle 2>/dev/null)" = "function" ]; then
-    __witty_prev_command_not_found_handle=command_not_found_handle
-  fi
-  command_not_found_handle() { __witty_command_not_found_handle "$@"; }
 
   __witty_install_bindings() {
     if [ "${__WITTY_BINDINGS_INSTALLED:-}" = "1" ]; then
@@ -254,6 +261,11 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     fi
     trap '__witty_debug_hook' DEBUG
 
+    if [ "$(type -t command_not_found_handle 2>/dev/null)" = "function" ]; then
+      __witty_prev_command_not_found_handle=$(declare -f command_not_found_handle)
+    fi
+    command_not_found_handle() { __witty_command_not_found_handle "$@"; }
+
     __WITTY_BINDINGS_INSTALLED=1
     __witty_debug 'bindings installed'
   }
@@ -268,6 +280,11 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       trap - DEBUG
     fi
     shopt -u extdebug
+    if [ -n "${__witty_prev_command_not_found_handle:-}" ]; then
+      eval "$__witty_prev_command_not_found_handle"
+    else
+      unset -f command_not_found_handle 2>/dev/null || true
+    fi
     __WITTY_BINDINGS_INSTALLED=0
     __witty_debug 'bindings uninstalled'
   }
