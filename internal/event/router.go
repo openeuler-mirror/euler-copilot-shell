@@ -3,10 +3,24 @@ package event
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
+	"net"
+	"net/url"
 	"strings"
+	"time"
 
 	"atomgit.com/openeuler/witty-cli/internal/transport"
+)
+
+const (
+	// maxSSERetries is the maximum number of reconnection attempts.
+	maxSSERetries = 3
+	// sseBackoffBase is the initial backoff duration for SSE reconnection.
+	sseBackoffBase = 1 * time.Second
+	// sseBackoffMax caps the backoff between retries.
+	sseBackoffMax = 10 * time.Second
 )
 
 type Source interface {
@@ -19,14 +33,17 @@ type Router interface {
 }
 
 type router struct {
-	source    Source
-	partTypes map[string]string
+	source      Source
+	partTypes   map[string]string
+	seenCallIDs map[string]bool
+	lastErr     error
 }
 
 func NewRouter(source Source) Router {
 	return &router{
-		source:    source,
-		partTypes: make(map[string]string),
+		source:      source,
+		partTypes:   make(map[string]string),
+		seenCallIDs: make(map[string]bool),
 	}
 }
 
@@ -62,16 +79,26 @@ func (r *router) Normalize(raw transport.RawEvent) (AppEvent, bool) {
 	case "session.next.reasoning.delta":
 		return normalizeSessionNextTextDelta(env, EventReasoningDelta)
 	case "session.next.tool.called":
-		return normalizeSessionNextToolCalled(env)
+		return r.normalizeSessionNextToolCalled(env)
 	case "session.next.tool.success":
 		return normalizeSessionNextToolResult(env, EventToolSucceeded)
 	case "session.next.tool.failed":
 		return normalizeSessionNextToolResult(env, EventToolFailed)
+	case "session.next.agent.switched":
+		return normalizeSessionNextAgentSwitched(env)
+	case "session.next.model.switched":
+		return normalizeSessionNextModelSwitched(env)
 	case "server.connected", "server.heartbeat",
 		"message.updated", "message.removed", "message.part.removed",
 		"session.status", "session.updated", "session.diff", "session.created", "session.deleted",
-		"session.next.agent.switched", "session.next.model.switched", "session.next.prompted",
-		"session.next.step.started", "session.next.step.ended":
+		"session.next.prompted",
+		"session.next.step.started", "session.next.step.ended",
+		"plugin.added", "plugin.removed",
+		"catalog.updated",
+		"integration.updated",
+		"reference.updated",
+		"file.edited", "file.watcher.updated",
+		"permission.replied":
 		return AppEvent{}, false
 	default:
 		return AppEvent{
@@ -96,50 +123,107 @@ func (r *router) Subscribe(ctx context.Context, targetSessionID string, filter t
 		return out, errs
 	}
 
-	rawEvents, rawErrs := r.source.SubscribeEvents(ctx, filter)
 	go func() {
 		defer close(out)
 		defer close(errs)
-		for {
-			select {
-			case <-ctx.Done():
+
+		for attempt := 0; ; attempt++ {
+			if err := ctx.Err(); err != nil {
 				return
-			case err, ok := <-rawErrs:
-				if !ok {
-					rawErrs = nil
-					if rawEvents == nil {
-						return
-					}
-					continue
-				}
-				if err != nil {
-					errs <- err
-					return
-				}
-			case raw, ok := <-rawEvents:
-				if !ok {
-					rawEvents = nil
-					if rawErrs == nil {
-						return
-					}
-					continue
-				}
-				evt, ok := r.Normalize(raw)
-				if !ok {
-					continue
-				}
-				if targetSessionID != "" && evt.SessionID != "" && evt.SessionID != targetSessionID {
-					continue
-				}
+			}
+			if attempt > 0 {
+				backoff := time.Duration(math.Min(float64(sseBackoffBase)*float64(int(1)<<(attempt-1)), float64(sseBackoffMax)))
 				select {
 				case <-ctx.Done():
 					return
-				case out <- evt:
+				case <-time.After(backoff):
 				}
+			}
+
+			rawEvents, rawErrs := r.source.SubscribeEvents(ctx, filter)
+			done, retry := r.streamOnce(ctx, rawEvents, rawErrs, targetSessionID, out)
+			if done {
+				return
+			}
+			if !retry || attempt >= maxSSERetries {
+				errs <- fmt.Errorf("sse connection failed after %d attempts: %w", attempt+1, r.lastErr)
+				return
 			}
 		}
 	}()
 	return out, errs
+}
+
+// streamOnce reads from a single SSE connection until it ends or errors.
+// It returns (done, retry) — done means the stream completed normally;
+// retry indicates the error is transient and worth reconnecting.
+func (r *router) streamOnce(ctx context.Context, rawEvents <-chan transport.RawEvent, rawErrs <-chan error, targetSessionID string, out chan<- AppEvent) (bool, bool) {
+	// Reset seen call IDs so replayed events after reconnect are not
+	// incorrectly dropped.
+	r.seenCallIDs = make(map[string]bool)
+	for {
+		select {
+		case <-ctx.Done():
+			return true, false
+		case err, ok := <-rawErrs:
+			if !ok {
+				rawErrs = nil
+				if rawEvents == nil {
+					return true, false
+				}
+				continue
+			}
+			if err != nil {
+				r.lastErr = err
+				return false, isRetryable(err)
+			}
+		case raw, ok := <-rawEvents:
+			if !ok {
+				rawEvents = nil
+				if rawErrs == nil {
+					return true, false
+				}
+				continue
+			}
+			evt, ok := r.Normalize(raw)
+			if !ok {
+				continue
+			}
+			if targetSessionID != "" && evt.SessionID != "" && evt.SessionID != targetSessionID {
+				continue
+			}
+			select {
+			case <-ctx.Done():
+				return true, false
+			case out <- evt:
+			}
+		}
+	}
+}
+
+// isRetryable returns true for transient network errors that may succeed
+// on reconnection. Schema errors and clean shutdowns are not retryable.
+func isRetryable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return netErr.Timeout() || netErr.Temporary()
+	}
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return isRetryable(urlErr.Err)
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return true
+	}
+	// Treat unknown errors as non-retryable to avoid infinite loops.
+	return false
 }
 
 func (r *router) normalizeMessagePartUpdated(env rawEnvelope) (AppEvent, bool) {
@@ -154,7 +238,7 @@ func (r *router) normalizeMessagePartUpdated(env rawEnvelope) (AppEvent, bool) {
 	if part.ID != "" && part.Type != "" {
 		r.partTypes[part.ID] = part.Type
 	}
-	return normalizePartUpdated(props.SessionID, part)
+	return r.normalizePartUpdated(props.SessionID, part)
 }
 
 func (r *router) normalizeMessagePartDelta(env rawEnvelope) (AppEvent, bool) {
@@ -180,12 +264,12 @@ func (r *router) normalizeMessagePartDelta(env rawEnvelope) (AppEvent, bool) {
 	}, true
 }
 
-func normalizePartUpdated(sessionID string, part partBase) (AppEvent, bool) {
+func (r *router) normalizePartUpdated(sessionID string, part partBase) (AppEvent, bool) {
 	switch part.Type {
 	case "step-start":
 		return AppEvent{Kind: EventStepStarted, SessionID: sessionID}, true
 	case "step-finish":
-		payload := StepEndedPayload{Cost: part.Cost}
+		payload := StepEndedPayload{Cost: part.Cost, Duration: part.Duration}
 		if part.Tokens != nil {
 			payload.Tokens = *part.Tokens
 		}
@@ -196,6 +280,12 @@ func normalizePartUpdated(sessionID string, part partBase) (AppEvent, bool) {
 		}
 		switch part.State.Status {
 		case "running":
+			if part.CallID != "" && r.seenCallIDs[part.CallID] {
+				return AppEvent{}, false
+			}
+			if part.CallID != "" {
+				r.seenCallIDs[part.CallID] = true
+			}
 			return AppEvent{
 				Kind:      EventToolCalled,
 				SessionID: sessionID,
@@ -285,7 +375,7 @@ func normalizeSessionNextTextDelta(env rawEnvelope, kind AppEventKind) (AppEvent
 	}, true
 }
 
-func normalizeSessionNextToolCalled(env rawEnvelope) (AppEvent, bool) {
+func (r *router) normalizeSessionNextToolCalled(env rawEnvelope) (AppEvent, bool) {
 	var props struct {
 		SessionID string          `json:"sessionID"`
 		CallID    string          `json:"callID"`
@@ -295,6 +385,12 @@ func normalizeSessionNextToolCalled(env rawEnvelope) (AppEvent, bool) {
 	}
 	if err := json.Unmarshal(env.Properties, &props); err != nil {
 		return unknownFromEnvelope(env, "decode session.next.tool.called properties: "+err.Error()), true
+	}
+	if props.CallID != "" && r.seenCallIDs[props.CallID] {
+		return AppEvent{}, false
+	}
+	if props.CallID != "" {
+		r.seenCallIDs[props.CallID] = true
 	}
 	return AppEvent{
 		Kind:      EventToolCalled,
@@ -316,6 +412,44 @@ func normalizeSessionNextToolResult(env rawEnvelope, kind AppEventKind) (AppEven
 	}
 	payload := ToolResultPayload{CallID: props.CallID, PartID: props.PartID, Output: props.Output, Error: props.Error}
 	return AppEvent{Kind: kind, SessionID: props.SessionID, Payload: payload}, true
+}
+
+func normalizeSessionNextAgentSwitched(env rawEnvelope) (AppEvent, bool) {
+	var props struct {
+		SessionID string `json:"sessionID"`
+		AgentID   string `json:"agentID"`
+		AgentName string `json:"agentName"`
+	}
+	if err := json.Unmarshal(env.Properties, &props); err != nil {
+		return unknownFromEnvelope(env, "decode session.next.agent.switched properties: "+err.Error()), true
+	}
+	return AppEvent{
+		Kind:      EventAgentSwitched,
+		SessionID: props.SessionID,
+		Payload: AgentSwitchedPayload{
+			AgentID:   props.AgentID,
+			AgentName: props.AgentName,
+		},
+	}, true
+}
+
+func normalizeSessionNextModelSwitched(env rawEnvelope) (AppEvent, bool) {
+	var props struct {
+		SessionID  string `json:"sessionID"`
+		ProviderID string `json:"providerID"`
+		ModelID    string `json:"modelID"`
+	}
+	if err := json.Unmarshal(env.Properties, &props); err != nil {
+		return unknownFromEnvelope(env, "decode session.next.model.switched properties: "+err.Error()), true
+	}
+	return AppEvent{
+		Kind:      EventModelSwitched,
+		SessionID: props.SessionID,
+		Payload: ModelSwitchedPayload{
+			ProviderID: props.ProviderID,
+			ModelID:    props.ModelID,
+		},
+	}, true
 }
 
 func unknownFromEnvelope(env rawEnvelope, summary string) AppEvent {
@@ -370,14 +504,15 @@ type partUpdatedProps struct {
 }
 
 type partBase struct {
-	ID     string          `json:"id"`
-	Type   string          `json:"type"`
-	Tool   string          `json:"tool,omitempty"`
-	CallID string          `json:"callID,omitempty"`
-	State  *toolState      `json:"state,omitempty"`
-	Cost   float64         `json:"cost,omitempty"`
-	Tokens *StepTokens     `json:"tokens,omitempty"`
-	Raw    json.RawMessage `json:"-"`
+	ID       string          `json:"id"`
+	Type     string          `json:"type"`
+	Tool     string          `json:"tool,omitempty"`
+	CallID   string          `json:"callID,omitempty"`
+	State    *toolState      `json:"state,omitempty"`
+	Cost     float64         `json:"cost,omitempty"`
+	Tokens   *StepTokens     `json:"tokens,omitempty"`
+	Duration float64         `json:"duration,omitempty"`
+	Raw      json.RawMessage `json:"-"`
 }
 
 type toolState struct {

@@ -226,8 +226,12 @@ func TestRouter_SubscribeForwardsErrors(t *testing.T) {
 	events, errs := router.Subscribe(context.Background(), "ses_1", transport.EventFilter{})
 	for range events {
 	}
-	if err, ok := <-errs; !ok || !errors.Is(err, wantErr) {
-		t.Fatalf("err = %v, ok=%v; want boom", err, ok)
+	err, ok := <-errs
+	if !ok {
+		t.Fatal("expected error, got channel close")
+	}
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("err = %v; want error wrapping boom", err)
 	}
 }
 
@@ -236,6 +240,61 @@ func TestRouter_SchemaDriftReturnsUnknown(t *testing.T) {
 	evt, ok := router.Normalize(transport.RawEvent{Type: "broken", Data: []byte(`{not-json`)})
 	if !ok || evt.Kind != EventUnknown {
 		t.Fatalf("schema drift = %+v, %v; want unknown", evt, ok)
+	}
+}
+
+func TestRouter_NormalizeAgentAndModelSwitched(t *testing.T) {
+	router := NewRouter(nil)
+
+	evt, ok := router.Normalize(rawEvent("session.next.agent.switched", map[string]any{
+		"sessionID": "ses_1",
+		"agentID":   "code",
+		"agentName": "Coder",
+	}))
+	if !ok || evt.Kind != EventAgentSwitched {
+		t.Fatalf("agent switched = %+v, %v", evt, ok)
+	}
+	payload := evt.Payload.(AgentSwitchedPayload)
+	if payload.AgentID != "code" || payload.AgentName != "Coder" {
+		t.Fatalf("agent payload = %+v", payload)
+	}
+
+	evt, ok = router.Normalize(rawEvent("session.next.model.switched", map[string]any{
+		"sessionID":  "ses_1",
+		"providerID": "deepseek",
+		"modelID":    "deepseek-v4-flash",
+	}))
+	if !ok || evt.Kind != EventModelSwitched {
+		t.Fatalf("model switched = %+v, %v", evt, ok)
+	}
+	modelPayload := evt.Payload.(ModelSwitchedPayload)
+	if modelPayload.ProviderID != "deepseek" || modelPayload.ModelID != "deepseek-v4-flash" {
+		t.Fatalf("model payload = %+v", modelPayload)
+	}
+}
+
+func TestRouter_NormalizeStepEndedWithDuration(t *testing.T) {
+	router := NewRouter(nil)
+
+	evt, ok := router.Normalize(rawEvent("message.part.updated", map[string]any{
+		"sessionID": "ses_1",
+		"part": map[string]any{
+			"id":       "prt_step",
+			"type":     "step-finish",
+			"cost":     2.5,
+			"tokens":   map[string]any{"input": 10, "output": 20, "reasoning": 5},
+			"duration": 3.7,
+		},
+	}))
+	if !ok || evt.Kind != EventStepEnded {
+		t.Fatalf("step-finish with duration = %+v, %v", evt, ok)
+	}
+	step := evt.Payload.(StepEndedPayload)
+	if step.Duration != 3.7 {
+		t.Fatalf("step duration = %v, want 3.7", step.Duration)
+	}
+	if step.Cost != 2.5 {
+		t.Fatalf("step cost = %v, want 2.5", step.Cost)
 	}
 }
 

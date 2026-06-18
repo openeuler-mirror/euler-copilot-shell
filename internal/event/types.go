@@ -9,6 +9,8 @@ const (
 	EventReasoningDelta  AppEventKind = "reasoning.delta"
 	EventStepStarted     AppEventKind = "step.started"
 	EventStepEnded       AppEventKind = "step.ended"
+	EventAgentSwitched   AppEventKind = "agent.switched"
+	EventModelSwitched   AppEventKind = "model.switched"
 	EventToolCalled      AppEventKind = "tool.called"
 	EventToolSucceeded   AppEventKind = "tool.succeeded"
 	EventToolFailed      AppEventKind = "tool.failed"
@@ -45,14 +47,25 @@ type ToolResultPayload struct {
 }
 
 type StepEndedPayload struct {
-	Cost   float64
-	Tokens StepTokens
+	Cost     float64
+	Tokens   StepTokens
+	Duration float64
 }
 
 type StepTokens struct {
 	Input     int
 	Output    int
 	Reasoning int
+}
+
+type AgentSwitchedPayload struct {
+	AgentID   string
+	AgentName string
+}
+
+type ModelSwitchedPayload struct {
+	ProviderID string
+	ModelID    string
 }
 
 type PermissionAskedPayload struct {
