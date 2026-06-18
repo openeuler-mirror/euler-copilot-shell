@@ -1,6 +1,17 @@
 package renderer
 
-import "strings"
+import (
+	"errors"
+	"strings"
+)
+
+// maxBufferSize limits accumulated Markdown content to prevent unbounded
+// memory growth during long sessions.
+const maxBufferSize = 10 * 1024 * 1024 // 10 MiB
+
+// ErrBufferFull is returned when the accumulated Markdown content exceeds
+// the configured maximum.
+var ErrBufferFull = errors.New("markdown buffer full")
 
 // BlockBuffer accumulates text deltas until a complete Markdown block is ready.
 type BlockBuffer struct {
@@ -11,11 +22,22 @@ func NewBlockBuffer() *BlockBuffer {
 	return &BlockBuffer{}
 }
 
-func (b *BlockBuffer) Append(delta string) {
+// Append adds a text delta to the buffer. It returns ErrBufferFull if the
+// accumulated content would exceed maxBufferSize.
+func (b *BlockBuffer) Append(delta string) error {
 	if delta == "" {
-		return
+		return nil
+	}
+	if len(b.content)+len(delta) > maxBufferSize {
+		return ErrBufferFull
 	}
 	b.content += delta
+	return nil
+}
+
+// Len returns the current buffer length in bytes.
+func (b *BlockBuffer) Len() int {
+	return len(b.content)
 }
 
 func (b *BlockBuffer) Remaining() string {

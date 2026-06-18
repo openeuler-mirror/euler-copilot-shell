@@ -16,17 +16,31 @@ import (
 type TextRenderer interface {
 	WriteDelta(ctx context.Context, delta string) error
 	Flush(ctx context.Context) error
+	// WriteReasoning writes reasoning (thinking) deltas with a separate visual
+	// style. When the reasoning renderer is disabled, this is a no-op.
+	WriteReasoning(ctx context.Context, delta string) error
+	// FlushReasoning flushes any buffered reasoning text.
+	FlushReasoning(ctx context.Context) error
+	// ResetReasoning resets the reasoning writer's first-paragraph flag so the
+	// next reasoning block starts with a fresh "Thinking:" label.
+	ResetReasoning()
+	// Resize notifies the renderer that the terminal width has changed.
+	// Implementations that track rows should update their internal width;
+	// others may treat this as a no-op.
+	Resize(width int)
 }
 
 // Options controls MarkdownRenderer construction.
 type Options struct {
-	Writer     io.Writer
-	IsTTY      bool
-	Width      int
-	Theme      string
-	NoColor    bool
-	InputFile  *os.File
-	OutputFile *os.File
+	Writer        io.Writer
+	IsTTY         bool
+	Width         int
+	Theme         string
+	NoColor       bool
+	InputFile     *os.File
+	OutputFile    *os.File
+	ShowReasoning bool   // deprecated: use ReasoningMode
+	ReasoningMode string // "show" | "minimal" | "hide", default "show"
 }
 
 // MarkdownRenderer implements Phase 1 block-boundary Markdown rendering.
@@ -37,6 +51,7 @@ type MarkdownRenderer struct {
 	buffer     *BlockBuffer
 	markdown   markdownEngine
 	firstBlock bool
+	reasoning  *ReasoningWriter
 }
 
 // NewMarkdownRenderer creates a Phase 1 text renderer.
@@ -57,6 +72,12 @@ func NewMarkdownRenderer(opts Options) (TextRenderer, error) {
 		downsample: opts.OutputFile != nil,
 		buffer:     NewBlockBuffer(),
 		firstBlock: true,
+		reasoning: NewReasoningWriter(ReasoningConfig{
+			Writer:     out,
+			IsTTY:      opts.IsTTY,
+			Downsample: opts.OutputFile != nil,
+			Mode:       resolveReasoningMode(opts),
+		}),
 	}
 	if !opts.IsTTY {
 		return r, nil
@@ -67,7 +88,28 @@ func NewMarkdownRenderer(opts Options) (TextRenderer, error) {
 		return nil, fmt.Errorf("create markdown renderer: %w", err)
 	}
 	r.markdown = markdown
+	r.reasoning.markdown = markdown
 	return r, nil
+}
+
+// resolveReasoningMode converts the options into a ReasoningMode.
+// Backward-compatible: if ReasoningMode is set, it takes precedence;
+// otherwise ShowReasoning=true maps to "show", false to "hide".
+func resolveReasoningMode(opts Options) ReasoningMode {
+	if opts.ReasoningMode != "" {
+		switch strings.ToLower(strings.TrimSpace(opts.ReasoningMode)) {
+		case "minimal":
+			return ReasoningMinimal
+		case "hide":
+			return ReasoningHide
+		default:
+			return ReasoningShow
+		}
+	}
+	if opts.ShowReasoning {
+		return ReasoningShow
+	}
+	return ReasoningHide
 }
 
 func (r *MarkdownRenderer) WriteDelta(ctx context.Context, delta string) error {
@@ -84,7 +126,9 @@ func (r *MarkdownRenderer) WriteDelta(ctx context.Context, delta string) error {
 		return nil
 	}
 
-	r.buffer.Append(delta)
+	if err := r.buffer.Append(delta); err != nil {
+		return fmt.Errorf("buffer append: %w", err)
+	}
 	for {
 		block, ok := r.buffer.NextCompleteBlock()
 		if !ok {
@@ -94,6 +138,25 @@ func (r *MarkdownRenderer) WriteDelta(ctx context.Context, delta string) error {
 			return err
 		}
 	}
+}
+
+// Resize is a no-op for Phase 1 — MarkdownRenderer does not track echo rows.
+func (r *MarkdownRenderer) Resize(_ int) {}
+
+// WriteReasoning writes reasoning text with dim styling via the embedded ReasoningWriter.
+func (r *MarkdownRenderer) WriteReasoning(ctx context.Context, delta string) error {
+	return r.reasoning.WriteDelta(ctx, delta)
+}
+
+// FlushReasoning flushes any buffered reasoning text.
+func (r *MarkdownRenderer) FlushReasoning(ctx context.Context) error {
+	return r.reasoning.Flush(ctx)
+}
+
+// ResetReasoning resets the first-paragraph flag so the next reasoning
+// block starts with a fresh "Thinking:" label.
+func (r *MarkdownRenderer) ResetReasoning() {
+	r.reasoning.ResetFirstParagraph()
 }
 
 func (r *MarkdownRenderer) Flush(ctx context.Context) error {
