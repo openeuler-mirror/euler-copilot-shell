@@ -3,6 +3,7 @@ package renderer
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"os"
 	"path/filepath"
@@ -35,7 +36,9 @@ func TestBlockBoundary(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := NewBlockBuffer()
-			buf.Append(tt.input)
+			if err := buf.Append(tt.input); err != nil {
+				t.Fatalf("Append() error = %v", err)
+			}
 			got, ok := buf.NextCompleteBlock()
 			if ok != tt.found {
 				t.Fatalf("NextCompleteBlock() found=%v, want %v", ok, tt.found)
@@ -131,6 +134,21 @@ func TestMarkdownRenderer_NonTTYWritesRawMarkdown(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "\x1b[") {
 		t.Fatalf("non-TTY output = %q, want no ANSI", out.String())
+	}
+}
+
+func TestBlockBuffer_Overflow(t *testing.T) {
+	t.Parallel()
+
+	buf := NewBlockBuffer()
+	// Fill to near max
+	chunk := strings.Repeat("x", maxBufferSize)
+	if err := buf.Append(chunk); err != nil {
+		t.Fatalf("Append(at limit) error = %v", err)
+	}
+	// Next byte should overflow
+	if err := buf.Append("y"); !errors.Is(err, ErrBufferFull) {
+		t.Fatalf("Append(over limit) error = %v, want ErrBufferFull", err)
 	}
 }
 
