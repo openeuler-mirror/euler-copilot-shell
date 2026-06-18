@@ -1,199 +1,208 @@
 package terminal
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/mattn/go-runewidth"
+	"github.com/muesli/cancelreader"
 	"golang.org/x/term"
 )
 
-// ListOption represents a single selectable item in the interactive list.
-type ListOption struct {
-	Label string
-	Value string
-}
-
-// SelectResult contains the outcome of an interactive selection.
-type SelectResult struct {
-	Index int
-	Value string
-}
-
-// RunSelector displays an interactive list and returns the user's selection.
-// Returns nil if the user cancels (Ctrl+C, Escape, or q).
-func RunSelector(in *os.File, out *os.File, title string, options []ListOption) (*SelectResult, error) {
+// Select renders an interactive list with arrow-key navigation and returns the
+// chosen index. It requires the input to be a terminal in raw mode.
+func (p *linePrompter) Select(ctx context.Context, title string, options []SelectOption) (int, error) {
 	if len(options) == 0 {
-		return nil, fmt.Errorf("no options to select from")
-	}
-	if !IsTerminal(in) || !IsTerminal(out) {
-		return nil, fmt.Errorf("interactive selection requires a terminal")
+		return -1, fmt.Errorf("select: no options provided")
 	}
 
-	fd := int(in.Fd())
-	oldState, err := term.MakeRaw(fd)
+	file, ok := p.in.(*os.File)
+	if !ok || !term.IsTerminal(int(file.Fd())) {
+		return -1, fmt.Errorf("select: input is not a terminal")
+	}
+
+	fd := int(file.Fd())
+	prevState, err := term.MakeRaw(fd)
 	if err != nil {
-		return nil, fmt.Errorf("enable raw mode: %w", err)
+		return -1, fmt.Errorf("select: enter raw mode: %w", err)
 	}
-	defer func() {
-		_ = term.Restore(fd, oldState)
-		fmt.Fprint(out, "\r\n")
+	defer func() { _ = term.Restore(fd, prevState) }()
+
+	// Wrap stdin with cancelreader so ctx.Done() can interrupt the blocking read.
+	cancelReader, err := cancelreader.NewReader(file)
+	if err != nil {
+		return -1, fmt.Errorf("select: create cancel reader: %w", err)
+	}
+	defer cancelReader.Close()
+
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			cancelReader.Cancel()
+		case <-done:
+		}
 	}()
+	defer close(done)
 
-	termWidth := Width(out)
+	// Print initial state.
+	selected := 0
+	renderSelect(p.out, title, options, selected)
 
-	cursor := 0
-	render := func() {
-		var buf strings.Builder
-		if title != "" {
-			buf.WriteString("\x1b[G")  // move to column 1
-			buf.WriteString("\x1b[1m") // bold
-			buf.WriteString(title)
-			buf.WriteString("\x1b[0m") // reset
-			buf.WriteString("\x1b[K")  // clear to end of line
-			buf.WriteString("\r\n")
-		}
-		for i, opt := range options {
-			buf.WriteString("\x1b[G") // move to column 1
-			if i == cursor {
-				buf.WriteString("\x1b[7m") // reverse video
-				buf.WriteString(" > ")
-			} else {
-				buf.WriteString("   ")
-			}
-			buf.WriteString(opt.Label)
-			if i == cursor {
-				buf.WriteString("\x1b[0m")
-			}
-			buf.WriteString("\x1b[K") // clear to end of line
-			buf.WriteString("\r\n")
-		}
-		// Move cursor back up to start for next render.
-		// Count physical screen lines, accounting for line wrapping.
-		totalLines := selectorScreenLines(title, options, termWidth)
-		buf.WriteString(fmt.Sprintf("\x1b[%dA", totalLines))
-		fmt.Fprint(out, buf.String())
-	}
-
-	// Initial render: clear from cursor to end of screen so stale prompt
-	// content does not interfere with the selector display.
-	fmt.Fprint(out, "\x1b[0J")
-	render()
-
+	// Read keys.
 	buf := make([]byte, 6)
 	for {
-		n, err := in.Read(buf)
+		n, err := cancelReader.Read(buf)
 		if err != nil {
-			if err == io.EOF {
-				return nil, nil
+			if errors.Is(err, cancelreader.ErrCanceled) && ctx.Err() != nil {
+				eraseSelect(p.out, len(options))
+				return -1, ctx.Err()
 			}
-			return nil, fmt.Errorf("read input: %w", err)
+			if errors.Is(err, io.EOF) {
+				eraseSelect(p.out, len(options))
+				return -1, nil
+			}
+			eraseSelect(p.out, len(options))
+			return -1, fmt.Errorf("select: read input: %w", err)
 		}
 
-		seq := buf[:n]
+		key := buf[:n]
+
 		switch {
-		case isKey(seq, 3), isKey(seq, 27): // Ctrl+C or Escape
-			clearSelectorLines(out, title, options, termWidth)
-			return nil, nil
-		case isKey(seq, 'q'), isKey(seq, 'Q'):
-			clearSelectorLines(out, title, options, termWidth)
-			return nil, nil
-		case isEnter(seq):
-			moveToSelectorEnd(out, title, options, cursor, termWidth)
-			fmt.Fprint(out, "\r\n")
-			return &SelectResult{Index: cursor, Value: options[cursor].Value}, nil
-		case isUpArrow(seq):
-			if cursor > 0 {
-				cursor--
+		case isEnter(key):
+			eraseSelect(p.out, len(options))
+			return selected, nil
+		case isEscape(key):
+			eraseSelect(p.out, len(options))
+			return -1, nil
+		case isUp(key):
+			if selected > 0 {
+				selected--
 			}
-			render()
-		case isDownArrow(seq):
-			if cursor < len(options)-1 {
-				cursor++
+		case isDown(key):
+			if selected < len(options)-1 {
+				selected++
 			}
-			render()
-		case isKey(seq, 'j'), isKey(seq, 'J'):
-			if cursor < len(options)-1 {
-				cursor++
+		case isCtrlC(key):
+			eraseSelect(p.out, len(options))
+			return -1, context.Canceled
+		default:
+			// number key quick-select: 1-9 map to indices 0-8
+			if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+				idx := int(key[0] - '1')
+				if idx < len(options) {
+					eraseSelect(p.out, len(options))
+					return idx, nil
+				}
 			}
-			render()
-		case isKey(seq, 'k'), isKey(seq, 'K'):
-			if cursor > 0 {
-				cursor--
-			}
-			render()
 		}
+
+		renderSelect(p.out, title, options, selected)
 	}
 }
 
-// selectorScreenLines computes how many physical screen lines the selector
-// occupies, accounting for line wrapping when termWidth is known.
-func selectorScreenLines(title string, options []ListOption, termWidth int) int {
-	total := 0
+// renderSelect draws the select list at the current cursor position.
+// It assumes the terminal is in raw mode and uses ANSI escape codes.
+func renderSelect(out io.Writer, title string, options []SelectOption, selected int) {
+	// Move cursor back up to the first option line (or title line).
+	// We use a stable rendering: title + one line per option.
+	lines := len(options)
 	if title != "" {
-		total++
+		lines++
 	}
-	if termWidth <= 0 {
-		return total + len(options)
+
+	var b strings.Builder
+
+	// If this is a re-render, clear previous output and move cursor back up.
+	b.WriteString(fmt.Sprintf("\x1b[%dA", lines)) // move up
+	b.WriteString("\x1b[0J")                      // clear from cursor to end
+
+	// Title.
+	if title != "" {
+		b.WriteString("\x1b[1m") // bold
+		b.WriteString(title)
+		b.WriteString("\x1b[0m\r\n")
 	}
-	for _, opt := range options {
-		// +3 for the 3-char prefix (" > " or "   ")
-		labelW := runewidth.StringWidth(opt.Label) + 3
-		lines := (labelW + termWidth - 1) / termWidth
-		if lines < 1 {
-			lines = 1
+
+	// Options.
+	for i, opt := range options {
+		// Clear line first.
+		b.WriteString("\x1b[2K")
+
+		if i == selected {
+			b.WriteString("\x1b[7m") // reverse video for highlight
 		}
-		total += lines
-	}
-	return total
-}
 
-// clearSelectorLines clears the area occupied by the selector.
-func clearSelectorLines(out *os.File, title string, options []ListOption, termWidth int) {
-	total := selectorScreenLines(title, options, termWidth)
-	fmt.Fprint(out, strings.Repeat("\x1b[B", total))
-	fmt.Fprint(out, strings.Repeat("\x1b[A\x1b[2K", total))
-}
+		prefix := "  "
+		if i == selected {
+			prefix = "❯ "
+		}
+		b.WriteString(prefix)
 
-// moveToSelectorEnd moves the cursor past the selector display area.
-func moveToSelectorEnd(out *os.File, title string, options []ListOption, cursor int, termWidth int) {
-	totalLines := selectorScreenLines(title, options, termWidth)
-	cursorLine := 0
-	if title != "" {
-		cursorLine++
-	}
-	for i := 0; i < cursor; i++ {
-		labelW := runewidth.StringWidth(options[i].Label) + 3
-		if termWidth > 0 {
-			lines := (labelW + termWidth - 1) / termWidth
-			if lines < 1 {
-				lines = 1
-			}
-			cursorLine += lines
+		// Shortcut key hint.
+		if i < 9 {
+			b.WriteString(fmt.Sprintf("%d) ", i+1))
 		} else {
-			cursorLine++
+			b.WriteString("   ")
+		}
+
+		b.WriteString(opt.Label)
+
+		if opt.Description != "" {
+			b.WriteString(" — ")
+			b.WriteString(opt.Description)
+		}
+
+		if i == selected {
+			b.WriteString("\x1b[0m") // reset reverse video
+		}
+
+		if i < len(options)-1 {
+			b.WriteString("\r\n")
 		}
 	}
-	remaining := totalLines - cursorLine
-	if remaining > 0 {
-		fmt.Fprint(out, strings.Repeat("\x1b[B", remaining))
+
+	// Hint footer.
+	b.WriteString("\r\n\x1b[2K")
+	b.WriteString("  ↑/↓ navigate  ↵ select  esc cancel")
+
+	// Move cursor back up to the first option.
+	cursorUp := len(options) + 1 // options + footer
+	if title != "" {
+		cursorUp++
+	}
+	b.WriteString(fmt.Sprintf("\x1b[%dA", cursorUp))
+
+	fmt.Fprint(out, b.String())
+}
+
+func eraseSelect(out io.Writer, optionCount int) {
+	// Clear the select UI: move cursor to start of options area and clear to end.
+	lines := optionCount + 1 // options + footer
+	if lines > 0 {
+		fmt.Fprintf(out, "\x1b[%dB\x1b[%dA\x1b[0J", lines-1, lines)
 	}
 }
 
-func isKey(seq []byte, key byte) bool {
-	return len(seq) == 1 && seq[0] == key
+func isEnter(key []byte) bool {
+	return len(key) == 1 && (key[0] == '\r' || key[0] == '\n')
 }
 
-func isEnter(seq []byte) bool {
-	return len(seq) == 1 && (seq[0] == '\r' || seq[0] == '\n')
+func isEscape(key []byte) bool {
+	return len(key) == 1 && key[0] == 27
 }
 
-func isUpArrow(seq []byte) bool {
-	return len(seq) == 3 && seq[0] == 27 && seq[1] == '[' && seq[2] == 'A'
+func isUp(key []byte) bool {
+	return len(key) == 3 && key[0] == 27 && key[1] == '[' && key[2] == 'A'
 }
 
-func isDownArrow(seq []byte) bool {
-	return len(seq) == 3 && seq[0] == 27 && seq[1] == '[' && seq[2] == 'B'
+func isDown(key []byte) bool {
+	return len(key) == 3 && key[0] == 27 && key[1] == '[' && key[2] == 'B'
+}
+
+func isCtrlC(key []byte) bool {
+	return len(key) == 1 && key[0] == 3
 }

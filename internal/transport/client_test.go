@@ -273,13 +273,13 @@ func TestClient_PermissionAndQuestionReplies(t *testing.T) {
 	defer server.Close()
 
 	client := mustClient(t, Options{BaseURL: server.URL})
-	if ok, err := client.ReplyPermission(context.Background(), "per_1", PermissionDecision{Reply: "once"}); err != nil || !ok {
+	if ok, err := client.ReplyPermission(context.Background(), "per_1", "", PermissionDecision{Reply: "once"}); err != nil || !ok {
 		t.Fatalf("ReplyPermission() = %v, %v; want true, nil", ok, err)
 	}
-	if ok, err := client.ReplyQuestion(context.Background(), "que_1", [][]string{{"yes"}}); err != nil || !ok {
+	if ok, err := client.ReplyQuestion(context.Background(), "que_1", "", [][]string{{"yes"}}); err != nil || !ok {
 		t.Fatalf("ReplyQuestion() = %v, %v; want true, nil", ok, err)
 	}
-	if ok, err := client.RejectQuestion(context.Background(), "que_1"); err != nil || !ok {
+	if ok, err := client.RejectQuestion(context.Background(), "que_1", ""); err != nil || !ok {
 		t.Fatalf("RejectQuestion() = %v, %v; want true, nil", ok, err)
 	}
 	for path := range paths {

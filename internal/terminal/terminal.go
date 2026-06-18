@@ -56,9 +56,46 @@ func SupportsColor(file *os.File, lookupEnv func(string) (string, bool)) bool {
 	return !NoColor(lookupEnv) && IsTerminal(file)
 }
 
-// Prompter reads a single line of user input.
+// SelectOption represents a single selectable item in an interactive list.
+type SelectOption struct {
+	Label       string
+	Description string
+	Value       string
+}
+
+// ListOption is an alias for SelectOption kept for backward compatibility.
+// Deprecated: use SelectOption directly.
+type ListOption = SelectOption
+
+// RunSelect is a convenience wrapper that creates a Prompter from os.File
+// descriptors and runs an interactive selection. It returns the selected value
+// and true, or "" and false if cancelled.
+func RunSelect(ctx context.Context, in *os.File, out *os.File, title string, options []SelectOption) (string, bool) {
+	if len(options) == 0 {
+		return "", false
+	}
+	prompter := NewPrompter(in, out)
+	idx, err := prompter.Select(ctx, title, options)
+	if err != nil || idx < 0 || idx >= len(options) {
+		return "", false
+	}
+	return options[idx].Value, true
+}
+
+// SelectResult contains the outcome of an interactive selection.
+// Deprecated: RunSelect returns (value, ok) directly.
+type SelectResult struct {
+	Index int
+	Value string
+}
+
+// Prompter reads user input through line prompts and interactive selectors.
 type Prompter interface {
 	ReadLine(ctx context.Context, label string) (string, error)
+	// Select presents an interactive arrow-key navigable list and returns the
+	// index of the chosen option, or -1 if cancelled. It only works when the
+	// input is a terminal; callers should check IsTerminal before using it.
+	Select(ctx context.Context, title string, options []SelectOption) (int, error)
 }
 
 type linePrompter struct {

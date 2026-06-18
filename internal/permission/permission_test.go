@@ -220,12 +220,12 @@ type permissionReply struct {
 	decision  transport.PermissionDecision
 }
 
-func (f *fakeTransport) ReplyPermission(_ context.Context, requestID string, decision transport.PermissionDecision) (bool, error) {
+func (f *fakeTransport) ReplyPermission(_ context.Context, requestID string, _ string, decision transport.PermissionDecision) (bool, error) {
 	f.permissionReplies = append(f.permissionReplies, permissionReply{requestID: requestID, decision: decision})
 	return true, nil
 }
 
-func (f *fakeTransport) ReplyQuestion(_ context.Context, requestID string, answers [][]string) (bool, error) {
+func (f *fakeTransport) ReplyQuestion(_ context.Context, requestID string, _ string, answers [][]string) (bool, error) {
 	copied := make([][]string, 0, len(answers))
 	for _, answer := range answers {
 		copied = append(copied, append([]string(nil), answer...))
@@ -234,7 +234,7 @@ func (f *fakeTransport) ReplyQuestion(_ context.Context, requestID string, answe
 	return true, nil
 }
 
-func (f *fakeTransport) RejectQuestion(_ context.Context, requestID string) (bool, error) {
+func (f *fakeTransport) RejectQuestion(_ context.Context, requestID string, _ string) (bool, error) {
 	f.questionRejects = append(f.questionRejects, requestID)
 	return true, nil
 }

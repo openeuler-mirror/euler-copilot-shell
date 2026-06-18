@@ -16,9 +16,11 @@ type Config struct {
 	Debug          bool
 	Theme          string
 	NoColor        bool
+	RendererPhase  int
 	REPL           REPLConfig
 	Shell          ShellConfig
 	Doctor         DoctorConfig
+	Display        DisplayConfig
 }
 
 type REPLConfig struct {
@@ -32,6 +34,15 @@ type ShellConfig struct {
 
 type DoctorConfig struct {
 	TimeoutSeconds int
+}
+
+// DisplayConfig controls how intermediate process (reasoning, tool calls, steps)
+// are displayed in the terminal.
+type DisplayConfig struct {
+	ShowReasoning bool
+	ToolMode      string // "compact" or "verbose"
+	GroupContext  bool
+	StepStyle     string // "line", "minimal", "none"
 }
 
 // Overrides are CLI-provided values that should win over defaults, files, and env.
@@ -53,6 +64,7 @@ func Default() Config {
 		Debug:          false,
 		Theme:          DefaultTheme,
 		NoColor:        false,
+		RendererPhase:  1,
 		REPL: REPLConfig{
 			AutoResume: true,
 		},
@@ -62,6 +74,12 @@ func Default() Config {
 		},
 		Doctor: DoctorConfig{
 			TimeoutSeconds: DefaultDoctorTimeoutSeconds,
+		},
+		Display: DisplayConfig{
+			ShowReasoning: true,
+			ToolMode:      "compact",
+			GroupContext:  true,
+			StepStyle:     "line",
 		},
 	}
 }

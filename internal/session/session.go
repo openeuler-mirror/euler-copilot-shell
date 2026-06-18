@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -93,9 +94,17 @@ func (s *service) Resolve(ctx context.Context, cwd string, forceNew bool) (Conte
 	if pinned := state.CurrentByDirectory[cwd]; pinned != "" {
 		session, err := s.transport.GetSession(ctx, pinned)
 		if err != nil {
-			return Context{}, fmt.Errorf("resolve pinned session %q: %w", pinned, err)
+			var httpErr *transport.HTTPError
+			if errors.As(err, &httpErr) && httpErr.StatusCode == 404 {
+				// Pinned session was deleted on the server; clear the
+				// pin and fall through to list or create a new one.
+				s.unpin(cwd)
+			} else {
+				return Context{}, fmt.Errorf("resolve pinned session %q: %w", pinned, err)
+			}
+		} else {
+			return contextFromSession(session), nil
 		}
-		return contextFromSession(session), nil
 	}
 
 	limit := defaultListLimit
@@ -175,6 +184,18 @@ func (s *service) pin(cwd, sessionID string) error {
 		return err
 	}
 	return nil
+}
+
+func (s *service) unpin(cwd string) {
+	if cwd == "" {
+		return
+	}
+	state, err := s.state.load()
+	if err != nil {
+		return
+	}
+	delete(state.CurrentByDirectory, cwd)
+	_ = s.state.save(state)
 }
 
 func contextFromSession(session transport.Session) Context {

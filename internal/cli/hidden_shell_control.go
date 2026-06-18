@@ -128,14 +128,11 @@ func runShellAgentControl(cmd *cobra.Command, opts *rootOptions, action shellbri
 			options[i] = terminal.ListOption{Label: label, Value: a.Name}
 		}
 
-		result, selErr := terminal.RunSelector(inFile, outFile, "Select agent:", options)
-		if selErr != nil {
-			return fmt.Errorf("agent selection: %w", selErr)
-		}
-		if result == nil {
+		selected, ok := terminal.RunSelect(cmd.Context(), inFile, outFile, "Select agent:", options)
+		if !ok {
 			return nil
 		}
-		value = result.Value
+		value = selected
 	}
 
 	container, err := opts.loadApp(cmd.Context(), cmd)
@@ -200,14 +197,11 @@ func runShellModelControl(cmd *cobra.Command, opts *rootOptions, action shellbri
 		inFile, _ := cmd.InOrStdin().(*os.File)
 		outFile, _ := cmd.OutOrStdout().(*os.File)
 		if inFile != nil && outFile != nil {
-			result, selErr := terminal.RunSelector(inFile, outFile, "Select variant for "+value+":", options)
-			if selErr != nil {
-				return fmt.Errorf("variant selection: %w", selErr)
-			}
-			if result == nil {
+			v, vok := terminal.RunSelect(cmd.Context(), inFile, outFile, "Select variant for "+value+":", options)
+			if !vok {
 				return nil
 			}
-			variant = result.Value
+			variant = v
 		}
 	}
 
@@ -271,14 +265,11 @@ func interactiveShellModelSelect(cmd *cobra.Command, client transport.Client) (s
 		return "", fmt.Errorf("interactive model selection requires a terminal")
 	}
 
-	result, selErr := terminal.RunSelector(inFile, outFile, "Select model:", options)
-	if selErr != nil {
-		return "", fmt.Errorf("model selection: %w", selErr)
-	}
-	if result == nil {
+	value, ok := terminal.RunSelect(cmd.Context(), inFile, outFile, "Select model:", options)
+	if !ok {
 		return "", nil
 	}
-	return result.Value, nil
+	return value, nil
 }
 
 func findShellModel(cmd *cobra.Command, client transport.Client, providerID, modelID string) *transport.Model {

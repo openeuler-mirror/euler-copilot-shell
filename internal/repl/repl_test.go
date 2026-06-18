@@ -92,13 +92,15 @@ func (f *fakeTransport) SetProviderAPIKey(ctx context.Context, providerID, apiKe
 func (f *fakeTransport) SendPromptAsync(ctx context.Context, sessionID string, req transport.PromptRequest) error {
 	return nil
 }
-func (f *fakeTransport) ReplyPermission(ctx context.Context, requestID string, decision transport.PermissionDecision) (bool, error) {
+func (f *fakeTransport) ReplyPermission(ctx context.Context, requestID string, _ string, decision transport.PermissionDecision) (bool, error) {
 	return false, nil
 }
-func (f *fakeTransport) ReplyQuestion(ctx context.Context, requestID string, answers [][]string) (bool, error) {
+
+func (f *fakeTransport) ReplyQuestion(ctx context.Context, requestID string, _ string, answers [][]string) (bool, error) {
 	return false, nil
 }
-func (f *fakeTransport) RejectQuestion(ctx context.Context, requestID string) (bool, error) {
+
+func (f *fakeTransport) RejectQuestion(ctx context.Context, requestID string, _ string) (bool, error) {
 	return false, nil
 }
 func (f *fakeTransport) SubscribeEvents(ctx context.Context, filter transport.EventFilter) (<-chan transport.RawEvent, <-chan error) {

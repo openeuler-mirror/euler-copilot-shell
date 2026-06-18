@@ -28,9 +28,9 @@ type Client interface {
 	ListProviderAuthMethods(ctx context.Context, directory, workspace string) (ProviderAuthMethods, error)
 	SetProviderAPIKey(ctx context.Context, providerID, apiKey string) error
 	SendPromptAsync(ctx context.Context, sessionID string, req PromptRequest) error
-	ReplyPermission(ctx context.Context, requestID string, decision PermissionDecision) (bool, error)
-	ReplyQuestion(ctx context.Context, requestID string, answers [][]string) (bool, error)
-	RejectQuestion(ctx context.Context, requestID string) (bool, error)
+	ReplyPermission(ctx context.Context, requestID string, directory string, decision PermissionDecision) (bool, error)
+	ReplyQuestion(ctx context.Context, requestID string, directory string, answers [][]string) (bool, error)
+	RejectQuestion(ctx context.Context, requestID string, directory string) (bool, error)
 	SubscribeEvents(ctx context.Context, filter EventFilter) (<-chan RawEvent, <-chan error)
 	ListAgents(ctx context.Context, directory, workspace string) ([]Agent, error)
 }
@@ -238,40 +238,46 @@ func (c *client) SendPromptAsync(ctx context.Context, sessionID string, req Prom
 	return c.doJSON(ctx, http.MethodPost, endpoint, query, req, nil, http.StatusNoContent)
 }
 
-func (c *client) ReplyPermission(ctx context.Context, requestID string, decision PermissionDecision) (bool, error) {
+func (c *client) ReplyPermission(ctx context.Context, requestID string, directory string, decision PermissionDecision) (bool, error) {
 	if requestID == "" {
 		return false, fmt.Errorf("request id is required")
 	}
+	query := url.Values{}
+	addString(query, "directory", directory)
 	var ok bool
 	endpoint := "/permission/" + url.PathEscape(requestID) + "/reply"
-	if err := c.doJSON(ctx, http.MethodPost, endpoint, nil, decision, &ok, http.StatusOK); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, endpoint, query, decision, &ok, http.StatusOK); err != nil {
 		return false, err
 	}
 	return ok, nil
 }
 
-func (c *client) ReplyQuestion(ctx context.Context, requestID string, answers [][]string) (bool, error) {
+func (c *client) ReplyQuestion(ctx context.Context, requestID string, directory string, answers [][]string) (bool, error) {
 	if requestID == "" {
 		return false, fmt.Errorf("request id is required")
 	}
+	query := url.Values{}
+	addString(query, "directory", directory)
 	var ok bool
 	body := struct {
 		Answers [][]string `json:"answers"`
 	}{Answers: answers}
 	endpoint := "/question/" + url.PathEscape(requestID) + "/reply"
-	if err := c.doJSON(ctx, http.MethodPost, endpoint, nil, body, &ok, http.StatusOK); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, endpoint, query, body, &ok, http.StatusOK); err != nil {
 		return false, err
 	}
 	return ok, nil
 }
 
-func (c *client) RejectQuestion(ctx context.Context, requestID string) (bool, error) {
+func (c *client) RejectQuestion(ctx context.Context, requestID string, directory string) (bool, error) {
 	if requestID == "" {
 		return false, fmt.Errorf("request id is required")
 	}
+	query := url.Values{}
+	addString(query, "directory", directory)
 	var ok bool
 	endpoint := "/question/" + url.PathEscape(requestID) + "/reject"
-	if err := c.doJSON(ctx, http.MethodPost, endpoint, nil, nil, &ok, http.StatusOK); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, endpoint, query, nil, &ok, http.StatusOK); err != nil {
 		return false, err
 	}
 	return ok, nil

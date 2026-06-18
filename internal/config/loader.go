@@ -110,10 +110,15 @@ func defaultMap() map[string]any {
 		"debug":                  cfg.Debug,
 		"theme":                  cfg.Theme,
 		"no_color":               cfg.NoColor,
+		"renderer_phase":         cfg.RendererPhase,
 		"repl.auto_resume":       cfg.REPL.AutoResume,
 		"shell.enabled":          cfg.Shell.Enabled,
 		"shell.debug":            cfg.Shell.Debug,
 		"doctor.timeout_seconds": cfg.Doctor.TimeoutSeconds,
+		"display.show_reasoning": cfg.Display.ShowReasoning,
+		"display.tool_mode":      cfg.Display.ToolMode,
+		"display.group_context":  cfg.Display.GroupContext,
+		"display.step_style":     cfg.Display.StepStyle,
 	}
 }
 
@@ -131,6 +136,9 @@ func envMap(lookupEnv func(string) (string, bool)) (map[string]any, error) {
 		return nil, err
 	}
 	if err := copyBoolEnv(values, lookupEnv, "WITTY_SHELL_DEBUG", "shell.debug"); err != nil {
+		return nil, err
+	}
+	if err := copyBoolEnv(values, lookupEnv, "WITTY_DISPLAY_SHOW_REASONING", "display.show_reasoning"); err != nil {
 		return nil, err
 	}
 	if _, ok := lookupEnv("NO_COLOR"); ok {
@@ -190,6 +198,7 @@ func readConfig(k *koanf.Koanf) Config {
 		Debug:          k.Bool("debug"),
 		Theme:          k.String("theme"),
 		NoColor:        k.Bool("no_color"),
+		RendererPhase:  k.Int("renderer_phase"),
 		REPL: REPLConfig{
 			AutoResume: k.Bool("repl.auto_resume"),
 		},
@@ -199,6 +208,12 @@ func readConfig(k *koanf.Koanf) Config {
 		},
 		Doctor: DoctorConfig{
 			TimeoutSeconds: k.Int("doctor.timeout_seconds"),
+		},
+		Display: DisplayConfig{
+			ShowReasoning: k.Bool("display.show_reasoning"),
+			ToolMode:      k.String("display.tool_mode"),
+			GroupContext:  k.Bool("display.group_context"),
+			StepStyle:     k.String("display.step_style"),
 		},
 	}
 }

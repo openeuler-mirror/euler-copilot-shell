@@ -359,15 +359,12 @@ func (r *repl) handleAgentControl(ctx context.Context, action shellbridge.Contro
 		}
 
 		fmt.Fprintln(r.stdout) // move to new line before selector
-		result, selErr := terminal.RunSelector(r.stdinFile, r.stdoutFile, "Select agent:", options)
-		if selErr != nil {
-			return true, fmt.Errorf("agent selection: %w", selErr)
-		}
-		if result == nil {
+		v, vok := terminal.RunSelect(ctx, r.stdinFile, r.stdoutFile, "Select agent:", options)
+		if !vok {
 			fmt.Fprintln(r.stdout, "\n[cancelled]")
 			return true, nil
 		}
-		value = result.Value
+		value = v
 	}
 
 	// Persist to config file.
@@ -426,15 +423,12 @@ func (r *repl) handleModelControl(ctx context.Context, action shellbridge.Contro
 		}
 
 		fmt.Fprintln(r.stdout)
-		result, selErr := terminal.RunSelector(r.stdinFile, r.stdoutFile, "Select variant for "+value+":", options)
-		if selErr != nil {
-			return true, fmt.Errorf("variant selection: %w", selErr)
-		}
-		if result == nil {
+		v, vok := terminal.RunSelect(ctx, r.stdinFile, r.stdoutFile, "Select variant for "+value+":", options)
+		if !vok {
 			fmt.Fprintln(r.stdout, "\n[cancelled]")
 			return true, nil
 		}
-		variant = result.Value
+		variant = v
 	}
 
 	// Persist to config file.
@@ -495,15 +489,12 @@ func (r *repl) interactiveModelSelect(ctx context.Context) (string, error) {
 	}
 
 	fmt.Fprintln(r.stdout)
-	result, selErr := terminal.RunSelector(r.stdinFile, r.stdoutFile, "Select model:", options)
-	if selErr != nil {
-		return "", fmt.Errorf("model selection: %w", selErr)
-	}
-	if result == nil {
+	value, ok := terminal.RunSelect(ctx, r.stdinFile, r.stdoutFile, "Select model:", options)
+	if !ok {
 		fmt.Fprintln(r.stdout, "\n[cancelled]")
 		return "", nil
 	}
-	return result.Value, nil
+	return value, nil
 }
 
 // findModel looks up a model by provider and model ID.

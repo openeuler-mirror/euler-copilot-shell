@@ -2,6 +2,7 @@ package permission
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -18,13 +19,27 @@ const (
 )
 
 type Transport interface {
-	ReplyPermission(ctx context.Context, requestID string, decision transport.PermissionDecision) (bool, error)
-	ReplyQuestion(ctx context.Context, requestID string, answers [][]string) (bool, error)
-	RejectQuestion(ctx context.Context, requestID string) (bool, error)
+	ReplyPermission(ctx context.Context, requestID string, directory string, decision transport.PermissionDecision) (bool, error)
+	ReplyQuestion(ctx context.Context, requestID string, directory string, answers [][]string) (bool, error)
+	RejectQuestion(ctx context.Context, requestID string, directory string) (bool, error)
 }
 
 type PromptUI interface {
 	ReadLine(ctx context.Context, label string) (string, error)
+}
+
+// SelectOption represents a single selectable item in an interactive list.
+type SelectOption struct {
+	Label       string
+	Description string
+	Value       string
+}
+
+// SelectPrompter is an optional interface that prompts can implement to provide
+// interactive arrow-key selection. When not implemented, the permission manager
+// falls back to text-based ReadLine prompts.
+type SelectPrompter interface {
+	Select(ctx context.Context, title string, options []SelectOption) (int, error)
 }
 
 // Manager coordinates interactive permission/question requests.
@@ -32,11 +47,17 @@ type Manager interface {
 	HandleEvent(ctx context.Context, evt event.AppEvent) error
 	HandlePermission(ctx context.Context, payload event.PermissionAskedPayload) error
 	HandleQuestion(ctx context.Context, payload event.QuestionAskedPayload) error
+	// SetDirectory updates the working directory used to scope permission
+	// replies to the correct server instance.
+	SetDirectory(dir string)
 }
 
 type Options struct {
-	Transport   Transport
-	Prompt      PromptUI
+	Transport Transport
+	Prompt    PromptUI
+	// SelectFn is an optional interactive selector for arrow-key navigation.
+	// When nil, the manager falls back to text-based ReadLine prompts.
+	SelectFn    func(ctx context.Context, title string, options []SelectOption) (int, error)
 	Writer      io.Writer
 	Interactive bool
 }
@@ -44,8 +65,10 @@ type Options struct {
 type manager struct {
 	transport   Transport
 	prompt      PromptUI
+	selectFn    func(ctx context.Context, title string, options []SelectOption) (int, error)
 	out         io.Writer
 	interactive bool
+	directory   string
 }
 
 func NewManager(opts Options) (Manager, error) {
@@ -62,6 +85,7 @@ func NewManager(opts Options) (Manager, error) {
 	return &manager{
 		transport:   opts.Transport,
 		prompt:      opts.Prompt,
+		selectFn:    opts.SelectFn,
 		out:         out,
 		interactive: opts.Interactive,
 	}, nil
@@ -105,6 +129,20 @@ func (m *manager) HandlePermission(ctx context.Context, payload event.Permission
 		return m.replyPermission(ctx, payload.RequestID, transport.PermissionDecision{Reply: permissionReplyReject})
 	}
 
+	// Try interactive arrow-key selector first.
+	if m.selectFn != nil {
+		decision, err := m.selectPermission(ctx, payload)
+		if err != nil {
+			return err
+		}
+		if decision == "" {
+			// User cancelled — reject.
+			return m.replyPermission(ctx, payload.RequestID, transport.PermissionDecision{Reply: permissionReplyReject})
+		}
+		return m.replyPermission(ctx, payload.RequestID, transport.PermissionDecision{Reply: decision})
+	}
+
+	// Fallback to text-based prompt.
 	for {
 		answer, err := m.prompt.ReadLine(ctx, permissionPrompt(payload))
 		if err != nil {
@@ -119,6 +157,35 @@ func (m *manager) HandlePermission(ctx context.Context, payload event.Permission
 		}
 		return m.replyPermission(ctx, payload.RequestID, transport.PermissionDecision{Reply: decision})
 	}
+}
+
+// selectPermission uses the interactive arrow-key selector for permission decisions.
+func (m *manager) selectPermission(ctx context.Context, payload event.PermissionAskedPayload) (string, error) {
+	title := permissionSelectTitle(payload)
+	options := []SelectOption{
+		{Label: "Once", Description: "Allow this time only", Value: permissionReplyOnce},
+		{Label: "Always", Description: "Allow all future requests of this type", Value: permissionReplyAlways},
+		{Label: "Reject", Description: "Deny this request", Value: permissionReplyReject},
+	}
+	idx, err := m.selectFn(ctx, title, options)
+	if err != nil {
+		return "", fmt.Errorf("permission selection: %w", err)
+	}
+	if idx < 0 || idx >= len(options) {
+		return "", nil // cancelled
+	}
+	return options[idx].Value, nil
+}
+
+func permissionSelectTitle(payload event.PermissionAskedPayload) string {
+	target := payload.Permission
+	if len(payload.Patterns) > 0 {
+		target = strings.TrimSpace(target + " [" + strings.Join(payload.Patterns, ", ") + "]")
+	}
+	if target == "" {
+		target = "requested action"
+	}
+	return "Allow " + target + "?"
 }
 
 func (m *manager) HandleQuestion(ctx context.Context, payload event.QuestionAskedPayload) error {
@@ -141,10 +208,19 @@ func (m *manager) HandleQuestion(ctx context.Context, payload event.QuestionAske
 
 	answers := make([][]string, 0, len(payload.Questions))
 	for index, question := range payload.Questions {
-		if err := m.writeQuestion(ctx, index, len(payload.Questions), question); err != nil {
-			return err
+		var labels []string
+		var reject bool
+		var err error
+
+		// Use interactive selector for questions with predefined options and no custom input.
+		if m.selectFn != nil && len(question.Options) > 0 && !question.Custom {
+			labels, reject, err = m.selectQuestion(ctx, index, len(payload.Questions), question)
+		} else {
+			if err := m.writeQuestion(ctx, index, len(payload.Questions), question); err != nil {
+				return err
+			}
+			labels, reject, err = m.promptQuestion(ctx, question)
 		}
-		labels, reject, err := m.promptQuestion(ctx, question)
 		if err != nil {
 			return fmt.Errorf("prompt question %q: %w", payload.RequestID, err)
 		}
@@ -155,6 +231,39 @@ func (m *manager) HandleQuestion(ctx context.Context, payload event.QuestionAske
 	}
 
 	return m.replyQuestion(ctx, payload.RequestID, answers)
+}
+
+// selectQuestion uses the interactive selector for a single question.
+func (m *manager) selectQuestion(ctx context.Context, index, total int, question event.QuestionInfo) ([]string, bool, error) {
+	title := questionSelectTitle(index, total, question)
+	options := make([]SelectOption, len(question.Options)+1)
+	for i, opt := range question.Options {
+		options[i] = SelectOption{Label: opt.Label, Description: opt.Description, Value: opt.Label}
+	}
+	options[len(options)-1] = SelectOption{Label: "Reject", Description: "Refuse to answer", Value: "__reject__"}
+
+	idx, err := m.selectFn(ctx, title, options)
+	if err != nil {
+		return nil, false, fmt.Errorf("question selection: %w", err)
+	}
+	if idx < 0 || idx >= len(options) {
+		return nil, true, nil // cancelled → reject
+	}
+	if options[idx].Value == "__reject__" {
+		return nil, true, nil
+	}
+	return []string{options[idx].Value}, false, nil
+}
+
+func questionSelectTitle(index, total int, question event.QuestionInfo) string {
+	title := strings.TrimSpace(question.Question)
+	if question.Header != "" {
+		title = strings.TrimSpace(question.Header + ": " + title)
+	}
+	if total > 1 {
+		title = fmt.Sprintf("Q%d/%d: %s", index+1, total, title)
+	}
+	return title
 }
 
 func (m *manager) promptQuestion(ctx context.Context, question event.QuestionInfo) ([]string, bool, error) {
@@ -213,18 +322,22 @@ func (m *manager) writeLine(ctx context.Context, line string) error {
 }
 
 func (m *manager) replyPermission(ctx context.Context, requestID string, decision transport.PermissionDecision) error {
-	ok, err := m.transport.ReplyPermission(ctx, requestID, decision)
+	ok, err := m.transport.ReplyPermission(ctx, requestID, m.directory, decision)
 	if err != nil {
+		var httpErr *transport.HTTPError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == 404 {
+			return fmt.Errorf("reply permission %q: request not found (may have timed out on the server)", requestID)
+		}
 		return fmt.Errorf("reply permission %q: %w", requestID, err)
 	}
 	if !ok {
-		return fmt.Errorf("reply permission %q: server returned false", requestID)
+		return fmt.Errorf("reply permission %q: server rejected", requestID)
 	}
 	return nil
 }
 
 func (m *manager) replyQuestion(ctx context.Context, requestID string, answers [][]string) error {
-	ok, err := m.transport.ReplyQuestion(ctx, requestID, answers)
+	ok, err := m.transport.ReplyQuestion(ctx, requestID, m.directory, answers)
 	if err != nil {
 		return fmt.Errorf("reply question %q: %w", requestID, err)
 	}
@@ -235,7 +348,7 @@ func (m *manager) replyQuestion(ctx context.Context, requestID string, answers [
 }
 
 func (m *manager) rejectQuestion(ctx context.Context, requestID string) error {
-	ok, err := m.transport.RejectQuestion(ctx, requestID)
+	ok, err := m.transport.RejectQuestion(ctx, requestID, m.directory)
 	if err != nil {
 		return fmt.Errorf("reject question %q: %w", requestID, err)
 	}
@@ -243,6 +356,11 @@ func (m *manager) rejectQuestion(ctx context.Context, requestID string) error {
 		return fmt.Errorf("reject question %q: server returned false", requestID)
 	}
 	return nil
+}
+
+// SetDirectory stores the session directory for scoping permission replies.
+func (m *manager) SetDirectory(dir string) {
+	m.directory = dir
 }
 
 func permissionPrompt(payload event.PermissionAskedPayload) string {
