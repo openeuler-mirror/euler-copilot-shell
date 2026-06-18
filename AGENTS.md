@@ -168,6 +168,7 @@ Agent 将自动读取此配置，在 openEuler 环境中执行测试和构建。
 - `docs/development/implementation-plan.md` — 详细模块实现计划
 - `docs/development/sse-client.md` — SSE 客户端技术参考
 - `docs/development/streaming-renderer.md` — 流式渲染器技术参考
+- `docs/development/message-display-design.md` — 消息展示设计（思考/工具/Step）
 
 ## Rules 与 Skills
 

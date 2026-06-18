@@ -641,6 +641,164 @@
 - [ ] `go test -count=1 ./...`、`golangci-lint run ./...` 通过。
 - [ ] openEuler PTY 测试通过。
 
+### P3-6：中间过程展示优化（思考、工具调用、Step 分组）
+
+> 设计文档：[`./message-display-design.md`](./message-display-design.md)
+>
+> **基于 OpenCode 真实源码（`anomalyco/opencode` `dev` 分支）逐文件分析。**
+> 关键发现：
+>
+> - TUI PART_MAPPING 仅渲染 3 种 Part（text/tool/reasoning）
+> - StepStartPart/StepFinishPart 在 `toModelMessages` 中被显式过滤，**完全不渲染**
+> - Cost/Tokens 是 **per-message**（AssistantMessage），非 per-step
+> - `todowrite` 在 Web UI 中是 HIDDEN_TOOLS（TUI 中显示）
+> - `question` 在 pending/running 期间隐藏
+> - `CONTEXT_GROUP_TOOLS = {read, glob, grep, list}` 在 Web UI 中可折叠分组（TUI 无此功能）
+> - Reasoning 使用 left-border + 完整 Markdown 渲染，**不是 box drawing**
+> - Permission/Question 是独立对话框，非内联消息
+>
+> **Witty CLI 核心差异**：行式输出（不可折叠），必须通过 buffering + timing 模拟 Web UI 的分组能力。
+>
+> **实际参考文件**（`anomalyco/opencode` dev 分支，commit `7daea69e` 附近）：
+>
+> - `packages/opencode/src/session/message-v2.ts` — Part schema + ToolPart 4 态状态机 + toModelMessages 过滤
+> - `packages/opencode/src/cli/cmd/tui/routes/session/index.tsx` — TUI PART_MAPPING（仅 3 种）、ReasoningPart、TextPart、ToolPart 渲染
+> - `packages/ui/src/components/message-part.tsx` — Web UI PART_MAPPING、HIDDEN_TOOLS、CONTEXT_GROUP_TOOLS、renderable()、ContextToolGroup、ToolRegistry
+> - `packages/sdk/js/src/v2/gen/types.gen.ts` — SDK Event/Part 类型定义
+
+#### P3-6D：Step 中间零输出 + 回答完汇总 🔴 最高优先级（最小改动，最大影响）
+
+> OpenCode TUI PART_MAPPING 中不存在 StepStart/StepFinish。它们在 `toModelMessages` 中被过滤。
+> Cost/Tokens 在 `AssistantMessage` metadata 中，**是 per-message 的，不是 per-step 的**。
+> StepStartPart 的 schema 仅有 `{ type: "step-start" }` 一个字段——无任何数据。
+
+- [ ] **`EventStepStarted` / `EventStepEnded` 不产生任何终端输出**。
+- [ ] `EventStepStarted` 仅内部使用：flush context buffer，初始化 reasoning renderer。
+- [ ] `EventStepEnded` 仅内部使用：flush context buffer，累计 cost/tokens。
+- [ ] **仅在 `EventSessionIdle` 后输出一行汇总**。
+- [ ] 汇总格式：`── answered in {duration} · ${cost} · {tokens} tokens ──`。
+- [ ] 汇总行使用 lipgloss Faint（暗色），线宽 = 终端宽度。
+- [ ] 从 `AssistantMessage` metadata 提取 cost/tokens/duration（不是从 StepFinishPart）。
+- [ ] `display.step_style` 配置：`line`（分隔线，默认）/ `minimal`（仅空行）/ `none`。
+- [ ] 非 TTY 降级：`--- 3.2s  $0.0015  448 tokens ---`（纯 ASCII）。
+
+##### 验收 checkpoint：C3-6D
+
+- [ ] Step 中间零输出，`[step]` 文字完全消失。
+- [ ] 仅 `EventSessionIdle` 后显示一行汇总统计。
+- [ ] `[step] started/finished` 不再出现在任何输出中。
+- [ ] Golden test 覆盖三种 step_style（line/minimal/none）。
+- [ ] 现有测试全部通过（移除对 step 输出的断言）。
+
+#### P3-6B：Reasoning left-border + Markdown 渲染 🔴 高优先级
+
+> OpenCode TUI 使用 `border={["left"]}` + 完整 Markdown 渲染，`fg={theme.textMuted}`（暗色），
+> 前缀 `"_Thinking:_ " + content()`。**不是 box drawing**。
+> 3 种思考模式（来源 `context/thinking.ts`）：show（完整）、hide（折叠单行）、展开 toggle。
+
+- [ ] 在 `internal/renderer/` 新增独立的 Reasoning 渲染通道（`reasoning.go`）。
+- [ ] reasoning 通过 glamour 渲染后，每行加 `│ ` left-border 前缀输出（lipgloss Faint 颜色）。
+- [ ] 首行 `_Thinking:_` 标识（lipgloss Italic + Faint）。
+- [ ] 流式渲染：reasoning delta 积累到完整 Markdown 块后通过 BlockBuffer → glamour → left-border 输出。
+- [ ] `display.show_reasoning` 配置：`"show"`（默认）/ `"minimal"` / `"hide"`。
+- [ ] minimal 模式：仅输出单行 `▶ Thinking: {首句摘要}...  {duration}`。
+- [ ] hide 模式：完全不输出 reasoning 内容。
+- [ ] reasoning 走独立渲染通道，不干扰 text delta 的 glamour 渲染管线。
+- [ ] 非 TTY 模式：`  | ` 前缀纯文本。
+
+##### 验收 checkpoint：C3-6B
+
+- [ ] reasoning 使用 `│ ` left-border + glamour Markdown 渲染，与 text delta 视觉分离。
+- [ ] 暗色文字（lipgloss Faint）正确应用。
+- [ ] show / minimal / hide 三种模式 golden test 通过。
+- [ ] `show_reasoning = "hide"` 时完全不输出。
+- [ ] reasoning 输出不干扰 text delta 渲染（独立管道验证）。
+
+#### P3-6A：上下文工具分组（ContextToolGroup）🔴 高优先级
+
+> OpenCode Web UI 的 `CONTEXT_GROUP_TOOLS = new Set(["read", "glob", "grep", "list"])`。
+> 注意：TUI **没有**此功能（TUI 每个工具独立渲染），Witty 借鉴 Web UI 的降噪策略。
+> CLI 无折叠能力，改为 **delay-buffer-then-aggregate** 策略。
+
+- [ ] 在 `internal/presenter/` 新增 `context_group.go`（ContextGroup buffer）。
+- [ ] 连续的 `read`/`grep`/`glob`/`list` 调用积累到 buffer，**不立即输出**。
+- [ ] 遇到非上下文工具（bash/write/edit/task/webfetch/websearch/skill/question）时 flush buffer。
+- [ ] StepEnd 时 flush buffer。
+- [ ] SessionIdle 时 flush buffer。
+- [ ] flush 时输出一行摘要：`🔍 context  N reads, M searches, K lists`。
+- [ ] 上下文工具 running 期间不输出（它们通常很快完成）。
+- [ ] `display.group_context_tools`（bool，默认 `true`）。
+- [ ] `group_context_tools = false` 时降级为逐个展示（走 P3-6C 的独立工具格式化）。
+
+##### 验收 checkpoint：C3-6A
+
+- [ ] 连续上下文工具合并为一行摘要展示。
+- [ ] 组摘要准确统计 read/search/list 数量。
+- [ ] `group_context_tools = false` 时降级为逐个展示。
+- [ ] Golden test 覆盖分组与降级场景。
+
+#### P3-6C：工具调用 per-type 格式化 🟡 中优先级
+
+> OpenCode 使用 `ToolRegistry.register()` 为每种工具注册独立渲染器。
+> `todowrite` 是 HIDDEN_TOOLS；`question` 在 pending/running 期间隐藏。
+> TUI 中所有工具使用 `InlineTool` 包装器（icon + 状态指示 + 文本）。
+
+- [ ] bash：提取 `command` + `description`，格式 `$ bash {command} — {description}`。输出行用 `│ ` 前缀缩进。
+- [ ] read：提取 `filePath`（仅文件名），格式 `📖 read {filename}`。归入 context group（P3-6A），关闭分组时单独展示。
+- [ ] write：提取 `filePath`（仅文件名），格式 `✎ write {filename}`。
+- [ ] edit：提取 `filePath` + 变更统计（如 `+3 −2`）。
+- [ ] task：提取 `description` + agent 名称，格式 `⚙ task {agent} — {description}  {duration} · {N} calls`。
+- [ ] skill：提取 `name`，格式 `🧠 skill {name}`。
+- [ ] grep/glob/list：归入 context group（P3-6A），仅在关闭分组时单独展示。
+- [ ] webfetch：提取 `url`，格式 `🌐 fetch {url}`。
+- [ ] websearch：提取 `query` + provider，格式 `🔎 search "{query}"  {N} results`。
+- [ ] apply_patch：提取文件数，格式 `📝 patch {N} files`。
+- [ ] 工具状态图标：running `◌`，completed `✓`（绿色），error `✗`（红色）。
+- [ ] 工具 running 时输出标题行（spinner），completed 时更新为 success（替换行或追加）。
+- [ ] 工具输出超过 10 行自动截断，末尾 `... (N more lines)`。
+- [ ] **所有工具不显示 callID**（与 OpenCode 一致）。
+- [ ] **`todowrite` 永不显示**（与 OpenCode Web UI HIDDEN_TOOLS 一致）。
+- [ ] **`question` 工具 pending/running 期间隐藏**（与 OpenCode `renderable()` 一致）。
+- [ ] `question` completed 时显示 Q&A 对：`❓ Questions ({N})`。
+- [ ] 非 TTY 降级：Unicode → ASCII（`◌` → `[..]`, `✓` → `[OK]`, `✗` → `[FAIL]`, `📖` → `[read]` 等）。
+
+##### 验收 checkpoint：C3-6C
+
+- [ ] bash/read/write/edit/task/skill 各有独立格式化。
+- [ ] 3 态展示：running (◌)、completed (✓绿)、error (✗红) 全部正确。
+- [ ] Golden test 覆盖所有工具类型的 3 种状态。
+- [ ] 非 TTY 输出无 ANSI 且可读。
+- [ ] callID 不在任何工具输出中出现。
+- [ ] `todowrite` 输出完全不存在。
+- [ ] `question` running 期间输出完全不存在。
+
+#### P3-6E：配置项与事件过滤完善 🟢 低优先级
+
+- [ ] 新增 `display.show_reasoning`（string: `"show"` / `"minimal"` / `"hide"`，默认 `"show"`）。
+- [ ] 新增 `display.group_context_tools`（bool，默认 `true`）。
+- [ ] 新增 `display.step_style`（string: `"line"` / `"minimal"` / `"none"`，默认 `"line"`）。
+- [ ] `todowrite` 工具事件静默（不产生 AppEvent，在 event router 层过滤）。
+- [ ] `question` 工具 pending/running 事件静默。
+- [ ] 非 TTY 自动降级（去除 ANSI + Unicode 图标，纯 ASCII 替换）。
+
+##### 验收 checkpoint：C3-6E
+
+- [ ] 三项配置可正常读取并影响渲染行为。
+- [ ] `todowrite` 完全不产生输出。
+- [ ] `question` pending/running 期间完全不产生输出。
+- [ ] 非 TTY 输出可读（管道到文件验证）。
+
+#### P3-6F：端到端验收
+
+##### 验收 checkpoint：C3-6-E2E
+
+- [ ] 思考过程、工具调用、最终回答三者视觉清晰分离。
+- [ ] 上下文工具合并为一组，视觉噪音大幅降低。
+- [ ] `witty ask` 在 openEuler PTY 下交互流畅。
+- [ ] `go test -count=1 ./...`、`golangci-lint run ./...` 通过。
+- [ ] openEuler PTY 测试通过。
+- [ ] Golden test 覆盖完整事件流（reasoning → context tools → bash → task → text → idle summary）。
+
 ---
 
 ## 7. Phase 4：产品化、Doctor 与发布
