@@ -53,16 +53,31 @@ type EventRouter interface {
 type TextRenderer interface {
 	WriteDelta(ctx context.Context, delta string) error
 	Flush(ctx context.Context) error
+	// WriteReasoning writes reasoning (thinking) deltas with a separate visual
+	// style, distinct from the final answer text. When the reasoning renderer
+	// is disabled, this should be a no-op.
+	WriteReasoning(ctx context.Context, delta string) error
+	// FlushReasoning flushes any buffered reasoning text.
+	FlushReasoning(ctx context.Context) error
+	// ResetReasoning resets the first-paragraph flag so the next reasoning
+	// block starts with a fresh "Thinking:" label.
+	ResetReasoning()
+	Resize(width int)
 }
 
 // EventPresenter renders structured non-text events.
 type EventPresenter interface {
 	PresentEvent(ctx context.Context, evt event.AppEvent) error
+	PresentError(ctx context.Context, err error) error
+	// PresentSessionIdle outputs the final answer summary line.
+	// Called when session.idle is received (the only reliable stream-end signal).
+	PresentSessionIdle(ctx context.Context) error
 }
 
 // InteractionManager handles permission/question events.
 type InteractionManager interface {
 	HandleEvent(ctx context.Context, evt event.AppEvent) error
+	SetDirectory(dir string)
 }
 
 // Transport sends prompts to the server.

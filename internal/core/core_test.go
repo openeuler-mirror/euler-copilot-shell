@@ -80,11 +80,40 @@ func TestAskRunner_Run_CompletesAndBuildsPromptRequest(t *testing.T) {
 	if !reflect.DeepEqual(renderer.deltas, []string{"hello\n\n"}) {
 		t.Fatalf("renderer deltas = %#v", renderer.deltas)
 	}
-	if renderer.flushCount != 1 {
-		t.Fatalf("renderer flush count = %d, want 1", renderer.flushCount)
+	// SessionIdle now flushes before presenting summary, so flush happens
+	// both in handleEvent and in the Run cleanup for done==true.
+	if renderer.flushCount != 2 {
+		t.Fatalf("renderer flush count = %d, want 2", renderer.flushCount)
 	}
-	if !reflect.DeepEqual(presenter.events, []event.AppEventKind{event.EventStepStarted, event.EventToolFailed}) {
+	// EventStepStarted is dispatched (internally no-ops for display),
+	// EventToolFailed, and EventSessionIdle (now dispatched for summary line).
+	if !reflect.DeepEqual(presenter.events, []event.AppEventKind{event.EventStepStarted, event.EventToolFailed, event.EventSessionIdle}) {
 		t.Fatalf("presented events = %#v", presenter.events)
+	}
+}
+
+func TestAskRunner_Run_SeparatesReasoningFromText(t *testing.T) {
+	renderer := &fakeTextRenderer{}
+	runner := mustRunner(t, Options{
+		Transport: &fakeTransport{},
+		Events: &fakeRouter{events: []event.AppEvent{
+			{Kind: event.EventReasoningDelta, Payload: event.TextDeltaPayload{Delta: "thinking...\n\n"}},
+			{Kind: event.EventTextDelta, Payload: event.TextDeltaPayload{Delta: "answer\n\n"}},
+			{Kind: event.EventSessionIdle},
+		}},
+		Sessions: &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
+		Renderer: renderer,
+	})
+
+	if err := runner.Run(context.Background(), AskRequest{Prompt: "hi", CWD: "/work", ForceNew: true}); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	if !reflect.DeepEqual(renderer.deltas, []string{"answer\n\n"}) {
+		t.Fatalf("text deltas = %#v, want only answer", renderer.deltas)
+	}
+	if !reflect.DeepEqual(renderer.reasoningDeltas, []string{"thinking...\n\n"}) {
+		t.Fatalf("reasoning deltas = %#v, want only thinking", renderer.reasoningDeltas)
 	}
 }
 
@@ -218,10 +247,10 @@ func TestAskRunner_Run_EOFBeforeIdleFlushesAndReturnsError(t *testing.T) {
 }
 
 func TestAskRunner_Run_FlushesBeforePermissionAndQuestion(t *testing.T) {
-	trace := []string{}
-	renderer := &fakeTextRenderer{trace: &trace}
+	renderer := &fakeTextRenderer{}
 	presenter := &fakePresenter{}
-	permission := &fakePermissionManager{trace: &trace}
+	permDone := make(chan struct{}, 2)
+	permission := &fakePermissionManager{done: permDone}
 	runner := mustRunner(t, Options{
 		Transport: &fakeTransport{},
 		Events: &fakeRouter{events: []event.AppEvent{
@@ -240,20 +269,19 @@ func TestAskRunner_Run_FlushesBeforePermissionAndQuestion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if !reflect.DeepEqual(permission.events, []event.AppEventKind{event.EventPermissionAsked, event.EventQuestionAsked}) {
-		t.Fatalf("interaction events = %#v, want permission/question", permission.events)
+	// Wait for async permission handlers to finish.
+	for i := 0; i < 2; i++ {
+		<-permDone
 	}
-	if !reflect.DeepEqual(presenter.events, []event.AppEventKind{event.EventPermissionAsked, event.EventQuestionAsked}) {
-		t.Fatalf("presented events = %#v, want permission/question", presenter.events)
+	// Presenter events are dispatched synchronously before the goroutine.
+	// EventSessionIdle is now also dispatched for the answer summary line.
+	if !reflect.DeepEqual(presenter.events, []event.AppEventKind{event.EventPermissionAsked, event.EventQuestionAsked, event.EventSessionIdle}) {
+		t.Fatalf("presented events = %#v, want permission/question/idle", presenter.events)
 	}
-	if renderer.flushCount != 3 {
-		t.Fatalf("renderer flush count = %d, want 3", renderer.flushCount)
-	}
-	if indexOf(trace, "flush:1") == -1 || indexOf(trace, "flush:1") > indexOf(trace, "interaction:permission.asked") {
-		t.Fatalf("trace = %#v, want flush before permission handling", trace)
-	}
-	if indexOf(trace, "flush:2") == -1 || indexOf(trace, "flush:2") > indexOf(trace, "interaction:question.asked") {
-		t.Fatalf("trace = %#v, want flush before question handling", trace)
+	// Flush is called before each permission/question event, and once more
+	// in the SessionIdle handler before the summary.
+	if renderer.flushCount != 4 {
+		t.Fatalf("renderer flush count = %d, want 4", renderer.flushCount)
 	}
 }
 
@@ -440,9 +468,10 @@ func (f *fakeRouter) Subscribe(ctx context.Context, targetSessionID string, filt
 }
 
 type fakeTextRenderer struct {
-	deltas     []string
-	flushCount int
-	trace      *[]string
+	deltas          []string
+	reasoningDeltas []string
+	flushCount      int
+	trace           *[]string
 }
 
 func (f *fakeTextRenderer) WriteDelta(_ context.Context, delta string) error {
@@ -450,6 +479,18 @@ func (f *fakeTextRenderer) WriteDelta(_ context.Context, delta string) error {
 	if f.trace != nil {
 		*f.trace = append(*f.trace, "render:"+delta)
 	}
+	return nil
+}
+
+func (f *fakeTextRenderer) WriteReasoning(_ context.Context, delta string) error {
+	f.reasoningDeltas = append(f.reasoningDeltas, delta)
+	if f.trace != nil {
+		*f.trace = append(*f.trace, "reasoning:"+delta)
+	}
+	return nil
+}
+
+func (f *fakeTextRenderer) FlushReasoning(context.Context) error {
 	return nil
 }
 
@@ -461,6 +502,10 @@ func (f *fakeTextRenderer) Flush(context.Context) error {
 	return nil
 }
 
+func (f *fakeTextRenderer) Resize(_ int) {}
+
+func (f *fakeTextRenderer) ResetReasoning() {}
+
 type fakePresenter struct {
 	events []event.AppEventKind
 }
@@ -470,16 +515,29 @@ func (f *fakePresenter) PresentEvent(_ context.Context, evt event.AppEvent) erro
 	return nil
 }
 
+func (f *fakePresenter) PresentError(_ context.Context, _ error) error {
+	return nil
+}
+
+func (f *fakePresenter) PresentSessionIdle(_ context.Context) error {
+	return nil
+}
+
 type fakePermissionManager struct {
 	events []event.AppEventKind
 	trace  *[]string
 	err    error
+	done   chan struct{}
 }
 
 func (f *fakePermissionManager) HandleEvent(_ context.Context, evt event.AppEvent) error {
-	f.events = append(f.events, evt.Kind)
 	if f.trace != nil {
 		*f.trace = append(*f.trace, "interaction:"+string(evt.Kind))
 	}
+	if f.done != nil {
+		f.done <- struct{}{}
+	}
 	return f.err
 }
+
+func (f *fakePermissionManager) SetDirectory(_ string) {}

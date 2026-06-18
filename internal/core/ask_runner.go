@@ -73,6 +73,9 @@ func (r *askRunner) Run(ctx context.Context, req AskRequest) error {
 	}
 
 	directory := requestDirectory(sessionCtx, req.CWD)
+	if r.permission != nil {
+		r.permission.SetDirectory(directory)
+	}
 	if model == nil {
 		model = modelFromSession(sessionCtx)
 	}
@@ -150,11 +153,31 @@ func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, 
 			return false, nil
 		}
 		return false, r.renderer.WriteDelta(ctx, payload.Delta)
-	case event.EventStepStarted,
-		event.EventStepEnded,
+	case event.EventReasoningDelta:
+		payload, ok := evt.Payload.(event.TextDeltaPayload)
+		if !ok {
+			return false, &presenter.SchemaError{Op: "render reasoning delta", Err: fmt.Errorf("unexpected payload %T", evt.Payload)}
+		}
+		if r.renderer == nil {
+			return false, nil
+		}
+		return false, r.renderer.WriteReasoning(ctx, payload.Delta)
+	case event.EventStepStarted:
+		// Each new step gets a fresh "Thinking:" label.
+		if r.renderer != nil {
+			r.renderer.ResetReasoning()
+		}
+		if r.presenter == nil {
+			return false, nil
+		}
+		return false, r.presenter.PresentEvent(ctx, evt)
+	case event.EventStepEnded,
+		event.EventAgentSwitched,
+		event.EventModelSwitched,
 		event.EventToolCalled,
 		event.EventToolSucceeded,
-		event.EventToolFailed:
+		event.EventToolFailed,
+		event.EventUnknown:
 		if r.presenter == nil {
 			return false, nil
 		}
@@ -171,8 +194,29 @@ func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, 
 		if r.permission == nil {
 			return false, fmt.Errorf("ask interaction: permission manager is not configured")
 		}
-		return false, r.permission.HandleEvent(ctx, evt)
+		// Run permission handling in a goroutine so the event loop can
+		// keep draining SSE events. The server may send further deltas
+		// or auto-reject the permission on timeout while the user thinks.
+		go func() {
+			if err := r.permission.HandleEvent(context.WithoutCancel(ctx), evt); err != nil {
+				if r.presenter != nil {
+					_ = r.presenter.PresentError(context.WithoutCancel(ctx),
+						fmt.Errorf("interaction %s: %w", evt.Kind, err))
+				}
+			}
+		}()
+		return false, nil
 	case event.EventSessionIdle:
+		// Flush any buffered text/reasoning before the summary line
+		// so text always appears before the "answered in" line.
+		if err := r.flushRenderer(ctx); err != nil {
+			return false, err
+		}
+		if r.presenter != nil {
+			if err := r.presenter.PresentEvent(ctx, evt); err != nil {
+				return false, err
+			}
+		}
 		return true, nil
 	default:
 		return false, nil
@@ -182,6 +226,9 @@ func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, 
 func (r *askRunner) flushRenderer(ctx context.Context) error {
 	if r.renderer == nil {
 		return nil
+	}
+	if err := r.renderer.FlushReasoning(ctx); err != nil {
+		return err
 	}
 	return r.renderer.Flush(ctx)
 }

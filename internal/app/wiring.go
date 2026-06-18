@@ -6,6 +6,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"atomgit.com/openeuler/witty-cli/internal/config"
 	"atomgit.com/openeuler/witty-cli/internal/core"
@@ -62,22 +64,49 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		return nil, err
 	}
 	eventRouter := event.NewRouter(transportClient)
-	rendererService, err := renderer.NewMarkdownRenderer(renderer.Options{
-		Writer:     stdout,
-		IsTTY:      isTTY,
-		Width:      terminal.Width(stdoutFile),
-		Theme:      cfg.Theme,
-		NoColor:    cfg.NoColor,
-		InputFile:  os.Stdin,
-		OutputFile: stdoutFile,
-	})
+	width := terminal.Width(stdoutFile)
+
+	var rendererService renderer.TextRenderer
+	if cfg.RendererPhase >= 2 {
+		rendererService, err = renderer.NewEchoRenderer(renderer.EchoOptions{
+			Writer:        stdout,
+			IsTTY:         isTTY,
+			Width:         width,
+			Theme:         cfg.Theme,
+			NoColor:       cfg.NoColor,
+			InputFile:     os.Stdin,
+			OutputFile:    stdoutFile,
+			Enabled:       true,
+			ShowReasoning: cfg.Display.ShowReasoning,
+		})
+	} else {
+		rendererService, err = renderer.NewMarkdownRenderer(renderer.Options{
+			Writer:        stdout,
+			IsTTY:         isTTY,
+			Width:         width,
+			Theme:         cfg.Theme,
+			NoColor:       cfg.NoColor,
+			InputFile:     os.Stdin,
+			OutputFile:    stdoutFile,
+			ShowReasoning: cfg.Display.ShowReasoning,
+		})
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create renderer: %w", err)
 	}
+
+	// Listen for terminal resize signals and forward to the renderer.
+	if isTTY {
+		go watchTerminalResize(ctx, rendererService, stdoutFile, logger)
+	}
+
 	presenterService := presenter.NewPresenter(presenter.Options{
-		Writer:  stdout,
-		IsTTY:   isTTY,
-		NoColor: cfg.NoColor,
+		Writer:       stdout,
+		IsTTY:        isTTY,
+		NoColor:      cfg.NoColor,
+		StepStyle:    cfg.Display.StepStyle,
+		GroupContext: cfg.Display.GroupContext,
+		Width:        width,
 	})
 	var prompt terminal.Prompter
 	if interactiveTTY {
@@ -86,6 +115,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 	permissionService, err := permission.NewManager(permission.Options{
 		Transport:   transportClient,
 		Prompt:      prompt,
+		SelectFn:    adaptPermissionSelect(prompt),
 		Writer:      stdout,
 		Interactive: interactiveTTY,
 	})
@@ -167,4 +197,38 @@ func writerFile(writer io.Writer) *os.File {
 		return nil
 	}
 	return file
+}
+
+// adaptPermissionSelect builds a permission.SelectFn from a terminal.Prompter
+// by converting between the two packages' SelectOption types.
+func adaptPermissionSelect(p terminal.Prompter) func(ctx context.Context, title string, options []permission.SelectOption) (int, error) {
+	if p == nil {
+		return nil
+	}
+	return func(ctx context.Context, title string, options []permission.SelectOption) (int, error) {
+		termOpts := make([]terminal.SelectOption, len(options))
+		for i, o := range options {
+			termOpts[i] = terminal.SelectOption{Label: o.Label, Description: o.Description, Value: o.Value}
+		}
+		return p.Select(ctx, title, termOpts)
+	}
+}
+
+// watchTerminalResize listens for SIGWINCH and notifies the renderer of
+// width changes. It exits when ctx is cancelled.
+func watchTerminalResize(ctx context.Context, r renderer.TextRenderer, stdoutFile *os.File, logger *slog.Logger) {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGWINCH)
+	defer signal.Stop(ch)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ch:
+			width := terminal.Width(stdoutFile)
+			logger.Debug("terminal resize", "width", width)
+			r.Resize(width)
+		}
+	}
 }
