@@ -1,11 +1,19 @@
-# euler-copilot-shell.spec — Witty CLI RPM for openEuler
-#
-# Source package: euler-copilot-shell
-# Binary package:  witty (with upgrade path from euler-copilot-shell 1.x/2.x and witty-assistant)
-
 %global go_version  1.26.4
 %global import_path atomgit.com/openeuler/euler-copilot-shell
 %global debug_package %{nil}
+
+# Resolve commit and date from build-info file (if present), then --define, finally fallback
+%{lua:
+  local info = rpm.expand("%{_sourcedir}/build-info")
+  local f = io.open(info)
+  if f then
+    local content = f:read("*a")
+    f:close()
+    rpm.expand(content)
+  end
+}
+%{?!commit:  %global commit unknown}
+%{?!date:    %global date   unknown}
 
 Name:           euler-copilot-shell
 Version:        3.0.0
@@ -82,8 +90,6 @@ install -Dpm 0644 packaging/profile.d/witty.sh %{buildroot}%{_sysconfdir}/profil
 %{buildroot}%{_bindir}/witty --help
 
 %files
-# Main euler-copilot-shell package is intentionally empty;
-# all content lives in the witty subpackage.
 
 %files -n witty
 %license LICENSE
