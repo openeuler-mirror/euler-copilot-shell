@@ -68,7 +68,7 @@ OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENAB
 读取 `.agents/config.yaml`，在**与宿主机相同 CPU 架构**的 openEuler 虚拟机上编译 Linux 产物：
 
 ```bash
-orb -m <vm> -u <user> sh -lc 'cd <work_dir> && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty'
+orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty'
 ```
 
 > VM 产物固定为 `build/linux-<arch>/witty`。
@@ -78,7 +78,7 @@ orb -m <vm> -u <user> sh -lc 'cd <work_dir> && OUTDIR="build/$(go env GOOS)-$(go
 ### 架构匹配规则
 
 | 场景 | 行为 |
-|------|------|
+| ---- | ---- |
 | 宿主机 arm64，VM arm64 | ✅ 启动 VM，执行 Linux arm64 编译 |
 | 宿主机 amd64，VM amd64 | ✅ 启动 VM，执行 Linux amd64 编译 |
 | 宿主机 arm64，只有 amd64 VM | ❌ **禁止启动**，报告"无同架构 VM 可用" |
@@ -123,7 +123,7 @@ go vet ./...
 OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty
 go test -count=1 ./...
 # 第二步：openEuler VM 编译（架构匹配时自动执行）
-# orb -m <vm> -u <user> sh -lc 'cd <work_dir> && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty'
+# orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty'
 ```
 
 如用户只要最小反馈，至少完成宿主编译 + 测试即可。
@@ -140,7 +140,7 @@ go test -v -count=1 ./...
 OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty
 
 # === openEuler VM（必须，架构匹配时自动执行）===
-orb -m <vm> -u <user> sh -lc 'cd <work_dir> && go test -v -count=1 ./... && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty'
+orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && go test -v -count=1 ./... && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty'
 ```
 
 如果仓库中已配置 `golangci-lint`，再补：
@@ -192,6 +192,29 @@ TERM=xterm-256color go test -v -tags=pty ./test/pty/
 
 如果某模块文档或测试提示需要 `go test -update`，应把它视为**人工确认后的显式动作**，不要默认执行。
 
+### 4. TTY vs 非 TTY 输出一致性验证
+
+当改动涉及 `internal/renderer/`、`internal/presenter/`、`internal/core/` 时，**必须在 openEuler 上验证 TTY 和非 TTY 两种模式下的输出一致**。
+
+**关键陷阱**：用管道（`|`）或重定向（`>`）会使 stdout 变为非 TTY，验证时必须区分两者的测试方式：
+
+```bash
+# ✅ 正确：TTY 模式 — orb run 默认分配 PTY，二进制直接输出到终端
+orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && build/linux-arm64/witty ask "echo hello" 2>/dev/null'
+
+# ✅ 正确：非 TTY 模式 — 管道到文件，再用 cat 查看
+orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && build/linux-arm64/witty ask "echo hello" 2>/dev/null > /tmp/out.txt && cat /tmp/out.txt'
+
+# ❌ 错误：管道到 cat 会把 TTY 变成非 TTY，无法验证 TTY 表现
+orb run -m <vm> -u <user> sh -lc '... | cat -n'
+```
+
+验证清单：
+
+- [ ] TTY: 思考在回答之前，Unicode 图标（`◌` `✓`）、box-drawing 边框（`│`）
+- [ ] 非 TTY: 思考在回答之前，ASCII 图标（`[..]` `[OK]`）、空格前缀（`  |`）、无 ANSI 转义
+- [ ] 两者的事件**顺序一致**（工具 → 思考 → 回答 → 汇总）
+
 ## openEuler 远程验证（必须）
 
 Agent 根据 `.agents/config.yaml` 自动连接远程 openEuler 环境并执行最终验证。
@@ -206,7 +229,7 @@ OrbStack / WSL 的非交互命令必须显式经 shell 执行；不要把整段 
 
 ```bash
 # OrbStack
-orb -m <vm> -u <user> sh -lc 'cd <work_dir> && go test ./...'
+orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && go test ./...'
 
 # WSL
 wsl -d <distro> -u <user> -- sh -lc 'cd <work_dir> && go test ./...'
@@ -270,6 +293,7 @@ OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENAB
 ```bash
 go run ./cmd/witty ...
 ```
+
 - 禁止在宿主机上运行 VM 产出的 Linux 二进制，反之亦然。
 
 ## 工具安装建议

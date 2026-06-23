@@ -235,7 +235,7 @@ Adapter 采用**确定性优先级路由**，遵循"Shell 优先、Agent 兜底"
 - **不存在命令 + 无强 shell 特征** → `agent`
 
 > **性能考量**：命令存在性检查在每次 Enter 时执行，`type -t` 是 Bash 内建命令，开销极小（不 fork 子进程）。但为避免在极端场景下影响输入响应速度，建议将检查结果缓存到当前 session 的关联数组中（`__WITTY_CMD_CACHE`），首次查询后缓存，后续同一命令直接查表。
-
+>
 > **与 `command_not_found_handle` 的关系**：命令存在性检查在 Adapter 层（Enter Hook）执行，`command_not_found_handle` 在 Shell 层（命令执行后 `command not found` 时触发）。两者形成双层兜底：Adapter 检测到命令不存在时走 Agent；如果 Adapter 漏判（命令存在但实际执行失败），`command_not_found_handle` 仍可兜底。
 
 ### 6.6 `command_not_found_handle` 兜底

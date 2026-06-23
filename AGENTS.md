@@ -42,7 +42,7 @@ Go 1.26+ CLI 工具，对接 opencode MCP Server，为 openEuler 提供终端 AI
 Agent 读取该配置后，通过对应的方式（orb/wsl/ssh）在 openEuler 环境中执行命令。典型用法：
 
 ```bash
-# OrbStack:  orb -m <vm> -u <user> sh -lc 'cd <work_dir> && go test ./...'
+# OrbStack:  orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && go test ./...'
 # WSL:       wsl -d <distro> -u <user> -- sh -lc 'cd <work_dir> && go test ./...'
 # SSH:       ssh <user>@<host> "cd <work_dir> && go test ./..."
 ```
