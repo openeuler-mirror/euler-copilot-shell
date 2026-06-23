@@ -775,30 +775,30 @@
 
 #### P3-6E：配置项与事件过滤完善 🟢 低优先级
 
-- [ ] 新增 `display.show_reasoning`（string: `"show"` / `"minimal"` / `"hide"`，默认 `"show"`）。
-- [ ] 新增 `display.group_context_tools`（bool，默认 `true`）。
-- [ ] 新增 `display.step_style`（string: `"line"` / `"minimal"` / `"none"`，默认 `"line"`）。
-- [ ] `todowrite` 工具事件静默（不产生 AppEvent，在 event router 层过滤）。
-- [ ] `question` 工具 pending/running 事件静默。
-- [ ] 非 TTY 自动降级（去除 ANSI + Unicode 图标，纯 ASCII 替换）。
+- [x] 新增 `display.show_reasoning`（string: `"show"` / `"minimal"` / `"hide"`，默认 `"show"`）。
+- [x] 新增 `display.group_context_tools`（bool，默认 `true`）。
+- [x] 新增 `display.step_style`（string: `"line"` / `"minimal"` / `"none"`，默认 `"line"`）。
+- [x] `todowrite` 工具事件静默（不产生 AppEvent，在 event router 层过滤）。
+- [x] `question` 工具 pending/running 事件静默。
+- [x] 非 TTY 自动降级（去除 ANSI + Unicode 图标，纯 ASCII 替换）。
 
 ##### 验收 checkpoint：C3-6E
 
-- [ ] 三项配置可正常读取并影响渲染行为。
-- [ ] `todowrite` 完全不产生输出。
-- [ ] `question` pending/running 期间完全不产生输出。
-- [ ] 非 TTY 输出可读（管道到文件验证）。
+- [x] 三项配置可正常读取并影响渲染行为。
+- [x] `todowrite` 完全不产生输出。
+- [x] `question` pending/running 期间完全不产生输出。
+- [x] 非 TTY 输出可读（管道到文件验证）。
 
 #### P3-6F：端到端验收
 
 ##### 验收 checkpoint：C3-6-E2E
 
-- [ ] 思考过程、工具调用、最终回答三者视觉清晰分离。
-- [ ] 上下文工具合并为一组，视觉噪音大幅降低。
-- [ ] `witty ask` 在 openEuler PTY 下交互流畅。
-- [ ] `go test -count=1 ./...`、`golangci-lint run ./...` 通过。
-- [ ] openEuler PTY 测试通过。
-- [ ] Golden test 覆盖完整事件流（reasoning → context tools → bash → task → text → idle summary）。
+- [x] 思考过程、工具调用、最终回答三者视觉清晰分离。
+- [x] 上下文工具合并为一组，视觉噪音大幅降低。
+- [x] `witty ask` 在 openEuler PTY 下交互流畅。
+- [x] `go test -count=1 ./...`、`golangci-lint run ./...` 通过。
+- [x] openEuler PTY 测试通过。
+- [x] Golden test 覆盖完整事件流（reasoning → context tools → bash → task → text → idle summary）。
 
 ---
 
