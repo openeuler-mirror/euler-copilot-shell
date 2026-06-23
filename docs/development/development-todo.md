@@ -434,19 +434,19 @@
 
 ### P1-11B：全局 Shell 集成（`/etc/profile.d/witty.sh`）
 
-- [ ] 创建 `packaging/profile.d/witty.sh` 入口脚本，内容为 `eval "$(witty init bash 2>/dev/null)" || true`，带 `BASH_VERSION` 和幂等检查。
-- [ ] RPM spec 中声明 `%config(noreplace) /etc/profile.d/witty.sh`，安装/卸载不修改系统 bashrc。
-- [ ] 用户禁用机制：`WITTY_SHELL_ENABLE=0` 在 `~/.bashrc` 中设置后，`witty init bash` 内部跳过绑定。
-- [ ] 卸载验证：RPM 卸载后 `/etc/profile.d/witty.sh` 被删除，新打开的 shell 不再加载 witty 集成。
-- [ ] 升级验证：RPM 升级后 `/etc/profile.d/witty.sh` 被更新，新打开的 shell 加载新版本逻辑。
+- [x] 创建 `packaging/profile.d/witty.sh` 入口脚本，内容为 `eval "$(witty init bash 2>/dev/null)" || true`，带 `BASH_VERSION` 和幂等检查。
+- [x] RPM spec 中 `%files` 列出 `/etc/profile.d/witty.sh`（不使用 `%config`，该文件为系统管理脚本，非用户可编辑配置）。
+- [x] 用户禁用机制：`WITTY_SHELL_ENABLE=0` 在 `~/.bashrc` 中设置后，`witty init bash` 内部 `__witty_should_enable()` 跳过绑定。
+- [x] 卸载验证：RPM 卸载后 `/etc/profile.d/witty.sh` 被删除，新打开的 shell 不再加载 witty 集成。
+- [x] 升级验证：RPM 升级后 `/etc/profile.d/witty.sh` 被更新，新打开的 shell 加载新版本逻辑。
 
 #### 验收 checkpoint：C1-11B
 
-- [ ] 在 openEuler 上安装 RPM 后，新打开的交互式 Bash 自动加载 witty 集成。
-- [ ] 在 `~/.bashrc` 中加 `export WITTY_SHELL_ENABLE=0` 后，witty 集成不加载。
-- [ ] RPM 卸载后，新打开的 shell 无 witty 集成残留。
-- [ ] `witty` 二进制不存在时，`/etc/profile.d/witty.sh` 不报错（`2>/dev/null || true`）。
-- [ ] 非交互式 shell（如 `bash -c 'echo hello'`）不加载 witty 集成。
+- [x] 在 openEuler 上安装 RPM 后，新打开的交互式 Bash 自动加载 witty 集成。
+- [x] 在 `~/.bashrc` 中加 `export WITTY_SHELL_ENABLE=0` 后，witty 集成不加载。
+- [x] RPM 卸载后，新打开的 shell 无 witty 集成残留。
+- [x] `witty` 二进制不存在时，`/etc/profile.d/witty.sh` 不报错（`2>/dev/null || true`）。
+- [x] 非交互式 shell（如 `bash -c 'echo hello'`）不加载 witty 集成。
 
 ### P1-12：MVP 端到端验收
 
