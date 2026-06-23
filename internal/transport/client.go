@@ -305,7 +305,7 @@ func (c *client) doJSON(ctx context.Context, method, endpoint string, query url.
 	if err != nil {
 		return fmt.Errorf("request %s %s: %w", method, endpoint, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	c.logger.Debug("transport request", "method", method, "endpoint", endpoint, "status", resp.StatusCode, "duration", time.Since(start))
 
 	if resp.StatusCode != expectedStatus {

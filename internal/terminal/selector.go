@@ -36,7 +36,7 @@ func (p *linePrompter) Select(ctx context.Context, title string, options []Selec
 	if err != nil {
 		return -1, fmt.Errorf("select: create cancel reader: %w", err)
 	}
-	defer cancelReader.Close()
+	defer func() { _ = cancelReader.Close() }()
 
 	done := make(chan struct{})
 	go func() {
@@ -117,8 +117,8 @@ func renderSelect(out io.Writer, title string, options []SelectOption, selected 
 	var b strings.Builder
 
 	// If this is a re-render, clear previous output and move cursor back up.
-	b.WriteString(fmt.Sprintf("\x1b[%dA", lines)) // move up
-	b.WriteString("\x1b[0J")                      // clear from cursor to end
+	fmt.Fprintf(&b, "\x1b[%dA", lines) // move up
+	b.WriteString("\x1b[0J")           // clear from cursor to end
 
 	// Title.
 	if title != "" {
@@ -144,7 +144,7 @@ func renderSelect(out io.Writer, title string, options []SelectOption, selected 
 
 		// Shortcut key hint.
 		if i < 9 {
-			b.WriteString(fmt.Sprintf("%d) ", i+1))
+			fmt.Fprintf(&b, "%d) ", i+1)
 		} else {
 			b.WriteString("   ")
 		}
@@ -174,16 +174,16 @@ func renderSelect(out io.Writer, title string, options []SelectOption, selected 
 	if title != "" {
 		cursorUp++
 	}
-	b.WriteString(fmt.Sprintf("\x1b[%dA", cursorUp))
+	fmt.Fprintf(&b, "\x1b[%dA", cursorUp)
 
-	fmt.Fprint(out, b.String())
+	_, _ = fmt.Fprint(out, b.String())
 }
 
 func eraseSelect(out io.Writer, optionCount int) {
 	// Clear the select UI: move cursor to start of options area and clear to end.
 	lines := optionCount + 1 // options + footer
 	if lines > 0 {
-		fmt.Fprintf(out, "\x1b[%dB\x1b[%dA\x1b[0J", lines-1, lines)
+		_, _ = fmt.Fprintf(out, "\x1b[%dB\x1b[%dA\x1b[0J", lines-1, lines)
 	}
 }
 

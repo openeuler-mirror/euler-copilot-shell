@@ -679,85 +679,6 @@ func (p *defaultPresenter) writeContextLine(ctx context.Context, message string)
 	return nil
 }
 
-// writeStepDivider writes a visual separator at step boundaries.
-// When isStart is true, it writes a top divider; otherwise a bottom divider
-// with step stats.
-func (p *defaultPresenter) writeStepDivider(ctx context.Context, isStart bool) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	switch p.stepStyle {
-	case "none":
-		return nil
-	case "minimal":
-		_, err := fmt.Fprintln(p.out)
-		return err
-	default: // "line"
-		line := strings.Repeat("─", 40)
-		if p.colorEnabled {
-			line = p.styles.unknown.Render(line)
-		}
-		if p.colorEnabled && p.downsample {
-			_, err := lipgloss.Fprintln(p.out, line)
-			return err
-		}
-		_, err := fmt.Fprintln(p.out, line)
-		return err
-	}
-}
-
-// writeStepEnd writes the step-end divider with cost/tokens/duration.
-func (p *defaultPresenter) writeStepEnd(ctx context.Context, payload event.StepEndedPayload) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	// Build stats string.
-	var stats []string
-	if payload.Duration > 0 {
-		stats = append(stats, formatDuration(payload.Duration))
-	}
-	if payload.Cost > 0 {
-		stats = append(stats, fmt.Sprintf("$%g", payload.Cost))
-	}
-	totalTokens := payload.Tokens.Input + payload.Tokens.Output + payload.Tokens.Reasoning
-	if totalTokens > 0 {
-		stats = append(stats, fmt.Sprintf("%d tokens", totalTokens))
-	}
-
-	switch p.stepStyle {
-	case "none":
-		return nil
-	case "minimal":
-		if len(stats) == 0 {
-			return nil
-		}
-		line := strings.Join(stats, " · ")
-		if p.colorEnabled {
-			line = p.styles.unknown.Render(line)
-		}
-		return p.writeRawLine(line)
-	default: // "line"
-		statsStr := ""
-		if len(stats) > 0 {
-			statsStr = " " + strings.Join(stats, " · ") + " "
-		}
-		// Build: ──── 0.3s · $0.0001 · 224 tokens ────
-		innerLen := len(statsStr)
-		if innerLen == 0 {
-			innerLen = 1
-		}
-		padEach := 20
-		if padEach < 4 {
-			padEach = 4
-		}
-		line := strings.Repeat("─", padEach) + statsStr + strings.Repeat("─", padEach)
-		if p.colorEnabled {
-			line = p.styles.unknown.Render(line)
-		}
-		return p.writeRawLine(line)
-	}
-}
-
 // writeRawLine writes a pre-formatted line to the output.
 func (p *defaultPresenter) writeRawLine(line string) error {
 	if p.colorEnabled && p.downsample {
@@ -1204,22 +1125,6 @@ func searchPlural(n int) string {
 		return ""
 	}
 	return "es"
-}
-
-// formatToolCall is kept for backward compatibility with tests.
-func formatToolCall(payload event.ToolCalledPayload) string {
-	icon, title, subtitle := toolDisplayInfo(payload.ToolName, payload.Input)
-	return formatToolLine(icon, title, subtitle)
-}
-
-// shortenCallID truncates a call ID like "call_00_JEpLkuJo4T5yV7aq7l166427"
-// to "call_00_JEpL" for display.
-func shortenCallID(callID string) string {
-	const maxLen = 14
-	if len(callID) <= maxLen {
-		return callID
-	}
-	return callID[:maxLen]
 }
 
 func formatField(name, value string) string {

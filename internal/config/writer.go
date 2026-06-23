@@ -90,7 +90,9 @@ func (w *configWriter) writeKey(key, value string) error {
 		return err
 	}
 
-	k.Set(key, value)
+	if err := k.Set(key, value); err != nil {
+		return fmt.Errorf("set config key: %w", err)
+	}
 
 	path := w.ConfigPath()
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

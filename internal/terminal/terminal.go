@@ -131,7 +131,7 @@ func (p *linePrompter) ReadLine(ctx context.Context, label string) (string, erro
 	cancelable, err := cancelreader.NewReader(p.in)
 	if err == nil {
 		reader = cancelable
-		defer cancelable.Close()
+		defer func() { _ = cancelable.Close() }()
 		done := make(chan struct{})
 		go func() {
 			select {

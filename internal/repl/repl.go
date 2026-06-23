@@ -161,7 +161,7 @@ func (r *repl) Run(ctx context.Context) error {
 	}
 
 	scanner := bufio.NewScanner(r.stdin)
-	fmt.Fprint(r.stdout, r.prompt())
+	_, _ = fmt.Fprint(r.stdout, r.prompt())
 
 	for {
 		select {
@@ -171,7 +171,7 @@ func (r *repl) Run(ctx context.Context) error {
 		}
 
 		if !scanner.Scan() {
-			fmt.Fprintln(r.stdout)
+			_, _ = fmt.Fprintln(r.stdout)
 			if err := scanner.Err(); err != nil {
 				return fmt.Errorf("repl: read input: %w", err)
 			}
@@ -180,7 +180,7 @@ func (r *repl) Run(ctx context.Context) error {
 
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
-			fmt.Fprint(r.stdout, r.prompt())
+			_, _ = fmt.Fprint(r.stdout, r.prompt())
 			continue
 		}
 
@@ -191,11 +191,11 @@ func (r *repl) Run(ctx context.Context) error {
 		if strings.HasPrefix(line, "/") {
 			handled, err := r.handleSlashCommand(loopCtx, line)
 			if err != nil {
-				fmt.Fprintf(r.stdout, "\n[error] %v\n", err)
+				_, _ = fmt.Fprintf(r.stdout, "\n[error] %v\n", err)
 			}
 			if handled {
-				fmt.Fprintln(r.stdout)
-				fmt.Fprint(r.stdout, r.prompt())
+				_, _ = fmt.Fprintln(r.stdout)
+				_, _ = fmt.Fprint(r.stdout, r.prompt())
 				continue
 			}
 		}
@@ -225,9 +225,9 @@ func (r *repl) Run(ctx context.Context) error {
 
 		if err := r.runner.Run(askCtx, req); err != nil {
 			if askCtx.Err() != nil {
-				fmt.Fprintln(r.stdout, "\n[cancelled]")
+				_, _ = fmt.Fprintln(r.stdout, "\n[cancelled]")
 			} else {
-				fmt.Fprintf(r.stdout, "\n[error] %v\n", err)
+				_, _ = fmt.Fprintf(r.stdout, "\n[error] %v\n", err)
 			}
 		}
 
@@ -236,8 +236,8 @@ func (r *repl) Run(ctx context.Context) error {
 		askCancel = nil
 		askCancelMu.Unlock()
 
-		fmt.Fprintln(r.stdout)
-		fmt.Fprint(r.stdout, r.prompt())
+		_, _ = fmt.Fprintln(r.stdout)
+		_, _ = fmt.Fprint(r.stdout, r.prompt())
 	}
 }
 
@@ -270,7 +270,7 @@ func (r *repl) handleSlashCommand(ctx context.Context, line string) (bool, error
 		r.forceNewNext = true
 		r.pinnedSession = ""
 		r.mu.Unlock()
-		fmt.Fprintln(r.stdout, "\n[new] next prompt will start a fresh session")
+		_, _ = fmt.Fprintln(r.stdout, "\n[new] next prompt will start a fresh session")
 		return true, nil
 
 	case shellbridge.ControlAsk:
@@ -296,7 +296,7 @@ func (r *repl) handleSlashCommand(ctx context.Context, line string) (bool, error
 		}
 		if err := r.runner.Run(askCtx, req); err != nil {
 			if askCtx.Err() != nil {
-				fmt.Fprintln(r.stdout, "\n[cancelled]")
+				_, _ = fmt.Fprintln(r.stdout, "\n[cancelled]")
 			} else {
 				return true, err
 			}
@@ -309,13 +309,13 @@ func (r *repl) handleSlashCommand(ctx context.Context, line string) (bool, error
 			return true, fmt.Errorf("session list: %w", err)
 		}
 		if len(summaries) == 0 {
-			fmt.Fprintln(r.stdout, "\n(no sessions)")
+			_, _ = fmt.Fprintln(r.stdout, "\n(no sessions)")
 			return true, nil
 		}
-		fmt.Fprintln(r.stdout)
+		_, _ = fmt.Fprintln(r.stdout)
 		for _, s := range summaries {
 			timeStr := formatUnixTime(s.Updated)
-			fmt.Fprintf(r.stdout, "%s\t%s\t%s\t%s\n", s.ID, s.Title, s.Directory, timeStr)
+			_, _ = fmt.Fprintf(r.stdout, "%s\t%s\t%s\t%s\n", s.ID, s.Title, s.Directory, timeStr)
 		}
 		return true, nil
 
@@ -328,7 +328,7 @@ func (r *repl) handleSlashCommand(ctx context.Context, line string) (bool, error
 		r.pinnedSession = sessCtx.ID
 		r.forceNewNext = false
 		r.mu.Unlock()
-		fmt.Fprintf(r.stdout, "\ncontinued session %s\n", sessCtx.ID)
+		_, _ = fmt.Fprintf(r.stdout, "\ncontinued session %s\n", sessCtx.ID)
 		return true, nil
 
 	default:
@@ -358,10 +358,10 @@ func (r *repl) handleAgentControl(ctx context.Context, action shellbridge.Contro
 			options[i] = terminal.ListOption{Label: label, Value: a.Name}
 		}
 
-		fmt.Fprintln(r.stdout) // move to new line before selector
+		_, _ = fmt.Fprintln(r.stdout) // move to new line before selector
 		v, vok := terminal.RunSelect(ctx, r.stdinFile, r.stdoutFile, "Select agent:", options)
 		if !vok {
-			fmt.Fprintln(r.stdout, "\n[cancelled]")
+			_, _ = fmt.Fprintln(r.stdout, "\n[cancelled]")
 			return true, nil
 		}
 		value = v
@@ -377,7 +377,7 @@ func (r *repl) handleAgentControl(ctx context.Context, action shellbridge.Contro
 	r.forceNewNext = true
 	r.pinnedSession = ""
 	r.mu.Unlock()
-	fmt.Fprintf(r.stdout, "\n[agent] set to %q (saved to %s)\n", value, r.configWriter.ConfigPath())
+	_, _ = fmt.Fprintf(r.stdout, "\n[agent] set to %q (saved to %s)\n", value, r.configWriter.ConfigPath())
 	return true, nil
 }
 
@@ -422,10 +422,10 @@ func (r *repl) handleModelControl(ctx context.Context, action shellbridge.Contro
 			options[i] = terminal.ListOption{Label: vID, Value: vID}
 		}
 
-		fmt.Fprintln(r.stdout)
+		_, _ = fmt.Fprintln(r.stdout)
 		v, vok := terminal.RunSelect(ctx, r.stdinFile, r.stdoutFile, "Select variant for "+value+":", options)
 		if !vok {
-			fmt.Fprintln(r.stdout, "\n[cancelled]")
+			_, _ = fmt.Fprintln(r.stdout, "\n[cancelled]")
 			return true, nil
 		}
 		variant = v
@@ -447,9 +447,9 @@ func (r *repl) handleModelControl(ctx context.Context, action shellbridge.Contro
 	r.mu.Unlock()
 
 	if variant != "" {
-		fmt.Fprintf(r.stdout, "\n[model] set to %q (variant: %s, saved to %s)\n", modelStr, variant, r.configWriter.ConfigPath())
+		_, _ = fmt.Fprintf(r.stdout, "\n[model] set to %q (variant: %s, saved to %s)\n", modelStr, variant, r.configWriter.ConfigPath())
 	} else {
-		fmt.Fprintf(r.stdout, "\n[model] set to %q (saved to %s)\n", modelStr, r.configWriter.ConfigPath())
+		_, _ = fmt.Fprintf(r.stdout, "\n[model] set to %q (saved to %s)\n", modelStr, r.configWriter.ConfigPath())
 	}
 	return true, nil
 }
@@ -488,10 +488,10 @@ func (r *repl) interactiveModelSelect(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("no models available from connected providers")
 	}
 
-	fmt.Fprintln(r.stdout)
+	_, _ = fmt.Fprintln(r.stdout)
 	value, ok := terminal.RunSelect(ctx, r.stdinFile, r.stdoutFile, "Select model:", options)
 	if !ok {
-		fmt.Fprintln(r.stdout, "\n[cancelled]")
+		_, _ = fmt.Fprintln(r.stdout, "\n[cancelled]")
 		return "", nil
 	}
 	return value, nil

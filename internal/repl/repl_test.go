@@ -387,7 +387,7 @@ func TestRun_RespectsParentCancellationBetweenAsks(t *testing.T) {
 	}()
 	time.Sleep(200 * time.Millisecond)
 	cancel()
-	w.Close()
+	_ = w.Close()
 	select {
 	case err := <-done:
 		if err != nil {

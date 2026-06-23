@@ -41,7 +41,7 @@ func ParseStream(ctx context.Context, r io.Reader, out chan<- SSEEvent) error {
 		}
 
 		line, err := reader.ReadString('\n')
-		if err != nil && !(err == io.EOF && line != "") {
+		if err != nil && (err != io.EOF || line == "") {
 			if err == io.EOF {
 				return state.dispatch(ctx, out)
 			}
@@ -171,14 +171,14 @@ func (c *client) openEventStream(ctx context.Context, filter EventFilter) (io.Re
 		return nil, fmt.Errorf("sse connect: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		return nil, c.httpError("/event", resp)
 	}
 	return resp.Body, nil
 }
 
 func (c *client) streamEvents(ctx context.Context, body io.ReadCloser, out chan<- RawEvent) error {
-	defer body.Close()
+	defer func() { _ = body.Close() }()
 
 	raw := make(chan SSEEvent, 32)
 	parseErr := make(chan error, 1)

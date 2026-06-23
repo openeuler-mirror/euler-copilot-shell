@@ -358,15 +358,6 @@ func mustRunner(t *testing.T, opts Options) Runner {
 	return runner
 }
 
-func indexOf(values []string, target string) int {
-	for index, value := range values {
-		if value == target {
-			return index
-		}
-	}
-	return -1
-}
-
 type fakeSessions struct {
 	resolved        session.Context
 	continued       session.Context
@@ -524,10 +515,9 @@ func (f *fakePresenter) PresentSessionIdle(_ context.Context) error {
 }
 
 type fakePermissionManager struct {
-	events []event.AppEventKind
-	trace  *[]string
-	err    error
-	done   chan struct{}
+	trace *[]string
+	err   error
+	done  chan struct{}
 }
 
 func (f *fakePermissionManager) HandleEvent(_ context.Context, evt event.AppEvent) error {
