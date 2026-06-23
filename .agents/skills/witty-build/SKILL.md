@@ -32,19 +32,22 @@ description: 构建、测试、lint、质量门禁与跨平台验证。只要用
 
 ## 构建产物目录
 
-所有显式构建产物写入 `build/<GOOS>-<GOARCH>/witty`，按平台隔离：
+所有显式构建产物写入 `build/<GOOS>-<GOARCH>/`，按平台隔离。二进制名在 Linux/macOS 为 `witty`，在 Windows 为 `witty.exe`：
 
 ```text
 build/
-  <goos>-<goarch>/witty
+  <goos>-<goarch>/witty        # Linux / macOS
+  <goos>-<goarch>/witty.exe    # Windows
 ```
 
 例如（宿主机 + openEuler VM 各一份）：
 
 ```text
 build/
-  <host-goos>-<host-goarch>/witty   # 宿主机（架构自适应）
-  linux-arm64/witty                 # openEuler VM（arm64 示例）
+  darwin-arm64/witty               # 宿主机：macOS arm64
+  windows-amd64/witty.exe          # 宿主机：Windows amd64
+  linux-arm64/witty                # openEuler VM（arm64 示例）
+  linux-amd64/witty                # openEuler VM（amd64 示例）
 ```
 
 `build/` 目录已加入 `.gitignore`，不会被提交。
@@ -65,32 +68,51 @@ OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENAB
 
 ### 第二步：openEuler 虚拟机编译
 
-读取 `.agents/config.yaml`，在**与宿主机相同 CPU 架构**的 openEuler 虚拟机上编译 Linux 产物：
+读取 `.agents/config.yaml`，在 openEuler 虚拟机上编译 Linux 产物。**VM 架构按验证目标选择，无需与宿主机匹配**（验证 `GOAMD64=v1` 用 amd64 VM，验证 ARM 服务器用 arm64 VM）：
 
 ```bash
 orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty'
 ```
 
-> VM 产物固定为 `build/linux-<arch>/witty`。
+> VM 产物固定为 `build/linux-<arch>/witty`，`<arch>` 由 VM 自身的 `go env GOARCH` 决定。
 
 **两步都成功才算编译通过。** 缺任何一步都应报告失败并停止后续操作。
 
+### 第三步：试运行（使用刚产出的二进制）
+
+两步编译各产出二进制后，必须立即用 `build/` 中**刚产出的二进制**做一次试运行，确认产物可执行：
+
+```bash
+# 宿主机
+"build/$(go env GOOS)-$(go env GOARCH)/witty" version
+
+# openEuler VM
+orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && "build/$(go env GOOS)-$(go env GOARCH)/witty" version'
+```
+
+`version` 子命令不加载配置、不连接 server，是最安全的冒烟测试。禁止用 `go run ./cmd/witty` 代替——那验证的是源码而非 `build/` 中的真实产物。
+
 ### 架构匹配规则
+
+宿主机与 openEuler VM 是**两个独立的原生构建环境**，架构无需匹配。宿主机常见组合：macOS arm64、Windows amd64、Windows arm64，有时 Linux（amd64/arm64）；VM 固定为 openEuler Linux。VM 架构按**验证目标**选择——amd64 用于验证 `GOAMD64=v1` 兼容性，arm64 用于验证 ARM 服务器，两者都需验证则依次启动对应 VM。
 
 | 场景 | 行为 |
 | ---- | ---- |
-| 宿主机 arm64，VM arm64 | ✅ 启动 VM，执行 Linux arm64 编译 |
-| 宿主机 amd64，VM amd64 | ✅ 启动 VM，执行 Linux amd64 编译 |
-| 宿主机 arm64，只有 amd64 VM | ❌ **禁止启动**，报告"无同架构 VM 可用" |
-| 用户明确要求不同架构 | ✅ 按用户指令操作，但必须显式确认 |
+| 宿主机任意架构 + VM 同架构 | ✅ 各自原生编译，各自试运行 |
+| 宿主机任意架构 + VM 不同架构 | ✅ 允许；各自原生编译、各自在本地试运行（VM 跑在模拟层上会较慢，属正常） |
+| 用户明确指定某 VM 架构 | ✅ 按用户指令选择 VM |
+
+> 原则：每个环境只构建并运行**自己原生的**二进制。host 与 VM 架构不同是允许的，但绝不把一个环境产出的二进制拷贝到另一个环境运行。
 
 ### 绝对禁止
 
 - ❌ **交叉编译**：禁止在宿主机上用 `GOOS=linux` 产出 Linux 二进制，也禁止在 VM 上产出非 Linux 二进制
 - ❌ **跳过 VM 编译**：不能在宿主机编译完就声称完成
-- ❌ **架构不匹配时仍然启动 VM**：不能把不同架构的二进制拷贝到 VM 或反之
+- ❌ **跨环境运行二进制**：不能把一个环境产出的二进制拷贝到另一个环境运行；host 与 VM 架构不同是允许的，但各自只运行自己构建的产物
 - ❌ **产物目录混淆**：不同平台的构建产物必须落在不同子目录
 - ❌ **在 SKILL.md 中写死特定宿主 OS 名称**：用 `$(go env GOOS)` 自适应
+- ❌ **用 `go run` 代替试运行**：试运行必须执行 `build/` 中刚产出的二进制
+- ❌ **用 `go build -o /dev/null` 跳过产物刷新**：测试验证流程必须刷新并验证 `build/` 二进制
 
 ## 标准构建命令
 
@@ -106,6 +128,8 @@ OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENAB
 CGO_ENABLED=0 go build -o /dev/null ./cmd/witty
 ```
 
+> ⚠️ `go build -o /dev/null` 仅用于临时语法检查，**不刷新** `build/` 中的二进制。在测试验证流程（快速检查 / 完整质量门）中必须使用写入 `build/` 的命令，不得用 `-o /dev/null` 代替。
+
 运行构建产物（仅限当前系统架构）：
 
 ```bash
@@ -114,23 +138,28 @@ CGO_ENABLED=0 go build -o /dev/null ./cmd/witty
 
 ## 快速检查（每次提交前）
 
-这些步骤应当在当前阶段**默认执行**：
+这些步骤应当在当前阶段**默认执行**。宿主机与 openEuler VM 必须**同时**编译，每次都刷新 `build/` 中的二进制，并用刚产出的二进制做试运行：
 
 ```bash
+# === 宿主机 ===
 go fmt ./...
 go vet ./...
-# 第一步：宿主机编译
+# 第一步：宿主机编译（刷新 build/<host-goos>-<host-goarch>/witty）
 OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty
 go test -count=1 ./...
-# 第二步：openEuler VM 编译（架构匹配时自动执行）
-# orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty'
+# 试运行：用刚产出的二进制验证可执行
+"build/$(go env GOOS)-$(go env GOARCH)/witty" version
+
+# === openEuler VM（必须，架构匹配时自动执行）===
+# 第二步：VM 编译（刷新 build/linux-<arch>/witty）+ 测试 + 试运行
+orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty && go test -count=1 ./... && "build/$(go env GOOS)-$(go env GOARCH)/witty" version'
 ```
 
-如用户只要最小反馈，至少完成宿主编译 + 测试即可。
+> 即使是快速检查也遵循 🔴 构建铁律：宿主机与 VM 两步编译缺一不可，试运行必须使用 `build/` 中刚产出的二进制，禁止用 `go run` 或 `go build -o /dev/null` 代替。
 
 ## 完整质量门（PR 前 / 较大改动后）
 
-宿主机 + openEuler VM 双平台验证：
+宿主机 + openEuler VM 双平台验证，每次编译都刷新 `build/` 二进制，并用刚产出的二进制试运行：
 
 ```bash
 # === 宿主机 ===
@@ -138,9 +167,11 @@ go fmt ./...
 go vet ./...
 go test -v -count=1 ./...
 OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty
+# 试运行：用刚产出的二进制验证可执行
+"build/$(go env GOOS)-$(go env GOARCH)/witty" version
 
 # === openEuler VM（必须，架构匹配时自动执行）===
-orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && go test -v -count=1 ./... && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty'
+orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && go test -v -count=1 ./... && OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty && "build/$(go env GOOS)-$(go env GOARCH)/witty" version'
 ```
 
 如果仓库中已配置 `golangci-lint`，再补：
@@ -245,6 +276,8 @@ VM 上的测试和编译命令遵循上方 🔴 构建铁律，使用 `$(go env 
 ```bash
 go test -v -count=1 ./...
 OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty
+# 试运行：用刚产出的二进制验证可执行
+"build/$(go env GOOS)-$(go env GOARCH)/witty" version
 go vet ./...
 ```
 
@@ -288,12 +321,8 @@ OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && CGO_ENAB
 - 不同平台的二进制写在 `build/<GOOS>-<GOARCH>/` 下，互不覆盖。
 - 共享工作目录下，不同环境的构建会落到不同子目录。
 - 根目录下不应直接产生 `witty` 二进制。
-- 如需本地快速运行，优先用：
-
-```bash
-go run ./cmd/witty ...
-```
-
+- Windows 宿主机上 `go build -o "$OUTDIR/witty"` 会产出 `witty.exe`，试运行命令相应使用 `.../witty.exe version`；Linux/macOS 宿主机与 VM 一律为 `witty`。
+- 试运行 / 冒烟测试必须使用 `build/<GOOS>-<GOARCH>/` 中刚产出的二进制（如 `... witty version`）；禁止用 `go run ./cmd/witty` 代替，否则无法验证真实构建产物。
 - 禁止在宿主机上运行 VM 产出的 Linux 二进制，反之亦然。
 
 ## 工具安装建议
@@ -316,8 +345,12 @@ go run ./cmd/witty ...
 已执行:
 - go fmt ./...
 - go vet ./...
-- go test -count=1 ./...
-- CGO_ENABLED=0 go build -o /dev/null ./cmd/witty
+- 宿主机: go test -count=1 ./...
+- 宿主机: go build → build/<host-goos>-<host-goarch>/witty
+- 宿主机: 试运行 build/<host-goos>-<host-goarch>/witty version
+- openEuler VM: go test -count=1 ./...
+- openEuler VM: go build → build/linux-<arch>/witty
+- openEuler VM: 试运行 build/linux-<arch>/witty version
 
 条件跳过:
 - shellcheck internal/shellinit/templates/*.bash.tmpl（模板目录尚未接入）
