@@ -63,6 +63,14 @@ func Load(opts LoadOptions) (Config, error) {
 	return readConfig(k), nil
 }
 
+// ConfigSearchPaths returns the candidate config file paths in load order,
+// determined by the same logic as Load (explicit --config, WITTY_CONFIG env,
+// or default system/user paths).
+func ConfigSearchPaths(opts LoadOptions, lookupEnv func(string) (string, bool)) []string {
+	paths, _ := configFiles(opts, lookupEnv)
+	return paths
+}
+
 func configFiles(opts LoadOptions, lookupEnv func(string) (string, bool)) ([]string, bool) {
 	if opts.ConfigPath != "" {
 		return []string{opts.ConfigPath}, true

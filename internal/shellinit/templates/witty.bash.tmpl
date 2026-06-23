@@ -3,7 +3,7 @@
 # Source with: eval "$(witty init bash)"
 
 if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
-  __WITTY_SHELL_INIT_LOADED=1
+  export __WITTY_SHELL_INIT_LOADED=1
   __WITTY_BINARY="[[ .BinaryPath ]]"
   __WITTY_DEFAULT_ENABLE="[[ .ShellEnabled ]]"
   __WITTY_DEFAULT_DEBUG="[[ .ShellDebug ]]"

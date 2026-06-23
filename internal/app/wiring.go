@@ -8,9 +8,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"atomgit.com/openeuler/witty-cli/internal/config"
 	"atomgit.com/openeuler/witty-cli/internal/core"
+	"atomgit.com/openeuler/witty-cli/internal/doctor"
 	"atomgit.com/openeuler/witty-cli/internal/event"
 	"atomgit.com/openeuler/witty-cli/internal/permission"
 	"atomgit.com/openeuler/witty-cli/internal/presenter"
@@ -160,6 +162,31 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		shellInit:    shellinit.NewRenderer(),
 		version:      opts.Version,
 		configWriter: config.NewWriter(nil),
+		doctor: doctor.New(doctor.Options{
+			Config: doctor.ConfigSummary{
+				ServerURL:      cfg.ServerURL,
+				DefaultAgent:   cfg.DefaultAgent,
+				DefaultModel:   cfg.DefaultModel,
+				Theme:          cfg.Theme,
+				NoColor:        cfg.NoColor,
+				ShellEnabled:   cfg.Shell.Enabled,
+				RendererPhase:  cfg.RendererPhase,
+				TimeoutSeconds: cfg.Doctor.TimeoutSeconds,
+			},
+			Env: doctor.Environment{
+				ConfigSearchPaths: config.ConfigSearchPaths(opts.Config, os.LookupEnv),
+				StdoutIsTTY:       isTTY,
+				StdinIsTTY:        terminal.IsTerminal(os.Stdin),
+				TerminalWidth:     width,
+				NoColor:           cfg.NoColor,
+				SupportsColor:     terminal.SupportsColor(stdoutFile, os.LookupEnv),
+				Term:              os.Getenv("TERM"),
+				ShellLoaded:       os.Getenv("__WITTY_SHELL_INIT_LOADED") == "1",
+				InteractiveTTY:    interactiveTTY,
+			},
+			Server:  newServerProbeAdapter(transportClient),
+			Timeout: time.Duration(cfg.Doctor.TimeoutSeconds) * time.Second,
+		}),
 	}, nil
 }
 
@@ -231,4 +258,28 @@ func watchTerminalResize(ctx context.Context, r renderer.TextRenderer, stdoutFil
 			r.Resize(width)
 		}
 	}
+}
+
+// serverProbeAdapter adapts transport.Client to the doctor.ServerProbe interface.
+type serverProbeAdapter struct {
+	client transport.Client
+}
+
+func newServerProbeAdapter(client transport.Client) doctor.ServerProbe {
+	if client == nil {
+		return nil
+	}
+	return &serverProbeAdapter{client: client}
+}
+
+func (a *serverProbeAdapter) Health(ctx context.Context) (doctor.HealthResult, error) {
+	h, err := a.client.Health(ctx)
+	if err != nil {
+		return doctor.HealthResult{}, err
+	}
+	return doctor.HealthResult{Healthy: h.Healthy, Version: h.Version}, nil
+}
+
+func (a *serverProbeAdapter) ProbeEndpoint(ctx context.Context, endpoint string) (int, error) {
+	return a.client.ProbeEndpoint(ctx, endpoint)
 }

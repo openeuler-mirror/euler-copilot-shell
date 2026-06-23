@@ -68,6 +68,9 @@ type fakeTransport struct{}
 func (f *fakeTransport) Health(ctx context.Context) (transport.Health, error) {
 	return transport.Health{}, nil
 }
+func (f *fakeTransport) ProbeEndpoint(ctx context.Context, endpoint string) (int, error) {
+	return 200, nil
+}
 func (f *fakeTransport) CreateSession(ctx context.Context, req transport.CreateSessionRequest) (transport.Session, error) {
 	return transport.Session{}, nil
 }

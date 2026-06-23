@@ -20,6 +20,7 @@ const defaultUserAgent = "witty-cli/dev"
 // and no generated typed-client path is used for streaming.
 type Client interface {
 	Health(ctx context.Context) (Health, error)
+	ProbeEndpoint(ctx context.Context, endpoint string) (int, error)
 	CreateSession(ctx context.Context, req CreateSessionRequest) (Session, error)
 	GetSession(ctx context.Context, sessionID string) (Session, error)
 	ListSessions(ctx context.Context, filter SessionFilter) ([]Session, error)
@@ -101,6 +102,24 @@ func (c *client) Health(ctx context.Context) (Health, error) {
 		return Health{}, err
 	}
 	return health, nil
+}
+
+// ProbeEndpoint sends a GET request to endpoint and returns the HTTP status code.
+// It does not read the response body, making it suitable for probing SSE streams
+// like /event and documentation endpoints like /doc.
+func (c *client) ProbeEndpoint(ctx context.Context, endpoint string) (int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.endpointURL(endpoint, nil), nil)
+	if err != nil {
+		return 0, fmt.Errorf("build probe request %s: %w", endpoint, err)
+	}
+	c.setHeaders(req, false)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("probe %s: %w", endpoint, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	return resp.StatusCode, nil
 }
 
 func (c *client) CreateSession(ctx context.Context, req CreateSessionRequest) (Session, error) {

@@ -9,6 +9,7 @@ import (
 
 	"atomgit.com/openeuler/witty-cli/internal/config"
 	"atomgit.com/openeuler/witty-cli/internal/core"
+	"atomgit.com/openeuler/witty-cli/internal/doctor"
 	"atomgit.com/openeuler/witty-cli/internal/event"
 	"atomgit.com/openeuler/witty-cli/internal/permission"
 	"atomgit.com/openeuler/witty-cli/internal/presenter"
@@ -60,6 +61,7 @@ type App struct {
 	shellInit    bashInitRenderer
 	version      version.Info
 	configWriter config.Writer
+	doctor       doctor.Runner
 }
 
 func (a *App) Config() config.Config {
@@ -172,7 +174,11 @@ func (a *App) Doctor(ctx context.Context) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("witty doctor placeholder\nserver_url: %s\n", a.cfg.ServerURL), nil
+	if a.doctor == nil {
+		return "", fmt.Errorf("doctor runner is not configured")
+	}
+	checks := a.doctor.Run(ctx)
+	return doctor.Format(checks), nil
 }
 
 func writerOrDiscard(writer io.Writer) io.Writer {

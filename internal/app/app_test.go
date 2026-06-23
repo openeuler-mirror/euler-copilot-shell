@@ -214,3 +214,149 @@ func (f *fakeAskRunner) Run(_ context.Context, req core.AskRequest) error {
 	f.req = req
 	return f.err
 }
+
+func TestDoctor_PinpointsConnectionFailure(t *testing.T) {
+	var stdout bytes.Buffer
+	container, err := New(context.Background(), Options{
+		Config: config.LoadOptions{
+			ConfigFiles: []string{},
+			Overrides:   config.Overrides{ServerURL: "http://127.0.0.1:59999"},
+		},
+		Stdout: &stdout,
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	report, err := container.Doctor(context.Background())
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+	if !hasFailStatus(report) {
+		t.Errorf("report should contain FAIL status; report:\n%s", report)
+	}
+	if !strings.Contains(report, "server reachable") {
+		t.Errorf("report does not mention server reachable; report:\n%s", report)
+	}
+	if !strings.Contains(report, "connection refused") {
+		t.Errorf("report does not pinpoint connection failure; report:\n%s", report)
+	}
+	if !strings.Contains(report, "SKIP") {
+		t.Errorf("report should contain SKIP for endpoint checks; report:\n%s", report)
+	}
+}
+
+func TestDoctor_HealthyServer_AllChecksPass(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/global/health":
+			_, _ = w.Write([]byte(`{"healthy":true,"version":"1.0.0"}`))
+		case "/doc", "/event":
+			w.WriteHeader(http.StatusOK)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	var stdout bytes.Buffer
+	container, err := New(context.Background(), Options{
+		Config: config.LoadOptions{
+			ConfigFiles: []string{},
+			Overrides:   config.Overrides{ServerURL: server.URL},
+		},
+		Stdout: &stdout,
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	report, err := container.Doctor(context.Background())
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+	if hasFailStatus(report) {
+		t.Errorf("report should not contain FAIL status for healthy server; report:\n%s", report)
+	}
+	if !strings.Contains(report, "server reachable") {
+		t.Errorf("report should mention server reachable; report:\n%s", report)
+	}
+	if !strings.Contains(report, "/doc endpoint") {
+		t.Errorf("report should mention /doc endpoint; report:\n%s", report)
+	}
+	if !strings.Contains(report, "/event endpoint") {
+		t.Errorf("report should mention /event endpoint; report:\n%s", report)
+	}
+}
+
+func TestDoctor_NonInteractiveDoesNotReportShellIntegration(t *testing.T) {
+	var stdout bytes.Buffer
+	container, err := New(context.Background(), Options{
+		Config: config.LoadOptions{
+			ConfigFiles: []string{},
+		},
+		Stdout: &stdout,
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	report, err := container.Doctor(context.Background())
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+	// In non-interactive (test) environment, shell integration should be SKIP
+	if !strings.Contains(report, "shell integration") {
+		t.Errorf("report should mention shell integration; report:\n%s", report)
+	}
+	shellLine := extractLineContaining(report, "shell integration")
+	if !strings.Contains(shellLine, "SKIP") {
+		t.Errorf("shell integration should be SKIP in non-interactive env; got: %s", shellLine)
+	}
+}
+
+func TestDoctor_DoesNotLeakSensitiveData(t *testing.T) {
+	var stdout bytes.Buffer
+	container, err := New(context.Background(), Options{
+		Config: config.LoadOptions{
+			ConfigFiles: []string{},
+			Overrides:   config.Overrides{ServerURL: "http://127.0.0.1:59999"},
+		},
+		Stdout: &stdout,
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	report, err := container.Doctor(context.Background())
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+	// Verify no token/key/auth headers are leaked
+	for _, sensitive := range []string{"Authorization", "Bearer", "api_key", "apiKey", "token"} {
+		if strings.Contains(strings.ToLower(report), strings.ToLower(sensitive)) {
+			t.Errorf("report may leak sensitive data (%q); report:\n%s", sensitive, report)
+		}
+	}
+}
+
+func extractLineContaining(s, substr string) string {
+	for _, line := range strings.Split(s, "\n") {
+		if strings.Contains(line, substr) {
+			return line
+		}
+	}
+	return ""
+}
+
+// hasFailStatus returns true if the report contains a check with FAIL status
+// (not just the Summary line which always mentions "FAIL" as a label).
+func hasFailStatus(report string) bool {
+	for _, line := range strings.Split(report, "\n") {
+		if strings.Contains(line, "[FAIL]") {
+			return true
+		}
+	}
+	return false
+}
