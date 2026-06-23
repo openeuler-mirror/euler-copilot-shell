@@ -230,7 +230,6 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       command "$__WITTY_BINARY" ask -- "$cmd $*"
       return $?
     fi
-    printf 'witty: command not found: %s\n' "$cmd" >&2
     return 127
   }
 
@@ -289,5 +288,23 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     __witty_debug 'bindings uninstalled'
   }
 
-  __witty_install_bindings
+  __witty_try_install() {
+    # Deferred installer called from PROMPT_COMMAND on the first interactive
+    # prompt. By this point ~/.bashrc has already been sourced, so
+    # WITTY_SHELL_ENABLE reflects the user's per-shell preference.
+    if [ "${__WITTY_PROMPT_INSTALL_DONE:-}" = "1" ]; then
+      return 0
+    fi
+    __WITTY_PROMPT_INSTALL_DONE=1
+    __witty_install_bindings
+  }
+
+  # Defer installation to first prompt so that ~/.bashrc can disable it.
+  # PROMPT_COMMAND only executes in interactive shells — non-interactive
+  # shells (cron, scp, git hooks) will never trigger the installer.
+  if [ -n "${PROMPT_COMMAND:-}" ]; then
+    PROMPT_COMMAND="${PROMPT_COMMAND};__witty_try_install"
+  else
+    PROMPT_COMMAND="__witty_try_install"
+  fi
 fi

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"atomgit.com/openeuler/witty-cli/internal/shellbridge"
 	"atomgit.com/openeuler/witty-cli/internal/shellinit"
 	expect "github.com/Netflix/go-expect"
 )
@@ -456,6 +457,76 @@ func TestShellbridge_ViMode(t *testing.T) {
 	_, err = c.Expect(expect.WithTimeout(10*time.Second), expect.String(`witty ask`))
 	if err != nil {
 		t.Fatalf("expected witty ask in vi mode: %v", err)
+	}
+}
+
+// TestShellbridge_DeferredDisableViaBashrc simulates the real-world
+// login shell flow where /etc/profile.d/witty.sh sources the adapter
+// first, and then ~/.bashrc disables it before the first interactive
+// prompt. The deferred PROMPT_COMMAND installer must respect the
+// WITTY_SHELL_ENABLE value set by .bashrc.
+func TestShellbridge_DeferredDisableViaBashrc(t *testing.T) {
+	c := newConsole(t, 10*time.Second)
+	defer c.Close()
+
+	mockDir := setupMockWitty(t)
+	// ShellEnabled=true so the system default is "enabled".
+	initPath := writeWittyInitScript(t, mockDir)
+	// Start bash WITHOUT WITTY_SHELL_ENABLE — simulate login shell env.
+	bashCmd, bashDone := startBashWithEnv(t, c, mockDir, []string{
+		"TERM=xterm-256color",
+	})
+	defer cleanupBash(t, bashCmd, bashDone, c)
+
+	waitForPrompt(t, c)
+
+	// Simulate /etc/profile.d/witty.sh sourcing the script followed
+	// immediately by ~/.bashrc setting WITTY_SHELL_ENABLE=0.
+	// Both happen before the next prompt, so the deferred installer
+	// sees the disabled flag.
+	c.SendLine("source " + shellbridge.ShellQuote(initPath) + "; export WITTY_SHELL_ENABLE=0")
+	_, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("$ ", "# "))
+	if err != nil {
+		t.Fatalf("no prompt after sourcing and disabling: %v", err)
+	}
+
+	// Natural language input should NOT dispatch through witty.
+	c.SendLine("检查系统内存")
+	output, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("command not found"))
+	if err != nil {
+		t.Fatalf("expected 'command not found' when disabled via .bashrc order: %v; output=%q", err, output)
+	}
+	if strings.Contains(output, "witty ask") || strings.Contains(output, "witty shell-control") {
+		t.Fatal("shell adapter disabled via .bashrc order should not dispatch to witty")
+	}
+}
+
+// TestShellbridge_CommandNotFoundNoWittyPrefix verifies that when
+// the shell adapter is disabled, the overridden command_not_found_handle
+// returns 127 without printing a "witty:" branded message.
+func TestShellbridge_CommandNotFoundNoWittyPrefix(t *testing.T) {
+	c := newConsole(t, 10*time.Second)
+	defer c.Close()
+
+	mockDir := setupMockWitty(t)
+	initPath := writeWittyInitScriptWithEnable(t, mockDir, false)
+	bashCmd, bashDone := startBashWithEnv(t, c, mockDir, []string{
+		"TERM=xterm-256color",
+		"WITTY_SHELL_ENABLE=0",
+	})
+	defer cleanupBash(t, bashCmd, bashDone, c)
+
+	waitForPrompt(t, c)
+	sourceWittyScript(t, c, initPath)
+
+	// Type a nonsense command that the classifier won't route to agent.
+	c.SendLine("nonexistent_cmd_123")
+	output, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("command not found"))
+	if err != nil {
+		t.Fatalf("expected 'command not found': %v; output=%q", err, output)
+	}
+	if strings.Contains(output, "witty:") {
+		t.Fatalf("disabled adapter must not print 'witty:' prefix; got: %q", output)
 	}
 }
 
