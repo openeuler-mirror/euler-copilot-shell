@@ -39,10 +39,10 @@ type DoctorConfig struct {
 // DisplayConfig controls how intermediate process (reasoning, tool calls, steps)
 // are displayed in the terminal.
 type DisplayConfig struct {
-	ShowReasoning bool
-	ToolMode      string // "compact" or "verbose"
-	GroupContext  bool
-	StepStyle     string // "line", "minimal", "none"
+	ShowReasoning     string // "show", "minimal", "hide" (default "show")
+	ToolMode          string // "compact" or "verbose"
+	GroupContextTools bool   // group consecutive read/grep/glob/list calls
+	StepStyle         string // "line", "minimal", "none"
 }
 
 // Overrides are CLI-provided values that should win over defaults, files, and env.
@@ -76,10 +76,10 @@ func Default() Config {
 			TimeoutSeconds: DefaultDoctorTimeoutSeconds,
 		},
 		Display: DisplayConfig{
-			ShowReasoning: true,
-			ToolMode:      "compact",
-			GroupContext:  true,
-			StepStyle:     "line",
+			ShowReasoning:     "show",
+			ToolMode:          "compact",
+			GroupContextTools: true,
+			StepStyle:         "line",
 		},
 	}
 }

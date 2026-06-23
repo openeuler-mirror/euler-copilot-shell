@@ -275,6 +275,14 @@ func (r *router) normalizePartUpdated(sessionID string, part partBase) (AppEvent
 		}
 		return AppEvent{Kind: EventStepEnded, SessionID: sessionID, Payload: payload}, true
 	case "tool":
+		// todowrite is never displayed — filtered at router level per OpenCode HIDDEN_TOOLS.
+		if part.Tool == "todowrite" {
+			return AppEvent{}, false
+		}
+		// question running is hidden — filtered at router level per OpenCode renderable().
+		if part.Tool == "question" && part.State != nil && part.State.Status == "running" {
+			return AppEvent{}, false
+		}
 		if part.State == nil {
 			return AppEvent{}, false
 		}
@@ -385,6 +393,14 @@ func (r *router) normalizeSessionNextToolCalled(env rawEnvelope) (AppEvent, bool
 	}
 	if err := json.Unmarshal(env.Properties, &props); err != nil {
 		return unknownFromEnvelope(env, "decode session.next.tool.called properties: "+err.Error()), true
+	}
+	// todowrite is never displayed — filtered at router level per OpenCode HIDDEN_TOOLS.
+	if props.Tool == "todowrite" {
+		return AppEvent{}, false
+	}
+	// question running is hidden — filtered at router level per OpenCode renderable().
+	if props.Tool == "question" {
+		return AppEvent{}, false
 	}
 	if props.CallID != "" && r.seenCallIDs[props.CallID] {
 		return AppEvent{}, false

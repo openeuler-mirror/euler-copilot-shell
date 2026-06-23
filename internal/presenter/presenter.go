@@ -63,16 +63,17 @@ type Presenter interface {
 
 // Options controls presenter construction.
 type Options struct {
-	Writer       io.Writer
-	IsTTY        bool
-	NoColor      bool
-	StepStyle    string // "line", "minimal", "none"
-	GroupContext bool   // group consecutive read/grep/glob/list calls
-	Width        int    // terminal width, used for command word-wrapping; 0 = no wrap
+	Writer            io.Writer
+	IsTTY             bool
+	NoColor           bool
+	StepStyle         string // "line", "minimal", "none"
+	GroupContextTools bool   // group consecutive read/grep/glob/list calls
+	Width             int    // terminal width, used for command word-wrapping; 0 = no wrap
 }
 
 type defaultPresenter struct {
 	out          io.Writer
+	isTTY        bool
 	colorEnabled bool
 	downsample   bool
 	styles       styleSet
@@ -130,11 +131,12 @@ func NewPresenter(opts Options) Presenter {
 	}
 	return &defaultPresenter{
 		out:          out,
+		isTTY:        opts.IsTTY,
 		colorEnabled: colorEnabled,
 		downsample:   colorEnabled && isFile,
 		styles:       newStyleSet(colorEnabled),
 		stepStyle:    stepStyle,
-		groupContext: opts.GroupContext,
+		groupContext: opts.GroupContextTools,
 		width:        opts.Width,
 		toolNames:    make(map[string]string),
 	}
@@ -354,7 +356,7 @@ func (p *defaultPresenter) PresentToolCalled(ctx context.Context, payload event.
 		p.toolNames[payload.CallID] = payload.ToolName
 	}
 
-	icon, title, subtitle := toolDisplayInfo(payload.ToolName, payload.Input)
+	icon, title, subtitle := toolDisplayInfo(payload.ToolName, payload.Input, !p.isTTY)
 
 	// If context grouping is enabled and this is a context tool, buffer it.
 	if p.groupContext && isContextTool(payload.ToolName) {
@@ -811,14 +813,19 @@ func (p *defaultPresenter) flushContextGroup(ctx context.Context) error {
 		parts = append(parts, fmt.Sprintf("%d read%s", reads, pluralS(reads)))
 	}
 	if searches > 0 {
-		parts = append(parts, fmt.Sprintf("%d search%s", searches, pluralS(searches)))
+		parts = append(parts, fmt.Sprintf("%d search%s", searches, searchPlural(searches)))
 	}
 	if lists > 0 {
 		parts = append(parts, fmt.Sprintf("%d list%s", lists, pluralS(lists)))
 	}
 
 	summary := strings.Join(parts, ", ")
-	message := "🔍 context  " + summary
+	// Non-TTY: use ASCII alternative for the context icon.
+	icon := "🔍"
+	if !p.isTTY {
+		icon = "[context]"
+	}
+	message := icon + " context  " + summary
 	p.contextGroup = nil
 
 	// Output without the generic [tool] label — the icon already signals
@@ -951,7 +958,8 @@ func trimSummary(text string) string {
 // based on the tool type and its JSON input. This mirrors OpenCode's per-tool
 // rendering strategy where each tool type has a human-readable title and
 // a subtitle extracted from the tool's input parameters.
-func toolDisplayInfo(toolName string, input json.RawMessage) (icon, title, subtitle string) {
+func toolDisplayInfo(toolName string, input json.RawMessage, asciiIcons ...bool) (icon, title, subtitle string) {
+	ascii := len(asciiIcons) > 0 && asciiIcons[0]
 	switch toolName {
 	case "bash":
 		icon = "$"
@@ -1085,6 +1093,10 @@ func toolDisplayInfo(toolName string, input json.RawMessage) (icon, title, subti
 		title = toolName
 		subtitle = summarizeJSON(input)
 	}
+	// Non-TTY: downgrade Unicode icons to ASCII equivalents.
+	if ascii {
+		icon = toolIconASCII(icon, title)
+	}
 	return icon, title, subtitle
 }
 
@@ -1109,6 +1121,33 @@ func toolStateIndicator(toolName string, colorEnabled bool, status string) strin
 		return toolStateErrPlain
 	default:
 		return ""
+	}
+}
+
+// toolIconASCII returns an ASCII-safe icon for non-TTY output.
+// Falls back to the title name in brackets when no mapping exists.
+func toolIconASCII(icon, toolName string) string {
+	switch icon {
+	case "📖":
+		return "[read]"
+	case "✎":
+		return "[write]"
+	case "⚙":
+		return "[task]"
+	case "🔍":
+		return "[search]"
+	case "📋":
+		return "[list]"
+	case "🌐":
+		return "[web]"
+	case "🧠":
+		return "[skill]"
+	case "$":
+		return "$"
+	case "▪":
+		return "[" + toolName + "]"
+	default:
+		return "[" + toolName + "]"
 	}
 }
 
@@ -1156,6 +1195,15 @@ func pluralS(n int) string {
 		return ""
 	}
 	return "s"
+}
+
+// searchPlural returns "es" for n != 1, "" for n == 1.
+// Used for words ending with "ch" where regular plural would be "es".
+func searchPlural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "es"
 }
 
 // formatToolCall is kept for backward compatibility with tests.

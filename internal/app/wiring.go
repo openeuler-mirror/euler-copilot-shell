@@ -77,7 +77,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 			InputFile:     os.Stdin,
 			OutputFile:    stdoutFile,
 			Enabled:       true,
-			ShowReasoning: cfg.Display.ShowReasoning,
+			ReasoningMode: cfg.Display.ShowReasoning,
 		})
 	} else {
 		rendererService, err = renderer.NewMarkdownRenderer(renderer.Options{
@@ -88,7 +88,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 			NoColor:       cfg.NoColor,
 			InputFile:     os.Stdin,
 			OutputFile:    stdoutFile,
-			ShowReasoning: cfg.Display.ShowReasoning,
+			ReasoningMode: cfg.Display.ShowReasoning,
 		})
 	}
 	if err != nil {
@@ -101,12 +101,12 @@ func New(ctx context.Context, opts Options) (Container, error) {
 	}
 
 	presenterService := presenter.NewPresenter(presenter.Options{
-		Writer:       stdout,
-		IsTTY:        isTTY,
-		NoColor:      cfg.NoColor,
-		StepStyle:    cfg.Display.StepStyle,
-		GroupContext: cfg.Display.GroupContext,
-		Width:        width,
+		Writer:            stdout,
+		IsTTY:             isTTY,
+		NoColor:           cfg.NoColor,
+		StepStyle:         cfg.Display.StepStyle,
+		GroupContextTools: cfg.Display.GroupContextTools,
+		Width:             width,
 	})
 	var prompt terminal.Prompter
 	if interactiveTTY {

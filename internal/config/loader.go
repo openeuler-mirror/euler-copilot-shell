@@ -103,22 +103,22 @@ func loadConfigFile(k *koanf.Koanf, path string, explicit bool) error {
 func defaultMap() map[string]any {
 	cfg := Default()
 	return map[string]any{
-		"server_url":             cfg.ServerURL,
-		"default_agent":          cfg.DefaultAgent,
-		"default_model":          cfg.DefaultModel,
-		"default_variant":        cfg.DefaultVariant,
-		"debug":                  cfg.Debug,
-		"theme":                  cfg.Theme,
-		"no_color":               cfg.NoColor,
-		"renderer_phase":         cfg.RendererPhase,
-		"repl.auto_resume":       cfg.REPL.AutoResume,
-		"shell.enabled":          cfg.Shell.Enabled,
-		"shell.debug":            cfg.Shell.Debug,
-		"doctor.timeout_seconds": cfg.Doctor.TimeoutSeconds,
-		"display.show_reasoning": cfg.Display.ShowReasoning,
-		"display.tool_mode":      cfg.Display.ToolMode,
-		"display.group_context":  cfg.Display.GroupContext,
-		"display.step_style":     cfg.Display.StepStyle,
+		"server_url":                  cfg.ServerURL,
+		"default_agent":               cfg.DefaultAgent,
+		"default_model":               cfg.DefaultModel,
+		"default_variant":             cfg.DefaultVariant,
+		"debug":                       cfg.Debug,
+		"theme":                       cfg.Theme,
+		"no_color":                    cfg.NoColor,
+		"renderer_phase":              cfg.RendererPhase,
+		"repl.auto_resume":            cfg.REPL.AutoResume,
+		"shell.enabled":               cfg.Shell.Enabled,
+		"shell.debug":                 cfg.Shell.Debug,
+		"doctor.timeout_seconds":      cfg.Doctor.TimeoutSeconds,
+		"display.show_reasoning":      cfg.Display.ShowReasoning,
+		"display.tool_mode":           cfg.Display.ToolMode,
+		"display.group_context_tools": cfg.Display.GroupContextTools,
+		"display.step_style":          cfg.Display.StepStyle,
 	}
 }
 
@@ -138,9 +138,8 @@ func envMap(lookupEnv func(string) (string, bool)) (map[string]any, error) {
 	if err := copyBoolEnv(values, lookupEnv, "WITTY_SHELL_DEBUG", "shell.debug"); err != nil {
 		return nil, err
 	}
-	if err := copyBoolEnv(values, lookupEnv, "WITTY_DISPLAY_SHOW_REASONING", "display.show_reasoning"); err != nil {
-		return nil, err
-	}
+	copyStringEnv(values, lookupEnv, "WITTY_DISPLAY_SHOW_REASONING", "display.show_reasoning")
+	copyStringEnv(values, lookupEnv, "WITTY_DISPLAY_STEP_STYLE", "display.step_style")
 	if _, ok := lookupEnv("NO_COLOR"); ok {
 		values["no_color"] = true
 	}
@@ -210,10 +209,10 @@ func readConfig(k *koanf.Koanf) Config {
 			TimeoutSeconds: k.Int("doctor.timeout_seconds"),
 		},
 		Display: DisplayConfig{
-			ShowReasoning: k.Bool("display.show_reasoning"),
-			ToolMode:      k.String("display.tool_mode"),
-			GroupContext:  k.Bool("display.group_context"),
-			StepStyle:     k.String("display.step_style"),
+			ShowReasoning:     k.String("display.show_reasoning"),
+			ToolMode:          k.String("display.tool_mode"),
+			GroupContextTools: k.Bool("display.group_context_tools"),
+			StepStyle:         k.String("display.step_style"),
 		},
 	}
 }

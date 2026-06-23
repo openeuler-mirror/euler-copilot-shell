@@ -278,7 +278,7 @@ func TestMarkdownRenderer_WriteReasoning(t *testing.T) {
 		IsTTY:         false,
 		Width:         80,
 		Theme:         "dark",
-		ShowReasoning: true,
+		ReasoningMode: "show",
 	})
 	if err != nil {
 		t.Fatalf("NewMarkdownRenderer() error = %v", err)
@@ -303,7 +303,7 @@ func TestMarkdownRenderer_WriteReasoningDisabled(t *testing.T) {
 		IsTTY:         false,
 		Width:         80,
 		Theme:         "dark",
-		ShowReasoning: false,
+		ReasoningMode: "hide",
 	})
 	if err != nil {
 		t.Fatalf("NewMarkdownRenderer() error = %v", err)

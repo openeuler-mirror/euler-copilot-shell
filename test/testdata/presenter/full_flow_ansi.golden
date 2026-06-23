@@ -1,0 +1,10 @@
+[1;95m[agent][m switched to Coder
+[1;96m[model][m switched to deepseek/deepseek-v4-flash
+[1;90m🔍 context  1 read, 2 searches[m
+[1;96m◌ bash[m
+[1;90m│ $ go build ./...[m
+[1;92m✓ bash[m
+[1;90m│ Build succeeded[m
+[1;96m◌ ⚙ build Fix all lint errors[m
+[1;92m✓ task All lint errors fixed (3 files)[m
+[1;90m──── answered in 850 in · 1150 out · 300 reasoning · 18.7s ────[m

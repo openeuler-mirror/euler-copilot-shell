@@ -61,6 +61,58 @@ func TestPresenter_Golden(t *testing.T) {
 	assertGolden(t, filepath.Join("..", "..", "test", "testdata", "presenter", "basic_ansi.golden"), out.Bytes())
 }
 
+func TestPresenter_FullFlowGolden(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	p := NewPresenter(Options{Writer: &out, IsTTY: true, GroupContextTools: true})
+	ctx := context.Background()
+
+	// Simulate a full event flow: reasoning step -> context tools -> bash -> task -> idle summary.
+	// Note: reasoning and text deltas are handled by the renderer (not presenter),
+	// so this golden test covers the presenter's event handling portion.
+	events := []event.AppEvent{
+		// Step 1: Reasoning step (agent/model switch, internal only).
+		{Kind: event.EventStepStarted},
+		{Kind: event.EventAgentSwitched, Payload: event.AgentSwitchedPayload{AgentID: "code", AgentName: "Coder"}},
+		{Kind: event.EventModelSwitched, Payload: event.ModelSwitchedPayload{ProviderID: "deepseek", ModelID: "deepseek-v4-flash"}},
+
+		// Step 1: Context tools (read, grep, glob) - should be grouped.
+		{Kind: event.EventToolCalled, Payload: event.ToolCalledPayload{ToolName: "read", CallID: "ctx_1", Input: json.RawMessage(`{"filePath":"/src/main.go"}`)}},
+		{Kind: event.EventToolSucceeded, Payload: event.ToolResultPayload{CallID: "ctx_1", Output: "package main"}},
+		{Kind: event.EventToolCalled, Payload: event.ToolCalledPayload{ToolName: "grep", CallID: "ctx_2", Input: json.RawMessage(`{"pattern":"TODO"}`)}},
+		{Kind: event.EventToolSucceeded, Payload: event.ToolResultPayload{CallID: "ctx_2", Output: "3 matches"}},
+		{Kind: event.EventToolCalled, Payload: event.ToolCalledPayload{ToolName: "glob", CallID: "ctx_3", Input: json.RawMessage(`{"pattern":"*.go"}`)}},
+		{Kind: event.EventToolSucceeded, Payload: event.ToolResultPayload{CallID: "ctx_3", Output: "main.go, util.go"}},
+
+		{Kind: event.EventStepEnded, Payload: event.StepEndedPayload{Cost: 0.01, Tokens: event.StepTokens{Input: 200, Output: 50, Reasoning: 100}, Duration: 1.5}},
+
+		// Step 2: Bash tool.
+		{Kind: event.EventStepStarted},
+		{Kind: event.EventToolCalled, Payload: event.ToolCalledPayload{ToolName: "bash", CallID: "bash_1", Input: json.RawMessage(`{"command":"go build ./...","description":"Build the project"}`)}},
+		{Kind: event.EventToolSucceeded, Payload: event.ToolResultPayload{CallID: "bash_1", Output: "Build succeeded"}},
+
+		{Kind: event.EventStepEnded, Payload: event.StepEndedPayload{Cost: 0.02, Tokens: event.StepTokens{Input: 150, Output: 300, Reasoning: 0}, Duration: 5.2}},
+
+		// Step 3: Task tool.
+		{Kind: event.EventStepStarted},
+		{Kind: event.EventToolCalled, Payload: event.ToolCalledPayload{ToolName: "task", CallID: "task_1", Input: json.RawMessage(`{"description":"Fix all lint errors","subagent_type":"build"}`)}},
+		{Kind: event.EventToolSucceeded, Payload: event.ToolResultPayload{CallID: "task_1", Output: "All lint errors fixed (3 files)"}},
+
+		{Kind: event.EventStepEnded, Payload: event.StepEndedPayload{Cost: 0.15, Tokens: event.StepTokens{Input: 500, Output: 800, Reasoning: 200}, Duration: 12.0}},
+
+		// Final: SessionIdle outputs the accumulated summary across all steps.
+		{Kind: event.EventSessionIdle},
+	}
+	for _, evt := range events {
+		if err := p.PresentEvent(ctx, evt); err != nil {
+			t.Fatalf("PresentEvent(%s) error = %v", evt.Kind, err)
+		}
+	}
+
+	assertGolden(t, filepath.Join("..", "..", "test", "testdata", "presenter", "full_flow_ansi.golden"), out.Bytes())
+}
+
 func TestPresenter_NonTTYOutputHasNoANSI(t *testing.T) {
 	t.Parallel()
 
@@ -562,7 +614,7 @@ func TestPresenter_ContextGrouping(t *testing.T) {
 	t.Parallel()
 
 	var out bytes.Buffer
-	p := NewPresenter(Options{Writer: &out, IsTTY: false, GroupContext: true})
+	p := NewPresenter(Options{Writer: &out, IsTTY: false, GroupContextTools: true})
 	ctx := context.Background()
 
 	// Three context tools should be buffered, not displayed individually.
@@ -615,7 +667,7 @@ func TestPresenter_ContextGrouping(t *testing.T) {
 		t.Fatalf("output should contain '1 search' (grep → search): %q", got)
 	}
 	// Context group should NOT have the generic [tool] prefix (verify format).
-	if !strings.Contains(got, "🔍 context  2 reads, 1 search") {
+	if !strings.Contains(got, "[context] context  2 reads, 1 search") {
 		t.Fatalf("context group format mismatch: %q", got)
 	}
 	// Should also contain the bash tool (which still has [tool] label for now — P3-6C).
@@ -628,7 +680,7 @@ func TestPresenter_ContextGroupingFlushOnStepEnd(t *testing.T) {
 	t.Parallel()
 
 	var out bytes.Buffer
-	p := NewPresenter(Options{Writer: &out, IsTTY: false, GroupContext: true, StepStyle: "none"})
+	p := NewPresenter(Options{Writer: &out, IsTTY: false, GroupContextTools: true, StepStyle: "none"})
 	ctx := context.Background()
 
 	// Context tools buffered.
@@ -673,7 +725,7 @@ func TestPresenter_ContextGroupingFlushOnStepEnd(t *testing.T) {
 		t.Fatalf("output should contain '1 search' (glob → search): %q", got)
 	}
 	// Context group should NOT have [tool] label.
-	if !strings.Contains(got, "🔍 context  1 read, 1 search") {
+	if !strings.Contains(got, "[context] context  1 read, 1 search") {
 		t.Fatalf("context group format mismatch: %q", got)
 	}
 }
@@ -682,7 +734,7 @@ func TestPresenter_ContextGroupingResultsSuppressed(t *testing.T) {
 	t.Parallel()
 
 	var out bytes.Buffer
-	p := NewPresenter(Options{Writer: &out, IsTTY: false, GroupContext: true})
+	p := NewPresenter(Options{Writer: &out, IsTTY: false, GroupContextTools: true})
 	ctx := context.Background()
 
 	// Call a read tool.
@@ -722,7 +774,7 @@ func TestPresenter_ContextGroupingResultsSuppressed(t *testing.T) {
 		t.Fatalf("output should contain context group: %q", got)
 	}
 	// Should not have [tool] label on the context line.
-	if !strings.Contains(got, "🔍 context  1 read") {
+	if !strings.Contains(got, "[context] context  1 read") {
 		t.Fatalf("context group format mismatch: %q", got)
 	}
 	// Should not contain the raw file content.
@@ -762,7 +814,7 @@ func TestPresenter_ContextGroupingDisabled(t *testing.T) {
 	t.Parallel()
 
 	var out bytes.Buffer
-	p := NewPresenter(Options{Writer: &out, IsTTY: false, GroupContext: false})
+	p := NewPresenter(Options{Writer: &out, IsTTY: false, GroupContextTools: false})
 	ctx := context.Background()
 
 	// With grouping disabled, each context tool should be displayed individually.
