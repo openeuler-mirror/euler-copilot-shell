@@ -24,7 +24,7 @@ Go 1.26+ CLI 工具，对接 opencode MCP Server，为 openEuler 提供终端 AI
 ## 关键命令
 
 - 初始化: `go mod download && go mod tidy`
-- 构建: `OUTDIR="build/$(go env GOOS)-$(go env GOARCH)" && mkdir -p "$OUTDIR" && go build -ldflags="-s -w" -o "$OUTDIR/witty" ./cmd/witty`
+- 构建: `bash scripts/build.sh`（动态解析架构，输出产物路径）
 - 测试全部: `go test ./...`
 - 测试单包: `go test -v -run TestName ./internal/<package>/`
 - Lint: `golangci-lint run ./...`
