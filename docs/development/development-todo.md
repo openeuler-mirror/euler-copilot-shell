@@ -850,23 +850,51 @@
 - [ ] 禁用后 Bash 行为恢复。
 - [ ] 文档明确首版仅支持 Bash，不支持 zsh/fish。
 
-### P4-4：GoReleaser 与 RPM 打包
+### P4-4：RPM 打包（Vendor + Go 工具链捆绑方案）
 
-- [ ] `.goreleaser.yaml` 配置 linux amd64/arm64。
-- [ ] 设置 `goamd64=v1`。
-- [ ] 设置 `CGO_ENABLED=0`。
-- [ ] 注入 version / commit / date。
-- [ ] nFPM 生成 RPM。
-- [ ] 安装路径：`/usr/bin/witty`。
-- [ ] 配置路径：`/etc/witty/config.toml` 使用 `config|noreplace`。
-- [ ] Bash completion 安装到 openEuler 兼容路径。
+> 设计文档：[rpm-packaging-design.md](rpm-packaging-design.md)
+>
+> **核心决策**：openEuler CI 仅支持源码仓 tarball + RPM spec，不能访问海外网站。
+> Go 1.26 未进入 openEuler 仓库，Go 依赖必须本地提供。
+> 采用 **Vendor + Go 工具链捆绑** 方案（方案 C），nFPM 不适用于 openEuler CI。
+
+- [ ] 创建 `packaging/` 目录结构：
+  - [ ] `packaging/witty.spec` — RPM spec 文件（手写，非 nFPM 生成）。
+  - [ ] `packaging/scripts/prepare-vendor.sh` — vendor tarball 生成脚本。
+  - [ ] `packaging/profile.d/witty.sh` — Shell 集成入口（安装到 `/etc/profile.d/`，RPM 安装后自动启用）。
+  - [ ] `packaging/config.toml` — 默认配置文件模板。
+  - [ ] `packaging/witty.bash-completion` — bash completion 文件。
+- [ ] `.goreleaser.yaml` 配置（保留用于本地验证，禁用 nFPM）：
+  - [ ] 配置 `linux amd64/arm64`、`goamd64=v1`、`CGO_ENABLED=0`。
+  - [ ] 注入 version / commit / date（`-ldflags`）。
+  - [ ] 移除 nFPM RPM 生成（不适用于 openEuler CI）。
+  - [ ] 新增 source tarball archive 配置。
+- [ ] RPM spec 核心要素：
+  - [ ] Source0: 上游源码 tarball（`git archive` 生成）。
+  - [ ] Source1: Go 1.26 工具链 `linux-amd64` tarball。
+  - [ ] Source2: Go 1.26 工具链 `linux-arm64` tarball。
+  - [ ] Source3: vendor 依赖 tarball（`go mod vendor` 生成）。
+  - [ ] `%build`：使用捆绑的 Go 工具链 + `-mod=vendor` 离线构建。
+  - [ ] `CGO_ENABLED=0`、`goamd64=v1` 静态链接。
+  - [ ] `%check`：二进制冒烟测试（`witty version` / `witty --help`）。
+- [ ] 安装路径：
+  - [ ] `/usr/bin/witty` 主程序。
+  - [ ] `/etc/profile.d/witty.sh` Shell 集成（自动启用，用户可设 `WITTY_SHELL_ENABLE=0` 禁用）。
+  - [ ] `/etc/witty/config.toml` 默认配置，使用 `%config(noreplace)`。
+  - [ ] `/usr/share/bash-completion/completions/witty` bash completion。
+- [ ] 版本发布流水线脚本：
+  - [ ] 一键生成源码 tarball + vendor tarball。
+  - [ ] 文档化 openEuler 上传与构建流程。
 
 #### 验收 checkpoint：C4-4
 
-- [ ] `goreleaser release --snapshot --clean --skip=publish` 成功。
+- [ ] `goreleaser release --snapshot --clean --skip=publish` 本地验证成功。
+- [ ] `rpmbuild -ba packaging/witty.spec` 在 openEuler 环境构建成功（离线）。
 - [ ] RPM 可在 openEuler 安装、升级、卸载。
 - [ ] `rpm -ql witty` 文件列表合理。
 - [ ] 卸载不删除用户个人配置 `~/.config/witty/config.toml`。
+- [ ] `witty version` 输出包含正确的 version / commit / date。
+- [ ] amd64 和 arm64 双架构 RPM 均可构建。
 
 ### P4-5：发布前回归
 
