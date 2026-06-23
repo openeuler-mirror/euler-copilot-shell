@@ -127,10 +127,10 @@ Source3: witty-vendor-{version}.tar.xz     # vendored 依赖
 │  4. git archive 生成源码 tarball                         │
 │                                                          │
 │  产物:                                                    │
-│    - witty-0.1.0.tar.gz        (源码)                    │
+│    - witty-3.0.0.tar.gz        (源码)                    │
 │    - go1.26.x.linux-amd64.tar.gz  (Go 工具链 amd64)       │
 │    - go1.26.x.linux-arm64.tar.gz  (Go 工具链 arm64)       │
-│    - witty-vendor-0.1.0.tar.xz (vendored 依赖)           │
+│    - witty-vendor-3.0.0.tar.xz (vendored 依赖)           │
 └──────────────────────┬───────────────────────────────────┘
                        │ 上传至 openEuler 构建系统
                        ▼
@@ -144,9 +144,9 @@ Source3: witty-vendor-{version}.tar.xz     # vendored 依赖
 │     └── %files: 文件清单                                  │
 │                                                          │
 │  产物:                                                    │
-│    - witty-0.1.0-1.oe2403.x86_64.rpm                     │
-│    - witty-0.1.0-1.oe2403.aarch64.rpm                    │
-│    - witty-0.1.0-1.oe2403.src.rpm                        │
+│    - witty-3.0.0-1.oe2403.x86_64.rpm                     │
+│    - witty-3.0.0-1.oe2403.aarch64.rpm                    │
+│    - witty-3.0.0-1.oe2403.src.rpm                        │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -172,18 +172,18 @@ witty/
 
 ```spec
 # witty.spec — Witty CLI for openEuler
-%global go_version  1.26.0
+%global go_version  1.26.4
 %global import_path atomgit.com/openeuler/witty-cli
 
 # 禁用 debuginfo（静态链接 Go 二进制不需要）
 %global debug_package %{nil}
 
-Name:           witty
-Version:        0.1.0
+Name:           euler-copilot-shell
+Version:        3.0.0
 Release:        1%{?dist}
 Summary:        openEuler terminal AI assistant
 License:        MulanPSL2
-URL:            https://atomgit.com/openeuler/witty-cli
+URL:            https://atomgit.com/openeuler/euler-copilot-shell
 
 # === Source 文件（全部本地提供） ===
 Source0:        %{name}-%{version}.tar.gz
@@ -264,7 +264,7 @@ install -Dpm 0644 packaging/profile.d/%{name}.sh %{buildroot}%{_sysconfdir}/prof
 %{_sysconfdir}/profile.d/%{name}.sh
 
 %changelog
-* Mon Jun 23 2026 Witty Team <witty@openeuler.org> - 0.1.0-1
+* Mon Jun 23 2026 Witty Team <witty@openeuler.org> - 3.0.0-1
 - Initial package
 ```
 
@@ -392,23 +392,23 @@ archives:
 ### 3.6 版本发布完整流程
 
 ```text
-1. 打 tag: git tag v0.1.0
+1. 打 tag: git tag v3.0.0
 2. 生成源码 tarball:
-   git archive --format=tar.gz -o witty-0.1.0.tar.gz v0.1.0
+   git archive --format=tar.gz -o witty-3.0.0.tar.gz v3.0.0
 3. 生成 vendor tarball:
-   bash packaging/scripts/prepare-vendor.sh 0.1.0
+   bash packaging/scripts/prepare-vendor.sh 3.0.0
 4. 下载 Go 工具链:
-   curl -LO https://go.dev/dl/go1.26.0.linux-amd64.tar.gz
-   curl -LO https://go.dev/dl/go1.26.0.linux-arm64.tar.gz
+   curl -LO https://go.dev/dl/go1.26.4.linux-amd64.tar.gz
+   curl -LO https://go.dev/dl/go1.26.4.linux-arm64.tar.gz
 5. 上传至 openEuler 构建系统:
-   - witty-0.1.0.tar.gz → Source0
-   - go1.26.0.linux-amd64.tar.gz → Source1
-   - go1.26.0.linux-arm64.tar.gz → Source2
-   - witty-vendor-0.1.0.tar.xz → Source3
+   - witty-3.0.0.tar.gz → Source0
+   - go1.26.4.linux-amd64.tar.gz → Source1
+   - go1.26.4.linux-arm64.tar.gz → Source2
+   - witty-vendor-3.0.0.tar.xz → Source3
 6. CI 执行: rpmbuild -ba witty.spec
 7. 产物:
-   - witty-0.1.0-1.oe2403.x86_64.rpm
-   - witty-0.1.0-1.oe2403.aarch64.rpm
+   - witty-3.0.0-1.oe2403.x86_64.rpm
+   - witty-3.0.0-1.oe2403.aarch64.rpm
 ```
 
 ## 4. 备选方案：Go 工具链自举
