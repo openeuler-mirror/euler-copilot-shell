@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"atomgit.com/openeuler/witty-cli/internal/transport"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 )
 
 func TestResolve_UsesPinnedSession(t *testing.T) {

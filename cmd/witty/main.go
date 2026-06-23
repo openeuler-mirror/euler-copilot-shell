@@ -7,8 +7,8 @@ import (
 	"os"
 	"os/signal"
 
-	"atomgit.com/openeuler/witty-cli/internal/cli"
-	versionpkg "atomgit.com/openeuler/witty-cli/internal/version"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/cli"
+	versionpkg "atomgit.com/openeuler/euler-copilot-shell/internal/version"
 )
 
 var (

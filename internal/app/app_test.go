@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"atomgit.com/openeuler/witty-cli/internal/config"
-	"atomgit.com/openeuler/witty-cli/internal/core"
-	"atomgit.com/openeuler/witty-cli/internal/version"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/config"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/core"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/version"
 )
 
 func TestNew_LoadsConfigAndVersion(t *testing.T) {

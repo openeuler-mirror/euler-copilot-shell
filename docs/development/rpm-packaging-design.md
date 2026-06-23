@@ -173,7 +173,7 @@ witty/
 ```spec
 # witty.spec — Witty CLI for openEuler
 %global go_version  1.26.4
-%global import_path atomgit.com/openeuler/witty-cli
+%global import_path atomgit.com/openeuler/euler-copilot-shell
 
 # 禁用 debuginfo（静态链接 Go 二进制不需要）
 %global debug_package %{nil}

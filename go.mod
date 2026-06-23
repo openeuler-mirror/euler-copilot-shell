@@ -1,4 +1,4 @@
-module atomgit.com/openeuler/witty-cli
+module atomgit.com/openeuler/euler-copilot-shell
 
 go 1.26
 

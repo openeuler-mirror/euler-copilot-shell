@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"atomgit.com/openeuler/witty-cli/internal/shellbridge"
-	"atomgit.com/openeuler/witty-cli/internal/shellinit"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/shellbridge"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/shellinit"
 	expect "github.com/Netflix/go-expect"
 )
 

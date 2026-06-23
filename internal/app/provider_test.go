@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"atomgit.com/openeuler/witty-cli/internal/config"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/config"
 )
 
 func TestListProviders_FiltersToAPIKeyProviders(t *testing.T) {

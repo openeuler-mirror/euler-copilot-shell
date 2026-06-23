@@ -5,7 +5,7 @@ import (
 
 	"github.com/mattn/go-runewidth"
 
-	wittyterm "atomgit.com/openeuler/witty-cli/internal/terminal"
+	wittyterm "atomgit.com/openeuler/euler-copilot-shell/internal/terminal"
 )
 
 func init() {

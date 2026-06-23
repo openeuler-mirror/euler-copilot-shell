@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"atomgit.com/openeuler/witty-cli/internal/event"
-	"atomgit.com/openeuler/witty-cli/internal/session"
-	"atomgit.com/openeuler/witty-cli/internal/transport"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/event"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/session"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 )
 
 const serverURL = "http://127.0.0.1:4096"

@@ -7,10 +7,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"atomgit.com/openeuler/witty-cli/internal/core"
-	"atomgit.com/openeuler/witty-cli/internal/shellbridge"
-	"atomgit.com/openeuler/witty-cli/internal/terminal"
-	"atomgit.com/openeuler/witty-cli/internal/transport"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/core"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/shellbridge"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/terminal"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 )
 
 func newShellControlCommand(opts *rootOptions) *cobra.Command {

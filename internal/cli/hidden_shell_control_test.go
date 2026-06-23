@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"atomgit.com/openeuler/witty-cli/internal/app"
-	"atomgit.com/openeuler/witty-cli/internal/config"
-	"atomgit.com/openeuler/witty-cli/internal/core"
-	"atomgit.com/openeuler/witty-cli/internal/session"
-	"atomgit.com/openeuler/witty-cli/internal/version"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/app"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/config"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/core"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/session"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/version"
 )
 
 func TestShellControlCommand_AskDelegatesToAsk(t *testing.T) {

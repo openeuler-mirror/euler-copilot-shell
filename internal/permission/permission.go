@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"atomgit.com/openeuler/witty-cli/internal/event"
-	"atomgit.com/openeuler/witty-cli/internal/transport"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/event"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 )
 
 const (

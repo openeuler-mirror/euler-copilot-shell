@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"atomgit.com/openeuler/witty-cli/internal/transport"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 )
 
 type ProviderStatus struct {

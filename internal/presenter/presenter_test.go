@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"atomgit.com/openeuler/witty-cli/internal/event"
-	"atomgit.com/openeuler/witty-cli/internal/transport"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/event"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 )
 
 var updatePresenterGolden = flag.Bool("update", false, "update presenter golden files")

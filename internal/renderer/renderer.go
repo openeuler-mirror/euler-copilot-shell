@@ -9,7 +9,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	wittyterm "atomgit.com/openeuler/witty-cli/internal/terminal"
+	wittyterm "atomgit.com/openeuler/euler-copilot-shell/internal/terminal"
 )
 
 // TextRenderer renders normalized text deltas into terminal output.

@@ -8,7 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	wittyterm "atomgit.com/openeuler/witty-cli/internal/terminal"
+	wittyterm "atomgit.com/openeuler/euler-copilot-shell/internal/terminal"
 )
 
 const eraseLine = "\x1b[2K"

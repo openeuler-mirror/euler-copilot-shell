@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"atomgit.com/openeuler/witty-cli/internal/version"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/version"
 )
 
 func TestExecute_Help(t *testing.T) {

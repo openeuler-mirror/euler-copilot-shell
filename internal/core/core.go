@@ -7,9 +7,9 @@ import (
 	"net"
 	"net/url"
 
-	"atomgit.com/openeuler/witty-cli/internal/event"
-	"atomgit.com/openeuler/witty-cli/internal/session"
-	"atomgit.com/openeuler/witty-cli/internal/transport"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/event"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/session"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 )
 
 // AskMode identifies the caller context for a prompt request.

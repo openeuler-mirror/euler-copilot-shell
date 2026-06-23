@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"atomgit.com/openeuler/witty-cli/internal/transport/generated"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport/generated"
 )
 
 const DefaultTimeout = 30 * time.Second

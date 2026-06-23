@@ -11,12 +11,12 @@ import (
 	"sync"
 	"syscall"
 
-	"atomgit.com/openeuler/witty-cli/internal/config"
-	"atomgit.com/openeuler/witty-cli/internal/core"
-	"atomgit.com/openeuler/witty-cli/internal/session"
-	"atomgit.com/openeuler/witty-cli/internal/shellbridge"
-	"atomgit.com/openeuler/witty-cli/internal/terminal"
-	"atomgit.com/openeuler/witty-cli/internal/transport"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/config"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/core"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/session"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/shellbridge"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/terminal"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 )
 
 // Loop provides an interactive REPL that reads user input,

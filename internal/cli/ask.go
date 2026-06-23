@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"atomgit.com/openeuler/witty-cli/internal/core"
-	wittyterm "atomgit.com/openeuler/witty-cli/internal/terminal"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/core"
+	wittyterm "atomgit.com/openeuler/euler-copilot-shell/internal/terminal"
 )
 
 func newAskCommand(opts *rootOptions) *cobra.Command {

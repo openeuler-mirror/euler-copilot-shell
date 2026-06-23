@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"atomgit.com/openeuler/witty-cli/internal/app"
-	"atomgit.com/openeuler/witty-cli/internal/version"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/app"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/version"
 	"github.com/spf13/cobra"
 )
 
