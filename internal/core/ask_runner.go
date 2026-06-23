@@ -152,6 +152,12 @@ func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, 
 		if r.renderer == nil {
 			return false, nil
 		}
+		// Flush any buffered reasoning before writing answer text,
+		// so reasoning always appears before the final answer regardless
+		// of TTY mode or event ordering.
+		if err := r.renderer.FlushReasoning(ctx); err != nil {
+			return false, err
+		}
 		return false, r.renderer.WriteDelta(ctx, payload.Delta)
 	case event.EventReasoningDelta:
 		payload, ok := evt.Payload.(event.TextDeltaPayload)

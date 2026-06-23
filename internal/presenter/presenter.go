@@ -298,6 +298,15 @@ func (p *defaultPresenter) PresentSessionIdle(ctx context.Context) error {
 		}
 		return p.writeRawLine(line)
 	default: // "line"
+		if len(stats) == 0 {
+			return nil
+		}
+		// Non-TTY: blank line before summary to separate from preceding output.
+		if !p.isTTY {
+			if _, err := fmt.Fprintln(p.out); err != nil {
+				return err
+			}
+		}
 		if len(stats) > 0 {
 			statsStr := " answered in " + strings.Join(stats, " · ") + " "
 			line := strings.Repeat("─", 4) + statsStr + strings.Repeat("─", 4)

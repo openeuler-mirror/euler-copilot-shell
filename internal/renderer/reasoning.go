@@ -206,7 +206,7 @@ func (w *ReasoningWriter) flushParagraph(ctx context.Context, paragraph string) 
 		if w.isTTY {
 			b.WriteString("│ \n")
 		} else {
-			b.WriteString("  | \n")
+			b.WriteString("\n  | \n")
 		}
 	}
 	for i, line := range lines {
