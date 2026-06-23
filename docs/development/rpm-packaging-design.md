@@ -28,7 +28,7 @@
 
 ### 1.3 依赖规模
 
-```
+```bash
 $ wc -l go.sum
 115 go.sum   # 115 行 = ~55 个独立模块（含间接依赖）
 ```
@@ -41,7 +41,7 @@ $ wc -l go.sum
 
 **思路**：在外部环境（macOS/CI）用 GoReleaser 交叉编译出二进制，直接将二进制打包为 RPM。
 
-```
+```spec
 Source0: witty-v{version}-linux-amd64   # 预编译二进制 (amd64)
 Source1: witty-v{version}-linux-arm64   # 预编译二进制 (arm64)
 ```
@@ -59,7 +59,7 @@ Source1: witty-v{version}-linux-arm64   # 预编译二进制 (arm64)
 
 **思路**：使用 GoReleaser 的 nFPM 模块直接生成 RPM。
 
-```
+```yaml
 .goreleaser.yaml:
   nfpms:
     - formats: [rpm]
@@ -83,7 +83,7 @@ Source1: witty-v{version}-linux-arm64   # 预编译二进制 (arm64)
 3. 将以上文件作为 Source1、Source2... 在 spec 中引用
 4. spec 的 `%build` 阶段使用捆绑的 Go 工具链 + vendored 依赖进行离线构建
 
-```
+```spec
 Source0: witty-{version}.tar.gz            # 上游源码
 Source1: go1.26.x.linux-amd64.tar.gz       # Go 工具链 (amd64)
 Source2: go1.26.x.linux-arm64.tar.gz       # Go 工具链 (arm64)
@@ -117,7 +117,7 @@ Source3: witty-vendor-{version}.tar.xz     # vendored 依赖
 
 ### 3.1 整体流水线
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │                开发者本地 / macOS / CI                    │
 │                                                          │
@@ -152,7 +152,7 @@ Source3: witty-vendor-{version}.tar.xz     # vendored 依赖
 
 ### 3.2 目录结构
 
-```
+```text
 witty/
 ├── packaging/                      # 打包相关文件（新增）
 │   ├── witty.spec                  # RPM spec 文件
@@ -272,7 +272,7 @@ install -Dpm 0644 packaging/profile.d/%{name}.sh %{buildroot}%{_sysconfdir}/prof
 
 RPM 安装后自动启用 Shell Adapter，用户无需手动修改 `.bashrc`：
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │               安装 witty RPM                      │
 │                      │                           │
@@ -305,6 +305,7 @@ RPM 安装后自动启用 Shell Adapter，用户无需手动修改 `.bashrc`：
 | 临时级 | 命令行 `eval "$(witty init bash)"` | 非 RPM 安装场景的手动启用 |
 
 与 `witty init bash` 模板的关系：
+
 - `witty.sh` 调用 `witty init bash` 生成完整的 Shell Adapter 绑定
 - 两者是**调用者与被调用者**的关系，不是重复实现
 - `witty init bash` 模板保持独立，可脱离 RPM 单独使用
@@ -390,7 +391,7 @@ archives:
 
 ### 3.6 版本发布完整流程
 
-```
+```text
 1. 打 tag: git tag v0.1.0
 2. 生成源码 tarball:
    git archive --format=tar.gz -o witty-0.1.0.tar.gz v0.1.0
