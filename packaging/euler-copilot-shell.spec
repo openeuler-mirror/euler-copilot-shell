@@ -95,7 +95,7 @@ install -Dpm 0644 packaging/profile.d/witty.sh %{buildroot}%{_sysconfdir}/profil
 %{_sysconfdir}/profile.d/witty.sh
 
 %changelog
-* Mon Jun 23 2026 Witty Team <witty@openeuler.org> - 3.0.0-1
+* Tue Jun 23 2026 Witty Team <witty@openeuler.org> - 3.0.0-1
 - Rename source package to euler-copilot-shell; binary subpackage is witty
 - Provides/Obsoletes euler-copilot-shell and witty-assistant for upgrade from 1.x/2.x
 - Vendor + Go toolchain bundling; static build with CGO_ENABLED=0, GOAMD64=v1
