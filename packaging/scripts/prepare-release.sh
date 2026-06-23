@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# packaging/scripts/prepare-release.sh
+# Prepare all source files needed for an openEuler RPM build.
+#
+# This script generates everything that must be uploaded to the
+# openEuler build system as Source0..Source3.
+#
+# Usage:
+#   bash packaging/scripts/prepare-release.sh <version> [<go_version>]
+#
+# Defaults:
+#   go_version = 1.26.4
+#
+# Outputs (in current directory):
+#   euler-copilot-shell-<version>.tar.gz → Source0 (source code)
+#   go<go_version>.linux-amd64.tar.gz   → Source1 (Go toolchain amd64)
+#   go<go_version>.linux-arm64.tar.gz   → Source2 (Go toolchain arm64)
+#   witty-vendor-<version>.tar.xz       → Source3 (vendored deps)
+
+set -euo pipefail
+
+VERSION="${1:-}"
+GO_VERSION="${2:-1.26.4}"
+
+if [ -z "$VERSION" ]; then
+  echo "Usage: $0 <version> [go_version]" >&2
+  echo "Example: $0 3.0.0" >&2
+  echo "Example: $0 3.0.0 1.26.4" >&2
+  exit 1
+fi
+
+SOURCE_TARBALL="euler-copilot-shell-${VERSION}.tar.gz"
+GO_AMD64="go${GO_VERSION}.linux-amd64.tar.gz"
+GO_ARM64="go${GO_VERSION}.linux-arm64.tar.gz"
+VENDOR_TARBALL="witty-vendor-${VERSION}.tar.xz"
+
+# ── Step 1: Source tarball (from git archive or current tree) ────────────
+echo "==> [1/4] Generating source tarball: ${SOURCE_TARBALL}"
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  # Prefer git archive for clean, reproducible tarballs
+  if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+    git archive --format=tar.gz --prefix="euler-copilot-shell-${VERSION}/" \
+      -o "${SOURCE_TARBALL}" "v${VERSION}"
+  else
+    echo "WARNING: tag v${VERSION} not found, archiving HEAD" >&2
+    git archive --format=tar.gz --prefix="euler-copilot-shell-${VERSION}/" \
+      -o "${SOURCE_TARBALL}" HEAD
+  fi
+else
+  echo "ERROR: not in a git repository; cannot create source tarball" >&2
+  exit 1
+fi
+echo "       ${SOURCE_TARBALL} ($(du -h "${SOURCE_TARBALL}" | cut -f1))"
+
+# ── Step 2: Go toolchain (amd64) ────────────────────────────────────────
+echo "==> [2/4] Downloading Go toolchain: ${GO_AMD64}"
+if [ -f "${GO_AMD64}" ]; then
+  echo "       ${GO_AMD64} already exists, skipping"
+else
+  curl -fSL "https://go.dev/dl/${GO_AMD64}" -o "${GO_AMD64}"
+  echo "       ${GO_AMD64} ($(du -h "${GO_AMD64}" | cut -f1))"
+fi
+
+# ── Step 3: Go toolchain (arm64) ────────────────────────────────────────
+echo "==> [3/4] Downloading Go toolchain: ${GO_ARM64}"
+if [ -f "${GO_ARM64}" ]; then
+  echo "       ${GO_ARM64} already exists, skipping"
+else
+  curl -fSL "https://go.dev/dl/${GO_ARM64}" -o "${GO_ARM64}"
+  echo "       ${GO_ARM64} ($(du -h "${GO_ARM64}" | cut -f1))"
+fi
+
+# ── Step 4: Vendor tarball ──────────────────────────────────────────────
+echo "==> [4/4] Generating vendor tarball: ${VENDOR_TARBALL}"
+bash packaging/scripts/prepare-vendor.sh "${VERSION}"
+
+echo ""
+echo "══ All artifacts ready for openEuler build ══"
+echo ""
+echo "Upload the following files to the openEuler build system:"
+echo "  Source0: ${SOURCE_TARBALL}"
+echo "  Source1: ${GO_AMD64}"
+echo "  Source2: ${GO_ARM64}"
+echo "  Source3: ${VENDOR_TARBALL}"
+echo ""
+echo "Then run:"
+echo "  rpmbuild -ba packaging/witty.spec"

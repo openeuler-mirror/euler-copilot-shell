@@ -1,0 +1,39 @@
+# shellcheck shell=bash
+# witty bash completion
+# Installed to /usr/share/bash-completion/completions/witty by RPM.
+#
+# Bare-bones static fallback; richer completion is provided by
+# Cobra's built-in __complete command when available.
+
+_witty_completion() {
+  local cur prev
+  _init_completion || return
+
+  case $prev in
+  witty)
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -W "ask init session continue provider doctor version help" -- "$cur"))
+    return
+    ;;
+  --config | --server-url)
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -f -- "$cur"))
+    return
+    ;;
+  --agent | --model | --variant | --theme)
+    return
+    ;;
+  esac
+
+  # Fallback to Cobra's dynamic completion if witty is available
+  if command -v witty &>/dev/null; then
+    # shellcheck disable=SC2207
+    COMPREPLY=($(witty __complete "${COMP_WORDS[@]:1}" 2>/dev/null))
+  fi
+}
+
+# Only register on bash, guard against multiple sourcing
+if [ -n "${BASH_VERSION:-}" ] && [ -z "${__WITTY_COMPLETION_LOADED:-}" ]; then
+  complete -F _witty_completion witty
+  __WITTY_COMPLETION_LOADED=1
+fi

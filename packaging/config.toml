@@ -1,0 +1,46 @@
+# Witty default configuration
+# This file is installed to /etc/witty/config.toml by RPM.
+# The RPM marks it as %config(noreplace), so user edits are preserved on upgrade.
+#
+# User overrides can be placed in ~/.config/witty/config.toml
+# Command-line flags take highest priority.
+
+# OpenCode MCP Server address (default: http://127.0.0.1:4096)
+# server_url = "http://127.0.0.1:4096"
+
+# Default agent model (provider/model)
+# default_agent = "build"
+# default_model = ""
+# default_variant = ""
+
+# Debug mode: enables verbose logging to stderr
+# debug = false
+
+# ANSI color output (false = force plain text)
+# no_color = false
+
+# Terminal theme: "auto" follows terminal dark/light mode, "dark", "light", or "ascii"
+# theme = "auto"
+
+# Renderer mode: 1 = block boundary (stable), 2 = instant echo
+# renderer_phase = 1
+
+# --- REPL settings ---
+# [repl]
+# auto_resume = true
+
+# --- Shell integration ---
+# [shell]
+# enabled = true
+# debug = false
+
+# --- Doctor diagnostic command ---
+# [doctor]
+# timeout_seconds = 5
+
+# --- Display settings for intermediate process output ---
+# [display]
+# show_reasoning = "show"   # "show", "minimal", "hide"
+# tool_mode = "compact"     # "compact" or "verbose"
+# group_context_tools = true
+# step_style = "line"       # "line", "minimal", "none"
