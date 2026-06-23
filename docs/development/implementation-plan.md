@@ -61,12 +61,12 @@ Shell Adapter 依赖 Bash 的 `DEBUG` trap、`extdebug`、`BASH_COMMAND` 和 `hi
 | Shell 脚本质量 | `shellcheck` + `shfmt` | 系统工具 | 校验 `witty init bash` 输出模板 |
 | CJK 字符宽度 | `go-runewidth` | `github.com/mattn/go-runewidth` | Phase 2 渲染器行数追踪时用于计算 CJK 字符实际终端宽度 |
 | PTY 集成测试 | `go-expect` | `github.com/Netflix/go-expect` | 验证 Bash readline 行为；PTY 上发送按键、断言输出；TERM=xterm-256color |
-| 发布 | `goreleaser` v2 + `nfpm` v2 | `github.com/goreleaser/goreleaser` | RPM 打包通过 nFPM 原生支持；设置 `goamd64: [v1]` 保证 openEuler 全平台兼容 |
+| 发布 | `rpmbuild` + RPM spec（离线 vendor 构建） | openEuler 原生打包，CGO_ENABLED=0, GOAMD64=v1 |
 
 ## 2.3 工程原则
 
 1. **优先单二进制**：`witty` 主程序尽量不依赖额外 runtime。
-2. **尽量 `CGO_ENABLED=0`**：降低目标环境差异风险；goreleaser 层配置 `goamd64: [v1]` 保证旧系列 CPU 兼容。
+2. **`CGO_ENABLED=0`**：降低目标环境差异风险；构建时 `GOAMD64=v1` 保证旧系列 CPU 兼容。
 3. **Shell 分类在 Bash 完成，AI 执行在 Go Core 完成**：职责边界清晰。
 4. **以 `/doc` 为 API 唯一事实来源**：不手写猜测版 schema；已确认 opencode 的 `/doc` 输出是 OpenAPI **3.1.0**。抓取原始 spec 时显式发送 `Accept: application/json`。oapi-codegen **v2 不可用**（`exclusiveMinimum` 字段类型不兼容 3.1），**v3（`oapi-codegen-exp`）已验证可用**，生成 89K 行 types/models 代码。
 5. **P0/P1 不做全屏 TUI**：先完成稳定的行式 REPL 与快捷模式闭环。
@@ -1124,62 +1124,15 @@ c.Send("\u68c0\u67e5\u7cfb\u7edf\u5185\u5b58\n")   // 应路由到 agent
 
 ## 11.1 构建
 
-```yaml
-# .goreleaser.yaml 核心配置
-builds:
-  - main: ./cmd/witty
-    goos: [linux]
-    goarch: [amd64, arm64]
-    goamd64: [v1]        # 确保 openEuler 全平台兼容（包括旧型服务器）
-    env: [CGO_ENABLED=0]
-    ldflags:
-      - "-s -w"
-      - "-X main.version={{.Version}}"
-      - "-X main.commit={{.Commit}}"
-      - "-X main.date={{.Date}}"
-```
+通过 `rpmbuild -ba packaging/euler-copilot-shell.spec` 在 openEuler 环境离线构建。
+详见 [rpm-packaging-design.md](rpm-packaging-design.md)。
 
 - 构建时注入 version / commit / build date
 
 ## 11.2 打包
 
-通过 goreleaser + nFPM 生成 RPM（openEuler 主要分发格式）：
-
-```yaml
-# .goreleaser.yaml nfpms 段
-nfpms:
-  - package_name: witty
-    vendor: "Your Org"
-    homepage: "https://github.com/yourorg/witty"
-    maintainer: "Your Name <you@example.com>"
-    description: "witty — openEuler 终端 AI 助手"
-    license: Apache-2.0
-    formats: [rpm]
-    rpm:
-      compression: zstd   # openEuler 22.03+ 支持 zstd
-      summary: "witty AI CLI"
-    contents:
-      # 二进制
-      - src:  dist/witty_linux_{{ .Arch }}/witty
-        dst:  /usr/bin/witty
-        file_info: {mode: 0755}
-      # Bash 补全（双路径兼容旧系统）
-      - src:  dist/completions/witty.bash
-        dst:  /usr/share/bash-completion/completions/witty
-        file_info: {mode: 0644}
-      - src:  dist/completions/witty.bash
-        dst:  /etc/bash_completion.d/witty
-        file_info: {mode: 0644}
-      # 系统级默认配置（noreplace 防止升级覆盖用户修改）
-      - src:  packaging/config.toml.default
-        dst:  /etc/witty/config.toml
-        type: config|noreplace
-        file_info: {mode: 0644}
-      # config 目录所有权
-      - dst:  /etc/witty
-        type: dir
-        file_info: {mode: 0755}
-```
+通过手写 RPM spec + vendor bundle 生成 RPM（openEuler 主要分发格式）。
+详见 [rpm-packaging-design.md](rpm-packaging-design.md)。
 
 > **用户个人配置** (`~/.config/witty/config.toml`)：不应在 RPM 打包时处理。由 `witty` 首次运行时自动创建并写入默认配置。
 
