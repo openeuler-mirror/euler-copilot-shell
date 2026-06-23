@@ -42,11 +42,11 @@ Witty is the terminal-side intelligent interaction entry point for openEuler.
 %setup -q -n %{name}-%{version}
 
 %ifarch x86_64
-tar -xzf %{SOURCE1}
+tar -xzf %{SOURCE1} -C %{_builddir}
 %define __goroot %{_builddir}/go
 %endif
 %ifarch aarch64
-tar -xzf %{SOURCE2}
+tar -xzf %{SOURCE2} -C %{_builddir}
 %define __goroot %{_builddir}/go
 %endif
 
