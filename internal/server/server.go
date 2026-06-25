@@ -12,15 +12,30 @@ import (
 type Manager interface {
 	// Ensure ensures a server is available. If an existing server is reachable,
 	// it returns its connection info; otherwise it starts a new server process.
+	//
+	// If an IdleTimeout is configured and the state file's last_used has expired,
+	// Ensure lazily cleans up the idle server before starting a new one.
 	Ensure(ctx context.Context) (Connection, error)
 
-	// Stop stops the server process managed by this Manager. If the server was
-	// not started by the current witty process (recovered from state file), it
-	// is a no-op.
+	// Stop stops the server pointed to by the state file. It prefers the
+	// POST /global/dispose API for graceful shutdown; when HTTP is unreachable
+	// it falls back to SIGTERM against the PID recorded in the state file. Any
+	// witty process holding the state file password can stop the server.
 	Stop(ctx context.Context) error
 
-	// Status returns the current server status for diagnostics.
+	// Status returns the current server status for diagnostics. It has no side
+	// effects (it never starts a server).
 	Status(ctx context.Context) Status
+
+	// TouchLastUsed updates the last_used timestamp in the state file. It is
+	// invoked by the transport layer after each successful HTTP request so that
+	// idle timeout does not fire during active use. Errors are ignored
+	// (best-effort).
+	TouchLastUsed()
+
+	// Close releases Manager resources, stopping the idle monitor goroutine.
+	// It should be called when the application exits.
+	Close()
 }
 
 // Connection describes a reachable server.
@@ -32,8 +47,8 @@ type Connection struct {
 // Status describes the server runtime state.
 type Status struct {
 	Running   bool   // whether the server is running
-	Port      int    // listening port
-	PID       int    // process ID (zero if not managed by this process)
+	Port      int    // listening port (from state file)
+	PID       int    // process ID (from state file; zero if unknown)
 	Managed   bool   // whether this witty process started the server
 	StartedAt string // server start time
 }
@@ -59,6 +74,10 @@ type Options struct {
 	// StartupTimeout is the maximum time to wait for the server to become
 	// healthy after starting it.
 	StartupTimeout time.Duration
+
+	// IdleTimeout is the duration after which an idle managed server is
+	// automatically stopped. 0 means disabled.
+	IdleTimeout time.Duration
 
 	// OpenCodeBinaryPath is the path to the opencode binary.
 	// Defaults to "opencode" (look up in PATH).

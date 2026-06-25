@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -99,9 +100,16 @@ func (m *manager) startServer(ctx context.Context, port int, password string) (*
 	return cmd.Process, nil
 }
 
-// isPIDAlive checks whether a process with the given PID exists.
+// isPIDAlive checks whether a process with the given PID exists and is not a
+// zombie. On Unix, signal 0 reports a PID as existing even when the process has
+// exited but not yet been reaped (a zombie). On Linux we additionally inspect
+// /proc/{pid}/stat and treat a zombie (state 'Z') as dead, because the server
+// manager does not reap the detached child and a zombie lingers indefinitely.
 func isPIDAlive(pid int) bool {
 	if pid <= 0 {
+		return false
+	}
+	if isZombie(pid) {
 		return false
 	}
 	process, err := os.FindProcess(pid)
@@ -111,4 +119,24 @@ func isPIDAlive(pid int) bool {
 	// Signal 0 is a null signal used for existence checking on Unix.
 	err = process.Signal(syscall.Signal(0))
 	return err == nil
+}
+
+// isZombie reports whether the process identified by pid is a zombie (exited but
+// not yet reaped). It reads /proc/{pid}/stat, whose third field is the process
+// state; 'Z' means zombie. On platforms without /proc it returns false.
+func isZombie(pid int) bool {
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+	if err != nil {
+		return false
+	}
+	// /proc/{pid}/stat format: "pid (comm) state ...". The comm field may
+	// contain spaces or parens, so find the state after the last ')'.
+	s := string(data)
+	if idx := strings.LastIndexByte(s, ')'); idx >= 0 && idx+1 < len(s) {
+		fields := strings.Fields(s[idx+1:])
+		if len(fields) > 0 && fields[0] == "Z" {
+			return true
+		}
+	}
+	return false
 }

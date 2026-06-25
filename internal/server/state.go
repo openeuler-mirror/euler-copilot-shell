@@ -34,12 +34,18 @@ func newStateStore(stateDir string) (*stateStore, error) {
 }
 
 // DefaultServerStateDir resolves the directory for server state files.
+// WITTY_STATE_PATH is treated as a full file path (consistent with
+// session.DefaultStatePath); the server state file (server-state.json) is
+// placed in the same directory. When WITTY_STATE_PATH is unset, the directory
+// falls back to $XDG_STATE_HOME/witty or ~/.local/state/witty.
 func DefaultServerStateDir(lookupEnv func(string) (string, bool), userHomeDir func() (string, error)) (string, error) {
 	if lookupEnv == nil {
 		lookupEnv = os.LookupEnv
 	}
+	// WITTY_STATE_PATH is a full file path (matching session.DefaultStatePath);
+	// the server state file lives in the same directory.
 	if value, ok := lookupEnv("WITTY_STATE_PATH"); ok && value != "" {
-		return filepath.Join(value, "witty"), nil
+		return filepath.Dir(value), nil
 	}
 	if value, ok := lookupEnv("XDG_STATE_HOME"); ok && value != "" {
 		return filepath.Join(value, "witty"), nil
@@ -55,32 +61,6 @@ func DefaultServerStateDir(lookupEnv func(string) (string, bool), userHomeDir fu
 		return "", fmt.Errorf("resolve server state dir: home directory is empty")
 	}
 	return filepath.Join(home, ".local", "state", "witty"), nil
-}
-
-// DefaultServerStatePath resolves the default server state file path.
-// It follows the same patterns as session state: WITTY_STATE_PATH env,
-// XDG_STATE_HOME env, or ~/.local/state/witty/.
-func DefaultServerStatePath(lookupEnv func(string) (string, bool), userHomeDir func() (string, error)) (string, error) {
-	if lookupEnv == nil {
-		lookupEnv = os.LookupEnv
-	}
-	if value, ok := lookupEnv("WITTY_STATE_PATH"); ok && value != "" {
-		return filepath.Join(value, "witty", stateFileName), nil
-	}
-	if value, ok := lookupEnv("XDG_STATE_HOME"); ok && value != "" {
-		return filepath.Join(value, "witty", stateFileName), nil
-	}
-	if userHomeDir == nil {
-		userHomeDir = os.UserHomeDir
-	}
-	home, err := userHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("resolve server state path: %w", err)
-	}
-	if home == "" {
-		return "", fmt.Errorf("resolve server state path: home directory is empty")
-	}
-	return filepath.Join(home, ".local", "state", "witty", stateFileName), nil
 }
 
 func (s *stateStore) load() (State, error) {

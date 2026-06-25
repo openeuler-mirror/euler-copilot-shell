@@ -2,11 +2,16 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -28,10 +33,28 @@ const (
 type manager struct {
 	opts       Options
 	stateStore *stateStore
-	managedPID int // non-zero when this process started the server
+	mu         sync.Mutex
+	managedPID int // non-zero when this process started the server; guarded by mu
+	idleCancel context.CancelFunc
 }
 
-// NewManager creates a new server lifecycle Manager.
+// idleMonitorCheckInterval returns the interval at which the idle monitor
+// checks the state. It is a fraction of the idle timeout, capped at 5
+// minutes to avoid excessive wait time for long timeouts.
+func idleMonitorCheckInterval(timeout time.Duration) time.Duration {
+	interval := timeout / 6
+	if interval < 100*time.Millisecond {
+		interval = 100 * time.Millisecond
+	}
+	if interval > 5*time.Minute {
+		interval = 5 * time.Minute
+	}
+	return interval
+}
+
+// NewManager creates a new server lifecycle Manager. If opts.IdleTimeout is
+// positive, a background goroutine monitors idle state and automatically
+// stops the server when the timeout is exceeded.
 func NewManager(opts Options) (Manager, error) {
 	stateDir := opts.StateDir
 	if stateDir == "" {
@@ -41,10 +64,16 @@ func NewManager(opts Options) (Manager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create server state store: %w", err)
 	}
-	return &manager{
+	m := &manager{
 		opts:       opts,
 		stateStore: store,
-	}, nil
+	}
+	if opts.IdleTimeout > 0 {
+		ctx, cancel := context.WithCancel(context.Background())
+		m.idleCancel = cancel
+		go m.idleMonitor(ctx)
+	}
+	return m, nil
 }
 
 // Ensure implements Manager.
@@ -72,10 +101,26 @@ func (m *manager) Ensure(ctx context.Context) (Connection, error) {
 		return Connection{}, fmt.Errorf("load server state: %w", err)
 	}
 
+	// Lazy idle cleanup: if an idle timeout is configured and the recorded
+	// last_used has expired, stop the stale server before continuing. The
+	// transport layer now refreshes last_used on each request, so this check
+	// only fires when the server has genuinely been idle (e.g. CLI mode where
+	// each invocation is a separate process). A failure to stop the old server
+	// is non-fatal: we warn and proceed with normal startup.
+	if m.opts.IdleTimeout > 0 && state.Port > 0 && !state.LastUsed.IsZero() {
+		if time.Since(state.LastUsed) > m.opts.IdleTimeout {
+			_ = m.Stop(ctx)
+			// Reload state after stop (it removes the state file on success).
+			state, err = m.stateStore.load()
+			if err != nil {
+				return Connection{}, fmt.Errorf("load server state after idle cleanup: %w", err)
+			}
+		}
+	}
+
 	if state.Port > 0 && isPIDAlive(state.PID) {
 		if probePortWithAuth(ctx, host, state.Port, password) == authProbeMine {
 			baseURL := fmt.Sprintf("http://%s:%d", host, state.Port)
-			m.touchLastUsed(state)
 			return Connection{URL: baseURL, Password: password}, nil
 		}
 		// PID is alive but auth check failed (401 or unreachable).
@@ -111,11 +156,18 @@ func (m *manager) Ensure(ctx context.Context) (Connection, error) {
 			host, preferredPort, preferredPort)
 	}
 
-	// 4. Auto-start: spawn with coalesce protection. If spawning fails
-	// (e.g. binary not found, port conflict), fall back to the default URL
-	// for backward compatibility.
+	// 4. Auto-start: spawn with coalesce protection. If the opencode binary is
+	// not in PATH, surface an explicit error (the user must install it). Other
+	// startup failures (port conflict, health timeout) fall back to the default
+	// URL for backward compatibility.
 	conn, err := m.autoStart(ctx, host, preferredPort, password)
 	if err != nil {
+		// Distinguish "binary not found" (a configuration problem the user
+		// must fix) from transient startup failures (port conflict, health
+		// timeout) which fall back to the default URL.
+		if errors.Is(err, exec.ErrNotFound) || errors.Is(err, fs.ErrNotExist) {
+			return Connection{}, fmt.Errorf("auto-start opencode server: %w (install opencode or set server.auto_start=false and start it manually)", ErrOpenCodeBinaryNotFound)
+		}
 		return defaultConn, nil
 	}
 	return conn, nil
@@ -327,7 +379,9 @@ spawn:
 			return Connection{}, fmt.Errorf("start server on port %d: %w", port, err)
 		}
 
+		m.mu.Lock()
 		m.managedPID = proc.Pid
+		m.mu.Unlock()
 		baseURL := fmt.Sprintf("http://%s:%d", host, port)
 
 		newState := State{
@@ -347,19 +401,90 @@ spawn:
 	return Connection{}, fmt.Errorf("no free port in range %d-%d", preferredPort, endPort)
 }
 
-// Stop implements Manager.
+// ErrOpenCodeBinaryNotFound is returned by Ensure when the opencode binary is
+// not found in PATH and auto_start is enabled. Unlike other startup failures
+// (port conflict, health timeout) this is a configuration problem the user
+// must fix, so Ensure surfaces it as an error rather than silently degrading.
+var ErrOpenCodeBinaryNotFound = errors.New("opencode binary not found")
+
+// stopSignalTimeout is the maximum time Stop waits for a SIGTERM'd process
+// to exit before giving up.
+const stopSignalTimeout = 5 * time.Second
+
+// Stop implements Manager. It reads the state file to obtain the server URL,
+// password and PID, then prefers POST /global/dispose for graceful shutdown.
+// Because some opencode versions acknowledge /global/dispose (200) without
+// actually stopping the HTTP listener, Stop verifies the server is gone after
+// dispose and falls back to SIGTERM if it is still reachable. When HTTP is
+// unreachable it falls back to SIGTERM against the recorded PID, after
+// verifying the PID's command line looks like an opencode server. The
+// managedPID precondition is intentionally removed so any witty process that
+// holds the state file password can stop the server.
 func (m *manager) Stop(ctx context.Context) error {
-	if m.managedPID <= 0 {
-		return nil
-	}
-	proc, err := os.FindProcess(m.managedPID)
-	if err != nil {
-		return fmt.Errorf("find managed process %d: %w", m.managedPID, err)
-	}
-	if err := proc.Signal(syscall.SIGTERM); err != nil {
-		return fmt.Errorf("stop server process %d: %w", m.managedPID, err)
+	// Cancel the idle monitor so it doesn't race with us.
+	m.mu.Lock()
+	if m.idleCancel != nil {
+		m.idleCancel()
+		m.idleCancel = nil
 	}
 	m.managedPID = 0
+	m.mu.Unlock()
+
+	state, err := m.stateStore.load()
+	if err != nil {
+		return fmt.Errorf("load server state: %w", err)
+	}
+	// Nothing to stop: no recorded server.
+	if state.Port == 0 && state.PID == 0 {
+		return nil
+	}
+
+	baseURL := fmt.Sprintf("http://%s:%d", m.hostname(), state.Port)
+	host := m.hostname()
+
+	// 1. Prefer the graceful /global/dispose API. Some opencode versions
+	// return 200 without actually stopping the listener, so verify the
+	// server is unreachable afterwards; if it is still alive, fall through
+	// to the SIGTERM fallback.
+	if disposeErr := disposeViaHTTP(ctx, baseURL, state.Password); disposeErr == nil {
+		// Give the server a brief moment to shut down its listener.
+		time.Sleep(200 * time.Millisecond)
+		if !serverStillReachable(ctx, host, state.Port, state.Password) {
+			_ = m.stateStore.remove()
+			return nil
+		}
+		// Dispose acknowledged but server is still reachable; fall back to
+		// SIGTERM against the recorded PID.
+	}
+
+	// 2. Fallback: SIGTERM against the recorded PID.
+	if state.PID <= 0 {
+		// No PID to signal and dispose failed; the server is either foreign
+		// or already gone. Clean up local state and report nothing to stop.
+		_ = m.stateStore.remove()
+		return nil
+	}
+	if !isPIDAlive(state.PID) {
+		// Process already exited; clean up stale state.
+		_ = m.stateStore.remove()
+		return nil
+	}
+	if !pidIsOpenCodeServer(state.PID) {
+		// PID reuse risk: the recorded PID now belongs to an unrelated process.
+		_ = m.stateStore.remove()
+		return fmt.Errorf("server stop: pid %d is no longer an opencode server (possible PID reuse); state file removed", state.PID)
+	}
+
+	proc, err := os.FindProcess(state.PID)
+	if err != nil {
+		return fmt.Errorf("find server process %d: %w", state.PID, err)
+	}
+	if err := proc.Signal(syscall.SIGTERM); err != nil {
+		return fmt.Errorf("stop server process %d: %w", state.PID, err)
+	}
+	if err := waitForProcessExit(state.PID, stopSignalTimeout); err != nil {
+		return fmt.Errorf("wait for server process %d exit: %w", state.PID, err)
+	}
 	_ = m.stateStore.remove()
 	return nil
 }
@@ -380,17 +505,147 @@ func (m *manager) Status(ctx context.Context) Status {
 		}
 	}
 
+	m.mu.Lock()
+	managedPID := m.managedPID
+	m.mu.Unlock()
+
 	return Status{
 		Running:   running,
 		Port:      state.Port,
 		PID:       state.PID,
-		Managed:   state.PID == m.managedPID && m.managedPID > 0,
+		Managed:   state.PID == managedPID && managedPID > 0,
 		StartedAt: state.StartedAt.Format(time.RFC3339),
 	}
 }
 
-// touchLastUsed updates the last_used timestamp without changing other fields.
-func (m *manager) touchLastUsed(state State) {
+// TouchLastUsed implements Manager. It refreshes the state file's last_used
+// timestamp so the idle timeout does not fire during active use. Errors are
+// ignored (best-effort); a missing state file is a no-op.
+func (m *manager) TouchLastUsed() {
+	state, err := m.stateStore.load()
+	if err != nil || state.Port == 0 {
+		return
+	}
 	state.LastUsed = time.Now()
 	_ = m.stateStore.save(state)
+}
+
+// Close implements Manager. It cancels the idle monitor context so the
+// background goroutine exits. It is idempotent and safe to call multiple times.
+func (m *manager) Close() {
+	m.mu.Lock()
+	if m.idleCancel != nil {
+		m.idleCancel()
+		m.idleCancel = nil
+	}
+	m.mu.Unlock()
+}
+
+// idleMonitor periodically checks whether the managed server has been idle
+// longer than the configured timeout. When idle timeout is exceeded, it
+// stops the server automatically.
+func (m *manager) idleMonitor(ctx context.Context) {
+	interval := idleMonitorCheckInterval(m.opts.IdleTimeout)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+
+		state, err := m.stateStore.load()
+		if err != nil || state.LastUsed.IsZero() {
+			continue
+		}
+
+		if time.Since(state.LastUsed) <= m.opts.IdleTimeout {
+			continue
+		}
+
+		// Server has been idle too long. Stop it only if we manage it.
+		m.mu.Lock()
+		if m.managedPID <= 0 {
+			m.mu.Unlock()
+			return // no longer managing anything; exit
+		}
+		m.mu.Unlock()
+
+		// Use a background context to stop; the idle monitor's ctx is
+		// only for cancellation signaling, not Stop's timeout.
+		_ = m.Stop(context.Background())
+		return
+	}
+}
+
+// disposeViaHTTP calls POST {baseURL}/global/dispose with HTTP Basic Auth.
+// It returns nil on a 200 response and a non-nil error otherwise (connection
+// refused, timeout, non-200 status). Callers use a nil error to decide the
+// graceful shutdown succeeded and fall back to SIGTERM otherwise.
+func disposeViaHTTP(ctx context.Context, baseURL, password string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/global/dispose", nil)
+	if err != nil {
+		return fmt.Errorf("build dispose request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	if password != "" {
+		req.Header.Set("Authorization", basicAuthHeader(password))
+	}
+	client := &http.Client{Timeout: portProbeTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("dispose request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("dispose returned status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// serverStillReachable reports whether an opencode server is still responding
+// on the given host:port. It is used after /global/dispose to verify the
+// server actually stopped, since some opencode versions acknowledge dispose
+// without shutting down the HTTP listener.
+func serverStillReachable(ctx context.Context, host string, port int, password string) bool {
+	if password != "" {
+		return healthCheckWithAuth(ctx, fmt.Sprintf("http://%s:%d", host, port), password) == http.StatusOK
+	}
+	return findOpenCodeOnPort(ctx, host, port)
+}
+
+// pidIsOpenCodeServer reports whether the process identified by pid appears
+// to be an opencode server, by inspecting /proc/{pid}/cmdline. This mitigates
+// PID-reuse risk before sending SIGTERM. On platforms without /proc (e.g.
+// macOS used for development), the check cannot be performed and the function
+// returns true so SIGTERM fallback remains usable; the delivery platform
+// (openEuler/Linux) always has /proc and verifies the command line.
+func pidIsOpenCodeServer(pid int) bool {
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+	if err != nil {
+		// /proc unavailable (non-Linux dev) or PID gone. Be permissive to
+		// keep the fallback working outside Linux; openEuler always verifies.
+		return true
+	}
+	// /proc/{pid}/cmdline is null-byte separated.
+	cmdline := strings.ReplaceAll(string(data), "\x00", " ")
+	return strings.Contains(cmdline, "opencode")
+}
+
+// waitForProcessExit polls isPIDAlive until the process exits or the timeout
+// elapses. It returns nil when the process has exited and a context-style
+// error when the timeout is reached.
+func waitForProcessExit(pid int, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		if !isPIDAlive(pid) {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("process %d did not exit within %s", pid, timeout)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }

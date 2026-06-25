@@ -73,6 +73,12 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(` + "`" + `{"healthy":true,"version":"1.0.0-test"}` + "`" + `))
 	})
+	mux.HandleFunc("/global/dispose", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("true"))
+		// Dispose shuts the server down gracefully.
+		go os.Exit(0)
+	})
 	if err := http.ListenAndServe("127.0.0.1:"+port, mux); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
