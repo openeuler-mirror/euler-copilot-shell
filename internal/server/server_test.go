@@ -2,8 +2,13 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -266,28 +271,29 @@ func TestManager_Ensure_AutoStartDisabled_NoServer(t *testing.T) {
 	}
 }
 
-func TestManager_Ensure_AutoStartEnabled_NoServer(t *testing.T) {
+func TestManager_Ensure_AutoStartEnabled_BinaryNotFound(t *testing.T) {
 	ctx, cancel := testCtx(t)
 	defer cancel()
 
 	mgr, err := NewManager(Options{
-		StateDir:      t.TempDir(),
-		AutoStart:     true,
-		PreferredPort: 59999,
-		Hostname:      "127.0.0.1",
+		StateDir:           t.TempDir(),
+		AutoStart:          true,
+		PreferredPort:      59999,
+		Hostname:           "127.0.0.1",
+		OpenCodeBinaryPath: "/nonexistent/opencode-binary-that-does-not-exist",
 	})
 	if err != nil {
 		t.Fatalf("NewManager() error = %v", err)
 	}
 
-	// No server on that port, and opencode binary not found.
-	// Should gracefully return the default connection without error.
-	conn, err := mgr.Ensure(ctx)
-	if err != nil {
-		t.Fatalf("Ensure() error = %v", err)
+	// No server on that port, and the opencode binary does not exist.
+	// Ensure must surface an explicit error rather than silently degrading.
+	_, err = mgr.Ensure(ctx)
+	if err == nil {
+		t.Fatal("Ensure() error = nil, want ErrOpenCodeBinaryNotFound")
 	}
-	if conn.URL != "http://127.0.0.1:59999" {
-		t.Fatalf("conn.URL = %q, want default URL", conn.URL)
+	if !errors.Is(err, ErrOpenCodeBinaryNotFound) {
+		t.Fatalf("error = %v, want ErrOpenCodeBinaryNotFound", err)
 	}
 }
 
@@ -403,20 +409,22 @@ func TestManager_Status_NoState(t *testing.T) {
 	}
 }
 
-func TestDefaultServerStatePath(t *testing.T) {
-	t.Run("WITTY_STATE_PATH env", func(t *testing.T) {
+func TestDefaultServerStateDir(t *testing.T) {
+	t.Run("WITTY_STATE_PATH as full file path", func(t *testing.T) {
+		// WITTY_STATE_PATH is a full file path (matching session.DefaultStatePath);
+		// the server state dir is the containing directory.
 		lookup := func(key string) (string, bool) {
 			if key == "WITTY_STATE_PATH" {
-				return "/custom/state", true
+				return "/custom/state/my-state.json", true
 			}
 			return "", false
 		}
-		path, err := DefaultServerStatePath(lookup, nil)
+		dir, err := DefaultServerStateDir(lookup, nil)
 		if err != nil {
-			t.Fatalf("DefaultServerStatePath() error = %v", err)
+			t.Fatalf("DefaultServerStateDir() error = %v", err)
 		}
-		if path != "/custom/state/witty/server-state.json" {
-			t.Fatalf("path = %q, want /custom/state/witty/server-state.json", path)
+		if dir != "/custom/state" {
+			t.Fatalf("dir = %q, want /custom/state", dir)
 		}
 	})
 
@@ -427,38 +435,26 @@ func TestDefaultServerStatePath(t *testing.T) {
 			}
 			return "", false
 		}
-		path, err := DefaultServerStatePath(lookup, nil)
+		dir, err := DefaultServerStateDir(lookup, nil)
 		if err != nil {
-			t.Fatalf("DefaultServerStatePath() error = %v", err)
+			t.Fatalf("DefaultServerStateDir() error = %v", err)
 		}
-		if path != "/xdg/state/witty/server-state.json" {
-			t.Fatalf("path = %q, want /xdg/state/witty/server-state.json", path)
+		if dir != "/xdg/state/witty" {
+			t.Fatalf("dir = %q, want /xdg/state/witty", dir)
 		}
 	})
 
 	t.Run("home dir fallback", func(t *testing.T) {
 		lookup := func(string) (string, bool) { return "", false }
 		homeDir := func() (string, error) { return "/home/testuser", nil }
-		path, err := DefaultServerStatePath(lookup, homeDir)
+		dir, err := DefaultServerStateDir(lookup, homeDir)
 		if err != nil {
-			t.Fatalf("DefaultServerStatePath() error = %v", err)
+			t.Fatalf("DefaultServerStateDir() error = %v", err)
 		}
-		if path != "/home/testuser/.local/state/witty/server-state.json" {
-			t.Fatalf("path = %q, want /home/testuser/.local/state/witty/server-state.json", path)
+		if dir != "/home/testuser/.local/state/witty" {
+			t.Fatalf("dir = %q, want /home/testuser/.local/state/witty", dir)
 		}
 	})
-}
-
-func TestDefaultServerStateDir(t *testing.T) {
-	lookup := func(string) (string, bool) { return "", false }
-	homeDir := func() (string, error) { return "/home/testuser", nil }
-	dir, err := DefaultServerStateDir(lookup, homeDir)
-	if err != nil {
-		t.Fatalf("DefaultServerStateDir() error = %v", err)
-	}
-	if dir != "/home/testuser/.local/state/witty" {
-		t.Fatalf("dir = %q, want /home/testuser/.local/state/witty", dir)
-	}
 }
 
 func TestManager_PreferredPort(t *testing.T) {
@@ -556,5 +552,571 @@ func TestWaitForServerWithAuth_WrongPassword(t *testing.T) {
 	err := waitForServerWithAuth(ctx, url, "wrong-pass", 50*time.Millisecond)
 	if err == nil {
 		t.Fatal("waitForServerWithAuth() error = nil, want timeout error")
+	}
+}
+
+func TestIdleMonitorCheckInterval(t *testing.T) {
+	tests := []struct {
+		timeout time.Duration
+		wantMin time.Duration
+		wantMax time.Duration
+	}{
+		{30 * time.Minute, 100 * time.Millisecond, 5 * time.Minute},
+		{1 * time.Minute, 100 * time.Millisecond, 5 * time.Minute},
+		{10 * time.Second, 100 * time.Millisecond, 5 * time.Minute},
+		{2 * time.Hour, 5 * time.Minute, 5 * time.Minute},
+		{500 * time.Millisecond, 100 * time.Millisecond, 100 * time.Millisecond},
+	}
+	for _, tt := range tests {
+		got := idleMonitorCheckInterval(tt.timeout)
+		if got < tt.wantMin || got > tt.wantMax {
+			t.Errorf("idleMonitorCheckInterval(%v) = %v, want [%v, %v]", tt.timeout, got, tt.wantMin, tt.wantMax)
+		}
+	}
+}
+
+func TestManager_IdleTimeout_StopsServer(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping idle timeout test in short mode (uses real time)")
+	}
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	bin := mockOpenCodeBinary(t)
+	testPort := 45998
+
+	mgr, err := NewManager(Options{
+		StateDir:           t.TempDir(),
+		AutoStart:          true,
+		PreferredPort:      testPort,
+		Hostname:           "127.0.0.1",
+		StartupTimeout:     5 * time.Second,
+		IdleTimeout:        200 * time.Millisecond, // very short for testing
+		OpenCodeBinaryPath: bin,
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	conn, err := mgr.Ensure(ctx)
+	if err != nil {
+		t.Fatalf("Ensure() error = %v", err)
+	}
+	if conn.URL == "" {
+		t.Fatal("conn.URL is empty")
+	}
+
+	// Verify server is running initially.
+	st := mgr.Status(ctx)
+	if !st.Running {
+		t.Fatal("server not running after Ensure")
+	}
+	if !st.Managed {
+		t.Fatal("server not reported as managed")
+	}
+
+	// Wait for the idle monitor to detect the timeout and stop the server.
+	// The last_used was set during Ensure. With 200ms idle timeout and
+	// ~30s check interval (clamped from 200ms/6 ≈ 33ms), this should
+	// happen quickly.
+	waitCtx, waitCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer waitCancel()
+
+	for {
+		select {
+		case <-waitCtx.Done():
+			t.Fatal("idle timeout did not stop server within 5 seconds")
+		default:
+		}
+		st := mgr.Status(waitCtx)
+		if !st.Running {
+			break // idle monitor stopped it
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Verify state file was cleaned up.
+	st2 := mgr.Status(ctx)
+	if st2.Running {
+		t.Fatal("server still running after idle timeout")
+	}
+}
+
+func TestManager_IdleTimeout_Disabled(t *testing.T) {
+	// Verify that 0 idle timeout does not start an idle monitor.
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	bin := mockOpenCodeBinary(t)
+	testPort := 45997
+
+	mgr, err := NewManager(Options{
+		StateDir:           t.TempDir(),
+		AutoStart:          true,
+		PreferredPort:      testPort,
+		Hostname:           "127.0.0.1",
+		StartupTimeout:     5 * time.Second,
+		IdleTimeout:        0, // disabled
+		OpenCodeBinaryPath: bin,
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	_, err = mgr.Ensure(ctx)
+	if err != nil {
+		t.Fatalf("Ensure() error = %v", err)
+	}
+
+	// Server should still be running after a short wait.
+	time.Sleep(500 * time.Millisecond)
+	st := mgr.Status(ctx)
+	if !st.Running {
+		t.Fatal("server stopped unexpectedly when idle timeout is disabled")
+	}
+
+	// Clean up.
+	_ = mgr.Stop(ctx)
+}
+
+func TestManager_Stop_CancelsIdleMonitor(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping idle timeout test in short mode")
+	}
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	bin := mockOpenCodeBinary(t)
+	testPort := 45996
+
+	mgr, err := NewManager(Options{
+		StateDir:           t.TempDir(),
+		AutoStart:          true,
+		PreferredPort:      testPort,
+		Hostname:           "127.0.0.1",
+		StartupTimeout:     5 * time.Second,
+		IdleTimeout:        5 * time.Second,
+		OpenCodeBinaryPath: bin,
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	_, err = mgr.Ensure(ctx)
+	if err != nil {
+		t.Fatalf("Ensure() error = %v", err)
+	}
+
+	// Explicit Stop before idle timeout triggers.
+	if err := mgr.Stop(ctx); err != nil {
+		t.Fatalf("Stop() error = %v", err)
+	}
+
+	st := mgr.Status(ctx)
+	if st.Running {
+		t.Fatal("server still running after explicit Stop")
+	}
+}
+
+// --- P4-6e: Stop via /global/dispose + SIGTERM fallback ---
+
+// mockDisposeServer starts an httptest server that responds to POST /global/dispose
+// with 200 {"true"} and optionally requires HTTP Basic Auth.
+func mockDisposeServer(t *testing.T, password string) (*httptest.Server, string) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/global/dispose" && r.Method == http.MethodPost {
+			if password != "" {
+				user, pass, ok := r.BasicAuth()
+				if !ok || user != "opencode" || pass != password {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte("true"))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	return srv, srv.URL
+}
+
+// writeFileState writes a server State as JSON into the manager's state dir.
+func writeFileState(t *testing.T, stateDir string, st State) {
+	t.Helper()
+	data, err := json.MarshalIndent(st, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal state: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(stateDir, stateFileName), append(data, '\n'), 0o600); err != nil {
+		t.Fatalf("write state: %v", err)
+	}
+}
+
+// readStateFile reads the server state file, returning the zero value when absent.
+func readStateFile(t *testing.T, stateDir string) State {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(stateDir, stateFileName))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return State{}
+		}
+		t.Fatalf("read state: %v", err)
+	}
+	var st State
+	if err := json.Unmarshal(data, &st); err != nil {
+		t.Fatalf("unmarshal state: %v", err)
+	}
+	return st
+}
+
+func TestManager_Stop_DisposeSuccess_DeletesStateFile(t *testing.T) {
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	srv, url := mockDisposeServer(t, "secret")
+	host, port := parseHostPort(t, url)
+
+	stateDir := t.TempDir()
+	writeFileState(t, stateDir, State{
+		Port:     port,
+		Password: "secret",
+		PID:      os.Getpid(), // alive, but dispose should win
+	})
+
+	mgr, err := NewManager(Options{
+		StateDir:      stateDir,
+		AutoStart:     false,
+		PreferredPort: port,
+		Hostname:      host,
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	if err := mgr.Stop(ctx); err != nil {
+		t.Fatalf("Stop() error = %v", err)
+	}
+
+	// State file should be removed after a successful dispose.
+	if _, statErr := os.Stat(filepath.Join(stateDir, stateFileName)); !os.IsNotExist(statErr) {
+		t.Fatalf("state file should be removed, got statErr=%v", statErr)
+	}
+	_ = srv
+}
+
+func TestManager_Stop_NoState_NoOp(t *testing.T) {
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	mgr, err := NewManager(Options{
+		StateDir:      t.TempDir(),
+		AutoStart:     false,
+		PreferredPort: 4096,
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	if err := mgr.Stop(ctx); err != nil {
+		t.Fatalf("Stop() with no state error = %v", err)
+	}
+}
+
+func TestManager_Stop_DisposeUnreachable_SigtermFallback(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping SIGTERM fallback test in short mode (spawns a real process)")
+	}
+	// Verifying that the SIGTERM'd child actually exits requires detecting zombie
+	// processes via /proc, which only exists on Linux. On macOS the child becomes
+	// an unreaped zombie and Signal(0) keeps reporting it alive, so the process
+	// exit assertion is verified on the delivery platform (openEuler/Linux).
+	if runtime.GOOS != "linux" {
+		t.Skip("SIGTERM fallback process-exit verification requires /proc (Linux/openEuler)")
+	}
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	bin := mockOpenCodeBinary(t)
+	testPort := 46010
+
+	mgr, err := NewManager(Options{
+		StateDir:           t.TempDir(),
+		AutoStart:          true,
+		PreferredPort:      testPort,
+		Hostname:           "127.0.0.1",
+		StartupTimeout:     5 * time.Second,
+		OpenCodeBinaryPath: bin,
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	// Start a real mock server.
+	conn, err := mgr.Ensure(ctx)
+	if err != nil {
+		t.Fatalf("Ensure() error = %v", err)
+	}
+
+	// Corrupt the recorded URL so /global/dispose is unreachable, forcing the
+	// SIGTERM fallback path. The recorded PID still points at the live process.
+	mImpl := mgr.(*manager)
+	st := readStateFile(t, mImpl.opts.StateDir)
+	st.Port = 1 // unreachable port
+	writeFileState(t, mImpl.opts.StateDir, st)
+
+	if err := mgr.Stop(ctx); err != nil {
+		t.Fatalf("Stop() error = %v", err)
+	}
+
+	// Process should have exited (isPIDAlive treats zombies as dead).
+	if isPIDAlive(st.PID) {
+		t.Fatalf("process %d still alive after SIGTERM fallback", st.PID)
+	}
+	_ = conn
+}
+
+func TestManager_Stop_DeadPID_CleansState(t *testing.T) {
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	stateDir := t.TempDir()
+	// A PID that is essentially guaranteed not to exist.
+	writeFileState(t, stateDir, State{
+		Port:     1,
+		Password: "secret",
+		PID:      999999,
+	})
+
+	mgr, err := NewManager(Options{
+		StateDir:      stateDir,
+		AutoStart:     false,
+		PreferredPort: 4096,
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	if err := mgr.Stop(ctx); err != nil {
+		t.Fatalf("Stop() error = %v", err)
+	}
+	// State file removed for stale PID.
+	if _, statErr := os.Stat(filepath.Join(stateDir, stateFileName)); !os.IsNotExist(statErr) {
+		t.Fatalf("state file should be removed for dead PID")
+	}
+}
+
+// --- P4-6e: TouchLastUsed ---
+
+func TestManager_TouchLastUsed_UpdatesState(t *testing.T) {
+	stateDir := t.TempDir()
+	original := State{Port: 4096, Password: "p", PID: 123, LastUsed: time.Now().Add(-1 * time.Hour)}
+	writeFileState(t, stateDir, original)
+
+	mgr, err := NewManager(Options{StateDir: stateDir, PreferredPort: 4096})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	before := time.Now()
+	mgr.TouchLastUsed()
+	after := time.Now()
+
+	st := readStateFile(t, stateDir)
+	if st.LastUsed.Before(before) || st.LastUsed.After(after) {
+		t.Fatalf("LastUsed = %v, want within [%v, %v]", st.LastUsed, before, after)
+	}
+	if st.Port != original.Port || st.Password != original.Password || st.PID != original.PID {
+		t.Fatalf("other fields changed: got %+v, want %+v", st, original)
+	}
+}
+
+func TestManager_TouchLastUsed_NoState_NoError(t *testing.T) {
+	mgr, err := NewManager(Options{StateDir: t.TempDir(), PreferredPort: 4096})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	// Should not panic or return an error (it returns nothing, but must not panic).
+	mgr.TouchLastUsed()
+}
+
+// --- P4-6e: Close ---
+
+func TestManager_Close_StopsIdleMonitor(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Close test in short mode (uses idle monitor goroutine)")
+	}
+	bin := mockOpenCodeBinary(t)
+	testPort := 46011
+
+	mgr, err := NewManager(Options{
+		StateDir:           t.TempDir(),
+		AutoStart:          true,
+		PreferredPort:      testPort,
+		Hostname:           "127.0.0.1",
+		StartupTimeout:     5 * time.Second,
+		IdleTimeout:        30 * time.Second,
+		OpenCodeBinaryPath: bin,
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	ctx, cancel := testCtx(t)
+	defer cancel()
+	if _, err := mgr.Ensure(ctx); err != nil {
+		t.Fatalf("Ensure() error = %v", err)
+	}
+
+	// Close should stop the idle monitor goroutine. The idle monitor's cancel
+	// func should be nil afterwards.
+	mgr.Close()
+
+	m := mgr.(*manager)
+	m.mu.Lock()
+	idleCancel := m.idleCancel
+	m.mu.Unlock()
+	if idleCancel != nil {
+		t.Fatal("idleCancel should be nil after Close")
+	}
+
+	// Clean up the running server.
+	_ = mgr.Stop(ctx)
+}
+
+func TestManager_Close_Idempotent(t *testing.T) {
+	mgr, err := NewManager(Options{StateDir: t.TempDir(), PreferredPort: 4096})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	mgr.Close()
+	mgr.Close() // should not panic
+}
+
+// --- P4-6e: idle timeout lazy cleanup in Ensure ---
+
+func TestManager_Ensure_IdleTimeout_LazyCleanup(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping lazy idle cleanup test in short mode (spawns a real process)")
+	}
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	bin := mockOpenCodeBinary(t)
+	testPort := 46012
+
+	mgr, err := NewManager(Options{
+		StateDir:           t.TempDir(),
+		AutoStart:          true,
+		PreferredPort:      testPort,
+		Hostname:           "127.0.0.1",
+		StartupTimeout:     5 * time.Second,
+		IdleTimeout:        1 * time.Minute,
+		OpenCodeBinaryPath: bin,
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	// Start a server.
+	conn, err := mgr.Ensure(ctx)
+	if err != nil {
+		t.Fatalf("Ensure() error = %v", err)
+	}
+
+	// Simulate the server being idle past the timeout by backdating last_used.
+	mImpl := mgr.(*manager)
+	st := readStateFile(t, mImpl.opts.StateDir)
+	st.LastUsed = time.Now().Add(-2 * time.Minute)
+	writeFileState(t, mImpl.opts.StateDir, st)
+	oldPID := st.PID
+
+	// Ensure should lazily stop the stale server and start a new one.
+	conn2, err := mgr.Ensure(ctx)
+	if err != nil {
+		t.Fatalf("Ensure() lazy cleanup error = %v", err)
+	}
+	if conn2.URL == "" {
+		t.Fatal("Ensure() returned empty URL after lazy cleanup")
+	}
+
+	// The old server process should be gone after lazy cleanup. On Linux,
+	// isPIDAlive detects zombies via /proc and reports them as dead. On macOS
+	// without /proc the unreaped zombie is still reported alive, so the death
+	// assertion only runs on Linux.
+	if oldPID > 0 && runtime.GOOS == "linux" && isPIDAlive(oldPID) {
+		t.Fatalf("old server process %d still alive after lazy cleanup", oldPID)
+	}
+	_ = conn
+
+	// Clean up the new server. Give the old server a moment to fully exit and
+	// release its port before the new server's Stop runs.
+	time.Sleep(300 * time.Millisecond)
+	_ = mgr.Stop(ctx)
+}
+
+func TestManager_Ensure_IdleTimeout_NotExpired_Reuses(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping idle reuse test in short mode (spawns a real process)")
+	}
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	bin := mockOpenCodeBinary(t)
+	testPort := 46013
+
+	mgr, err := NewManager(Options{
+		StateDir:           t.TempDir(),
+		AutoStart:          true,
+		PreferredPort:      testPort,
+		Hostname:           "127.0.0.1",
+		StartupTimeout:     5 * time.Second,
+		IdleTimeout:        10 * time.Minute,
+		OpenCodeBinaryPath: bin,
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	conn, err := mgr.Ensure(ctx)
+	if err != nil {
+		t.Fatalf("Ensure() error = %v", err)
+	}
+	mImpl := mgr.(*manager)
+	st := readStateFile(t, mImpl.opts.StateDir)
+	originalPID := st.PID
+
+	// last_used is recent; Ensure should reuse, not restart.
+	conn2, err := mgr.Ensure(ctx)
+	if err != nil {
+		t.Fatalf("second Ensure() error = %v", err)
+	}
+	if conn.URL != conn2.URL {
+		t.Fatalf("Ensure reused a different URL: %q vs %q", conn.URL, conn2.URL)
+	}
+	st2 := readStateFile(t, mgr.(*manager).opts.StateDir)
+	if st2.PID != originalPID {
+		t.Fatalf("PID changed after reuse: %d vs %d", st2.PID, originalPID)
+	}
+
+	_ = mgr.Stop(ctx)
+}
+
+func TestPidIsOpenCodeServer_SelfOrAbsent(t *testing.T) {
+	// On macOS /proc is absent; the function returns true (permissive). On
+	// Linux it reads /proc/{pid}/cmdline. Either way, our own process should
+	// not error: it returns true on non-Linux, and on Linux the test binary's
+	// cmdline won't contain "opencode" so it returns false. We only assert
+	// that it does not panic and returns a bool.
+	got := pidIsOpenCodeServer(os.Getpid())
+	_ = got
+}
+
+func TestWaitForProcessExit_AlreadyDead(t *testing.T) {
+	// A PID guaranteed not to exist.
+	if err := waitForProcessExit(999999, 1*time.Second); err != nil {
+		t.Fatalf("waitForProcessExit for dead PID error = %v", err)
 	}
 }
