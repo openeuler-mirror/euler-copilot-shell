@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	defaultPort          = 4096
-	maxPort              = 4105 // 4096 + 10 - 1
-	defaultHostname      = "127.0.0.1"
-	defaultStartupWait   = 10 * time.Second
-	healthCheckInterval  = 200 * time.Millisecond
-	openCodeBinary       = "opencode"
+	defaultPort         = 4096
+	maxPort             = 4105 // 4096 + 10 - 1
+	defaultHostname     = "127.0.0.1"
+	defaultStartupWait  = 10 * time.Second
+	healthCheckInterval = 200 * time.Millisecond
+	openCodeBinary      = "opencode"
 )
 
 func (m *manager) binaryPath() string {
@@ -39,10 +39,24 @@ func (m *manager) startupTimeout() time.Duration {
 	return defaultStartupWait
 }
 
+// portRangeEnd returns the end of the port scanning range starting from
+// startPort. It ensures at least (maxPort - defaultPort + 1) ports are
+// scanned regardless of the starting port.
+func portRangeEnd(startPort int) int {
+	portRange := maxPort - defaultPort // 9, so 10 ports total with inclusive bounds
+	if startPort <= maxPort {
+		return maxPort
+	}
+	return startPort + portRange
+}
+
 // startServer spawns an opencode serve process on the given port. It returns
 // the OS process handle. The process is detached from the parent so it
 // outlives witty.
-func (m *manager) startServer(ctx context.Context, port int) (*os.Process, error) {
+//
+// The password is passed via the OPENCODE_SERVER_PASSWORD environment variable
+// (never in command-line arguments, for /proc security).
+func (m *manager) startServer(ctx context.Context, port int, password string) (*os.Process, error) {
 	bin := m.binaryPath()
 	if _, err := exec.LookPath(bin); err != nil {
 		return nil, fmt.Errorf("opencode binary %q not found: %w", bin, err)
@@ -54,6 +68,11 @@ func (m *manager) startServer(ctx context.Context, port int) (*os.Process, error
 	// Detach the child so it survives the parent (witty) exiting.
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
+	}
+
+	// Pass password via environment variable, not command-line args.
+	if password != "" {
+		cmd.Env = append(os.Environ(), "OPENCODE_SERVER_PASSWORD="+password)
 	}
 
 	// Discard stdout/stderr of the server process, since Witty communicates
@@ -69,7 +88,7 @@ func (m *manager) startServer(ctx context.Context, port int) (*os.Process, error
 	healthCtx, cancel := context.WithTimeout(ctx, m.startupTimeout())
 	defer cancel()
 
-	if err := waitForServer(healthCtx, baseURL, healthCheckInterval); err != nil {
+	if err := waitForServerWithAuth(healthCtx, baseURL, password, healthCheckInterval); err != nil {
 		// The server didn't become healthy in time. Kill the process we
 		// started and clean up.
 		_ = cmd.Process.Kill()
@@ -92,26 +111,4 @@ func isPIDAlive(pid int) bool {
 	// Signal 0 is a null signal used for existence checking on Unix.
 	err = process.Signal(syscall.Signal(0))
 	return err == nil
-}
-
-// findAvailablePort scans for an available port starting from startPort.
-func findAvailablePort(ctx context.Context, host string, startPort int) (int, error) {
-	endPort := startPort
-	if startPort <= maxPort {
-		endPort = maxPort
-	}
-	for port := startPort; port <= endPort; port++ {
-		select {
-		case <-ctx.Done():
-			return 0, ctx.Err()
-		default:
-		}
-		if !portOpen(ctx, host, port) {
-			return port, nil
-		}
-		// If the port is open but it's an opencode server that we can
-		// reuse, we should have detected it earlier in the discovery
-		// phase. Here we're just looking for a free port.
-	}
-	return 0, fmt.Errorf("no available port in range %d-%d", startPort, endPort)
 }

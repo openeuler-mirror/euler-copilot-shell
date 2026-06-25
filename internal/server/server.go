@@ -26,7 +26,7 @@ type Manager interface {
 // Connection describes a reachable server.
 type Connection struct {
 	URL      string // full URL, e.g. http://127.0.0.1:4097
-	Password string // HTTP Basic Auth password (empty in Phase 1)
+	Password string // HTTP Basic Auth password (auto-generated; empty when the server requires no auth)
 }
 
 // Status describes the server runtime state.

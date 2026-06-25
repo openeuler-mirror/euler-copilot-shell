@@ -16,6 +16,9 @@ import (
 // mockOpenCodeBinary creates a temporary Go binary that acts as a minimal
 // opencode server for testing. When invoked with "serve --port N", it starts
 // an HTTP server on port N with a /global/health endpoint.
+//
+// When the OPENCODE_SERVER_PASSWORD environment variable is set, the server
+// requires HTTP Basic Auth (username: "opencode") for all requests.
 func mockOpenCodeBinary(t *testing.T) string {
 	t.Helper()
 
@@ -23,9 +26,12 @@ func mockOpenCodeBinary(t *testing.T) string {
 	code := `package main
 
 import (
+	"crypto/subtle"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -39,10 +45,33 @@ func main() {
 			port = os.Args[i+1]
 		}
 	}
+
+	serverPassword := os.Getenv("OPENCODE_SERVER_PASSWORD")
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/global/health", func(w http.ResponseWriter, r *http.Request) {
+		if serverPassword != "" {
+			auth := r.Header.Get("Authorization")
+			expectedPrefix := "Basic "
+			if !strings.HasPrefix(auth, expectedPrefix) {
+				w.Header().Set("WWW-Authenticate", ` + "`" + `Basic realm="opencode"` + "`" + `)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			decoded, err := base64.StdEncoding.DecodeString(auth[len(expectedPrefix):])
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			parts := strings.SplitN(string(decoded), ":", 2)
+			if len(parts) != 2 || parts[0] != "opencode" || subtle.ConstantTimeCompare([]byte(parts[1]), []byte(serverPassword)) != 1 {
+				w.Header().Set("WWW-Authenticate", ` + "`" + `Basic realm="opencode"` + "`" + `)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`+"`"+`{"healthy":true,"version":"1.0.0-test"}`+"`"+`))
+		_, _ = w.Write([]byte(` + "`" + `{"healthy":true,"version":"1.0.0-test"}` + "`" + `))
 	})
 	if err := http.ListenAndServe("127.0.0.1:"+port, mux); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -72,6 +101,28 @@ func mockHealthServer(t *testing.T) (*httptest.Server, string) {
 			return
 		}
 		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	return srv, srv.URL
+}
+
+// mockAuthHealthServer starts an httptest server that requires HTTP Basic Auth
+// (username: "opencode") for the /global/health endpoint.
+func mockAuthHealthServer(t *testing.T, password string) (*httptest.Server, string) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/global/health" {
+			http.NotFound(w, r)
+			return
+		}
+		user, pass, ok := r.BasicAuth()
+		if !ok || user != "opencode" || pass != password {
+			w.Header().Set("WWW-Authenticate", `Basic realm="opencode"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"healthy":true,"version":"1.0.0"}`))
 	}))
 	t.Cleanup(srv.Close)
 	return srv, srv.URL

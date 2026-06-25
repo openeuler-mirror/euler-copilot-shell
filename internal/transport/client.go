@@ -3,6 +3,7 @@ package transport
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,6 +44,10 @@ type Options struct {
 	HTTPClient *http.Client
 	SSEClient  *http.Client
 	Logger     *slog.Logger
+
+	// Password is the HTTP Basic Auth password for the opencode server.
+	// When non-empty, every request includes an Authorization header.
+	Password string
 }
 
 type client struct {
@@ -51,6 +56,7 @@ type client struct {
 	sseClient  *http.Client
 	userAgent  string
 	logger     *slog.Logger
+	password   string
 }
 
 func NewClient(opts Options) (Client, error) {
@@ -93,6 +99,7 @@ func NewClient(opts Options) (Client, error) {
 		sseClient:  sseClient,
 		userAgent:  userAgent,
 		logger:     logger,
+		password:   opts.Password,
 	}, nil
 }
 
@@ -357,6 +364,9 @@ func (c *client) setHeaders(req *http.Request, hasBody bool) {
 	if hasBody {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	if c.password != "" {
+		req.Header.Set("Authorization", basicAuthHeader(c.password))
+	}
 }
 
 func (c *client) httpError(endpoint string, resp *http.Response) error {
@@ -375,4 +385,11 @@ func addString(query url.Values, key, value string) {
 	if value != "" {
 		query.Set(key, value)
 	}
+}
+
+// basicAuthHeader returns the value for an HTTP Authorization header using
+// the Basic scheme with username "opencode".
+func basicAuthHeader(password string) string {
+	auth := "opencode:" + password
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
 }

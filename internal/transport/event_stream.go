@@ -165,6 +165,9 @@ func (c *client) openEventStream(ctx context.Context, filter EventFilter) (io.Re
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("User-Agent", c.userAgent)
+	if c.password != "" {
+		req.Header.Set("Authorization", basicAuthHeader(c.password))
+	}
 
 	resp, err := c.sseClient.Do(req)
 	if err != nil {

@@ -87,8 +87,9 @@ func New(ctx context.Context, opts Options) (Container, error) {
 	logger.Debug("server connection resolved", "url", conn.URL)
 
 	transportClient, err := transport.NewClient(transport.Options{
-		BaseURL: conn.URL,
-		Logger:  logger,
+		BaseURL:  conn.URL,
+		Logger:   logger,
+		Password: conn.Password,
 	})
 	if err != nil {
 		return nil, err

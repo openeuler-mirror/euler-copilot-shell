@@ -228,6 +228,10 @@ func TestManager_Ensure_ReusesExistingServer(t *testing.T) {
 	if conn.URL != url {
 		t.Fatalf("conn.URL = %q, want %q", conn.URL, url)
 	}
+	// Phase 2: password is always generated.
+	if conn.Password == "" {
+		t.Fatal("conn.Password is empty; want generated password")
+	}
 
 	// Verify state was persisted.
 	status := mgr.Status(ctx)
@@ -315,10 +319,15 @@ func TestManager_Ensure_UsesMockOpenCodeBinary(t *testing.T) {
 	if conn.URL == "" {
 		t.Fatal("conn.URL is empty")
 	}
+	// Phase 2: password should be populated.
+	if conn.Password == "" {
+		t.Fatal("conn.Password is empty; want generated password")
+	}
 
-	// Verify the server is actually healthy.
-	if !healthCheck(ctx, conn.URL) {
-		t.Fatalf("healthCheck(%q) = false after Ensure", conn.URL)
+	// Verify the server is actually healthy (use auth since Phase 2
+	// servers require a password).
+	if healthCheckWithAuth(ctx, conn.URL, conn.Password) != 200 {
+		t.Fatalf("healthCheckWithAuth(%q) != 200 after Ensure", conn.URL)
 	}
 
 	// Verify status reports correctly.
@@ -522,5 +531,30 @@ func TestWaitForServer_Timeout(t *testing.T) {
 	err := waitForServer(ctx, "http://127.0.0.1:59999", 50*time.Millisecond)
 	if err == nil {
 		t.Fatal("waitForServer() error = nil, want timeout error")
+	}
+}
+
+func TestWaitForServerWithAuth_Success(t *testing.T) {
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	password := "test-secret"
+	_, url := mockAuthHealthServer(t, password)
+
+	if err := waitForServerWithAuth(ctx, url, password, 50*time.Millisecond); err != nil {
+		t.Fatalf("waitForServerWithAuth() error = %v", err)
+	}
+}
+
+func TestWaitForServerWithAuth_WrongPassword(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	password := "test-secret"
+	_, url := mockAuthHealthServer(t, password)
+
+	err := waitForServerWithAuth(ctx, url, "wrong-pass", 50*time.Millisecond)
+	if err == nil {
+		t.Fatal("waitForServerWithAuth() error = nil, want timeout error")
 	}
 }
