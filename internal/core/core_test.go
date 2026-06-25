@@ -344,7 +344,7 @@ func TestAskRunner_Run_ServerUnavailableIncludesURLAndHint(t *testing.T) {
 	if !strings.Contains(message, "http://127.0.0.1:4096") {
 		t.Fatalf("error = %q, want server URL", message)
 	}
-	if !strings.Contains(message, "ensure `opencode serve --port 4096` is running and reachable") {
+	if !strings.Contains(message, "ensure the opencode server at http://127.0.0.1:4096 is running and reachable") {
 		t.Fatalf("error = %q, want troubleshooting hint", message)
 	}
 }

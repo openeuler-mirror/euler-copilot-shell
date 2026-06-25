@@ -137,7 +137,7 @@ func decorateServerError(serverURL string, err error) error {
 		return &serverError{
 			ServerURL: serverURL,
 			Err:       err,
-			Hint:      "ensure `opencode serve --port 4096` is running and reachable",
+			Hint:      fmt.Sprintf("ensure the opencode server at %s is running and reachable (enable server.auto_start or start it manually)", serverURL),
 		}
 	}
 	return err

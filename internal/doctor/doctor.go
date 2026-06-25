@@ -54,14 +54,18 @@ type Environment struct {
 
 // ConfigSummary is the subset of config values shown by the doctor.
 type ConfigSummary struct {
-	ServerURL      string
-	DefaultAgent   string
-	DefaultModel   string
-	Theme          string
-	NoColor        bool
-	ShellEnabled   bool
-	RendererPhase  int
-	TimeoutSeconds int
+	ServerURL       string
+	DefaultAgent    string
+	DefaultModel    string
+	Theme           string
+	NoColor         bool
+	ShellEnabled    bool
+	RendererPhase   int
+	TimeoutSeconds  int
+	ServerAutoStart bool
+	ServerManaged   bool
+	ServerPort      int
+	ServerPID       int
 }
 
 // ServerProbe checks opencode server endpoints.
@@ -120,6 +124,7 @@ func (r *runner) Run(ctx context.Context) []Check {
 		checks = append(checks, Check{Name: "/event endpoint", Status: StatusSKIP, Detail: "server unreachable"})
 	}
 
+	checks = append(checks, r.checkServerManagement())
 	checks = append(checks, r.checkShellIntegration())
 	checks = append(checks, r.checkBashEnvironment())
 	checks = append(checks, r.checkTerminal())
@@ -285,6 +290,31 @@ func (r *runner) checkBashEnvironment() Check {
 		Status: status,
 		Detail: strings.Join(details, "; "),
 		Hint:   strings.Join(hints, "; "),
+	}
+}
+
+func (r *runner) checkServerManagement() Check {
+	const name = "server management"
+	if !r.cfg.ServerAutoStart {
+		return Check{
+			Name:   name,
+			Status: StatusSKIP,
+			Detail: "auto_start is disabled; server lifecycle is not managed",
+			Hint:   "set server.auto_start = true in config to enable automatic server management",
+		}
+	}
+	if !r.cfg.ServerManaged {
+		return Check{
+			Name:   name,
+			Status: StatusWARN,
+			Detail: "server was discovered (not started by this process); limited lifecycle control",
+		}
+	}
+	detail := fmt.Sprintf("managed by this process, port=%d, pid=%d", r.cfg.ServerPort, r.cfg.ServerPID)
+	return Check{
+		Name:   name,
+		Status: StatusOK,
+		Detail: detail,
 	}
 }
 

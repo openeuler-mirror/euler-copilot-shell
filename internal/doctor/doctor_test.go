@@ -41,12 +41,16 @@ func baseEnv() Environment {
 
 func baseConfig() ConfigSummary {
 	return ConfigSummary{
-		ServerURL:      "http://127.0.0.1:4096",
-		DefaultAgent:   "build",
-		DefaultModel:   "opencode/gpt-5",
-		ShellEnabled:   true,
-		RendererPhase:  1,
-		TimeoutSeconds: 5,
+		ServerURL:       "http://127.0.0.1:4096",
+		DefaultAgent:    "build",
+		DefaultModel:    "opencode/gpt-5",
+		ShellEnabled:    true,
+		RendererPhase:   1,
+		TimeoutSeconds:  5,
+		ServerAutoStart: true,
+		ServerManaged:   true,
+		ServerPort:      4096,
+		ServerPID:       12345,
 	}
 }
 
@@ -62,8 +66,8 @@ func TestRun_AllChecksPass(t *testing.T) {
 	})
 
 	checks := r.Run(context.Background())
-	if len(checks) != 7 {
-		t.Fatalf("Run() returned %d checks, want 7", len(checks))
+	if len(checks) != 8 {
+		t.Fatalf("Run() returned %d checks, want 8", len(checks))
 	}
 
 	for _, c := range checks {
