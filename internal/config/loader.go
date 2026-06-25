@@ -111,22 +111,26 @@ func loadConfigFile(k *koanf.Koanf, path string, explicit bool) error {
 func defaultMap() map[string]any {
 	cfg := Default()
 	return map[string]any{
-		"server_url":                  cfg.ServerURL,
-		"default_agent":               cfg.DefaultAgent,
-		"default_model":               cfg.DefaultModel,
-		"default_variant":             cfg.DefaultVariant,
-		"debug":                       cfg.Debug,
-		"theme":                       cfg.Theme,
-		"no_color":                    cfg.NoColor,
-		"renderer_phase":              cfg.RendererPhase,
-		"repl.auto_resume":            cfg.REPL.AutoResume,
-		"shell.enabled":               cfg.Shell.Enabled,
-		"shell.debug":                 cfg.Shell.Debug,
-		"doctor.timeout_seconds":      cfg.Doctor.TimeoutSeconds,
-		"display.show_reasoning":      cfg.Display.ShowReasoning,
-		"display.tool_mode":           cfg.Display.ToolMode,
-		"display.group_context_tools": cfg.Display.GroupContextTools,
-		"display.step_style":          cfg.Display.StepStyle,
+		"server_url":                     cfg.ServerURL,
+		"default_agent":                  cfg.DefaultAgent,
+		"default_model":                  cfg.DefaultModel,
+		"default_variant":                cfg.DefaultVariant,
+		"debug":                          cfg.Debug,
+		"theme":                          cfg.Theme,
+		"no_color":                       cfg.NoColor,
+		"renderer_phase":                 cfg.RendererPhase,
+		"server.auto_start":              cfg.Server.AutoStart,
+		"server.port":                    cfg.Server.Port,
+		"server.hostname":                cfg.Server.Hostname,
+		"server.startup_timeout_seconds": cfg.Server.StartupTimeoutSeconds,
+		"repl.auto_resume":               cfg.REPL.AutoResume,
+		"shell.enabled":                  cfg.Shell.Enabled,
+		"shell.debug":                    cfg.Shell.Debug,
+		"doctor.timeout_seconds":         cfg.Doctor.TimeoutSeconds,
+		"display.show_reasoning":         cfg.Display.ShowReasoning,
+		"display.tool_mode":              cfg.Display.ToolMode,
+		"display.group_context_tools":    cfg.Display.GroupContextTools,
+		"display.step_style":             cfg.Display.StepStyle,
 	}
 }
 
@@ -146,6 +150,11 @@ func envMap(lookupEnv func(string) (string, bool)) (map[string]any, error) {
 	if err := copyBoolEnv(values, lookupEnv, "WITTY_SHELL_DEBUG", "shell.debug"); err != nil {
 		return nil, err
 	}
+	if err := copyBoolEnv(values, lookupEnv, "WITTY_SERVER_AUTO_START", "server.auto_start"); err != nil {
+		return nil, err
+	}
+	copyStringEnv(values, lookupEnv, "WITTY_SERVER_PORT", "server.port")
+	copyStringEnv(values, lookupEnv, "WITTY_SERVER_HOSTNAME", "server.hostname")
 	copyStringEnv(values, lookupEnv, "WITTY_DISPLAY_SHOW_REASONING", "display.show_reasoning")
 	copyStringEnv(values, lookupEnv, "WITTY_DISPLAY_STEP_STYLE", "display.step_style")
 	if _, ok := lookupEnv("NO_COLOR"); ok {
@@ -206,6 +215,12 @@ func readConfig(k *koanf.Koanf) Config {
 		Theme:          k.String("theme"),
 		NoColor:        k.Bool("no_color"),
 		RendererPhase:  k.Int("renderer_phase"),
+		Server: ServerConfig{
+			AutoStart:             k.Bool("server.auto_start"),
+			Port:                  k.Int("server.port"),
+			Hostname:              k.String("server.hostname"),
+			StartupTimeoutSeconds: k.Int("server.startup_timeout_seconds"),
+		},
 		REPL: REPLConfig{
 			AutoResume: k.Bool("repl.auto_resume"),
 		},

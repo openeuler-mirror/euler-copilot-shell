@@ -107,8 +107,9 @@ func (o *rootOptions) loadApp(ctx context.Context, cmd *cobra.Command) (app.Cont
 			ConfigPath: o.configPath,
 			Overrides:  overrides,
 		},
-		Version: o.version,
-		Stdout:  o.stdout,
-		Stderr:  o.stderr,
+		Version:   o.version,
+		Stdout:    o.stdout,
+		Stderr:    o.stderr,
+		ServerURL: overrides.ServerURL,
 	})
 }

@@ -15,6 +15,7 @@ import (
 	"atomgit.com/openeuler/euler-copilot-shell/internal/presenter"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/renderer"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/repl"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/server"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/session"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/shellinit"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
@@ -62,6 +63,7 @@ type App struct {
 	version      version.Info
 	configWriter config.Writer
 	doctor       doctor.Runner
+	serverMgr    server.Manager
 }
 
 func (a *App) Config() config.Config {

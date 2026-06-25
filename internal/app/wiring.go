@@ -18,6 +18,7 @@ import (
 	"atomgit.com/openeuler/euler-copilot-shell/internal/presenter"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/renderer"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/repl"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/server"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/session"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/shellinit"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/terminal"
@@ -32,6 +33,11 @@ type Options struct {
 	Stdout           io.Writer
 	Stderr           io.Writer
 	SessionStatePath string
+
+	// ServerURL, when non-empty, bypasses server lifecycle management
+	// and connects directly to the given URL. This is used when the
+	// user explicitly provides --server-url.
+	ServerURL string
 }
 
 // New loads config, initializes shared infrastructure, and returns the app container.
@@ -51,8 +57,37 @@ func New(ctx context.Context, opts Options) (Container, error) {
 	interactiveTTY := isTTY && terminal.IsTerminal(os.Stdin)
 
 	logger := newLogger(cfg, stderrWriter(opts.Stderr))
+
+	// Determine the server connection. When the user explicitly provides
+	// --server-url, use it directly and skip lifecycle management.
+	var (
+		conn      server.Connection
+		serverMgr server.Manager
+	)
+	if opts.ServerURL != "" {
+		conn = server.Connection{URL: opts.ServerURL}
+	} else {
+		serverStateDir := resolveServerStateDir(opts.Config)
+		serverMgr, err = server.NewManager(server.Options{
+			StateDir:           serverStateDir,
+			AutoStart:          cfg.Server.AutoStart,
+			PreferredPort:      cfg.Server.Port,
+			Hostname:           cfg.Server.Hostname,
+			StartupTimeout:     time.Duration(cfg.Server.StartupTimeoutSeconds) * time.Second,
+			OpenCodeBinaryPath: "opencode",
+		})
+		if err != nil {
+			return nil, fmt.Errorf("create server manager: %w", err)
+		}
+		conn, err = serverMgr.Ensure(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("ensure opencode server: %w", err)
+		}
+	}
+	logger.Debug("server connection resolved", "url", conn.URL)
+
 	transportClient, err := transport.NewClient(transport.Options{
-		BaseURL: cfg.ServerURL,
+		BaseURL: conn.URL,
 		Logger:  logger,
 	})
 	if err != nil {
@@ -131,7 +166,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		Renderer:   rendererService,
 		Presenter:  presenterService,
 		Permission: permissionService,
-		ServerURL:  cfg.ServerURL,
+		ServerURL:  conn.URL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create ask runner: %w", err)
@@ -162,9 +197,10 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		shellInit:    shellinit.NewRenderer(),
 		version:      opts.Version,
 		configWriter: config.NewWriter(nil),
+		serverMgr:    serverMgr,
 		doctor: doctor.New(doctor.Options{
 			Config: doctor.ConfigSummary{
-				ServerURL:      cfg.ServerURL,
+				ServerURL:      conn.URL,
 				DefaultAgent:   cfg.DefaultAgent,
 				DefaultModel:   cfg.DefaultModel,
 				Theme:          cfg.Theme,
@@ -188,6 +224,17 @@ func New(ctx context.Context, opts Options) (Container, error) {
 			Timeout: time.Duration(cfg.Doctor.TimeoutSeconds) * time.Second,
 		}),
 	}, nil
+}
+
+// resolveServerStateDir determines the directory for server-state.json.
+// It defaults to the same directory as the session state file.
+func resolveServerStateDir(loadOpts config.LoadOptions) string {
+	// TODO: in future, allow explicit override via config or env.
+	path, err := server.DefaultServerStateDir(nil, nil)
+	if err != nil {
+		return ""
+	}
+	return path
 }
 
 func newLogger(cfg config.Config, stderr io.Writer) *slog.Logger {

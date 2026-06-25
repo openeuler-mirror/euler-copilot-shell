@@ -97,6 +97,7 @@ func TestSessionServices_UseWiredTransport(t *testing.T) {
 		},
 		Stdout:           &stdout,
 		SessionStatePath: filepath.Join(t.TempDir(), "state.json"),
+		ServerURL:        server.URL,
 	})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -222,7 +223,8 @@ func TestDoctor_PinpointsConnectionFailure(t *testing.T) {
 			ConfigFiles: []string{},
 			Overrides:   config.Overrides{ServerURL: "http://127.0.0.1:59999"},
 		},
-		Stdout: &stdout,
+		Stdout:    &stdout,
+		ServerURL: "http://127.0.0.1:59999",
 	})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)

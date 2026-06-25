@@ -17,6 +17,7 @@ type Config struct {
 	Theme          string
 	NoColor        bool
 	RendererPhase  int
+	Server         ServerConfig
 	REPL           REPLConfig
 	Shell          ShellConfig
 	Doctor         DoctorConfig
@@ -34,6 +35,14 @@ type ShellConfig struct {
 
 type DoctorConfig struct {
 	TimeoutSeconds int
+}
+
+// ServerConfig controls the opencode serve lifecycle management.
+type ServerConfig struct {
+	AutoStart             bool
+	Port                  int  // 0 = auto-select
+	Hostname              string
+	StartupTimeoutSeconds int
 }
 
 // DisplayConfig controls how intermediate process (reasoning, tool calls, steps)
@@ -65,6 +74,12 @@ func Default() Config {
 		Theme:          DefaultTheme,
 		NoColor:        false,
 		RendererPhase:  1,
+		Server: ServerConfig{
+			AutoStart:             true,
+			Port:                  0,
+			Hostname:              "127.0.0.1",
+			StartupTimeoutSeconds: 10,
+		},
 		REPL: REPLConfig{
 			AutoResume: true,
 		},
