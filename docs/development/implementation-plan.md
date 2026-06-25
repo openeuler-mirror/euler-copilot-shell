@@ -171,6 +171,14 @@ shell/
       checks.go
       report.go
 
+    server/
+      server.go
+      manager.go
+      state.go
+      discovery.go
+      process.go
+      password.go
+
   api/
     opencode/
       openapi.json
@@ -216,6 +224,7 @@ graph TD
     C --> H[internal/repl]
     C --> I[internal/shellinit]
     C --> J[internal/doctor]
+    C --> Q[internal/server]
     E --> K[internal/event]
     E --> L[internal/renderer]
     E --> M[internal/presenter]
@@ -271,6 +280,7 @@ type App struct {
     REPL        *repl.Loop
     Doctor      *doctor.Service
     ShellInit   *shellinit.Service
+    ServerMgr   *server.Manager
 }
 ```
 
@@ -346,6 +356,12 @@ debug = false
 theme = "auto"  # "auto" | "dark" | "light"
                 # "auto" 通过 lipgloss.HasDarkBackground(os.Stdin, os.Stdout) 自动检测
 
+[server]
+auto_start = true            # 自动启动 opencode serve
+port = 0                     # 0 = 自动选择端口，正整数 = 固定端口
+hostname = "127.0.0.1"       # 绑定地址
+startup_timeout_seconds = 10 # 等待 server 就绪超时
+
 [repl]
 auto_resume = true
 
@@ -361,6 +377,8 @@ timeout_seconds = 5
 ### 需要覆盖的环境变量
 
 - `WITTY_SERVER_URL`
+- `WITTY_SERVER_AUTO_START`
+- `WITTY_SERVER_PORT`
 - `WITTY_DEBUG`
 - `WITTY_CONFIG`
 - `WITTY_SHELL_ENABLE`
@@ -939,9 +957,60 @@ sequenceDiagram
 
 实现 `witty doctor`，检查 server 可达性、`/doc` 可读性、配置有效性、TTY 状态、shell 集成安装情况、以及 OpenAPI client/schema 版本提示。在产品化阶段为用户和运维提供统一诊断入口，减少"shell 失效 / server 不通 / auth 不对 / schema 变更"类问题的排障成本。
 
+Phase 4 增强后还应报告 server 管理状态（自动启动/手动、当前端口、PID、是否由当前 witty 管理）。
+
 ---
 
-## 5.17 `internal/version`
+## 5.17 `internal/server`
+
+### 职责
+
+管理 `opencode serve` 进程的完整生命周期：自动启动、健康检测、跨会话复用、安全隔离。
+
+详细设计见 [`../design/server-lifecycle.md`](../design/server-lifecycle.md)。
+
+### 核心接口
+
+```go
+type Manager interface {
+    Ensure(ctx context.Context) (Connection, error)
+    Stop(ctx context.Context) error
+    Status(ctx context.Context) Status
+}
+```
+
+- `Ensure` 确保 server 可用：探测→复用→启动，返回连接信息（URL + password）。
+- `Stop` 停止由当前 witty 进程管理的 server。
+- `Status` 返回运行时状态（port、PID、是否 managed）。
+
+### 子组件
+
+| 文件 | 职责 |
+| ---- | ---- |
+| `server.go` | Manager 接口定义 + 构造函数 |
+| `manager.go` | 核心生命周期逻辑：Ensure 的探测→复用→启动流程 |
+| `state.go` | `~/.config/witty/server-state.json` 读写，权限 0600 |
+| `discovery.go` | TCP 端口探测 + `/global/health` 健康检查 |
+| `process.go` | 子进程管理：spawn `opencode serve`，PID 存活性验证，信号处理 |
+| `password.go` | `crypto/rand` 随机密码生成（32 字节 hex） |
+
+### 关键约束
+
+- 不使用 CGO（纯 Go `os/exec` + `net` + `os` 信号处理）。
+- password 通过环境变量传递，不出现于命令行参数（`/proc` 安全）。
+- state file 原子写入（先写临时文件再 rename）。
+- 两个 witty 进程并发启动时通过 advisory file lock 防止竞态。
+
+### 测试策略
+
+- mock opencode binary：用 shell 脚本模拟 `opencode serve` 行为（绑定端口、响应 health check）。
+- PID 验证测试：kill -0 模拟进程存活/死亡。
+- 端口探测测试：用 `net.Listen` 临时占用端口，验证跳过逻辑。
+- state file 损坏测试：手动写入非法 JSON，验证降级行为。
+
+---
+
+## 5.18 `internal/version`
 
 统一暴露语义化版本、git commit、build date、schema version（可选）。该模块简单，但有利于 `doctor`、日志和问题定位。
 
@@ -1088,7 +1157,7 @@ var TemplateFS embed.FS  // 嵌入整个目录（递归）
 | 1：核心 MVP | transport、session、event 归一化、AskRunner、Phase 1 渲染器、permission/question 处理、Shell Adapter（DEBUG trap + extdebug）、全局集成（`/etc/profile.d/witty.sh`） | `witty ask` + Shell 直输闭环，按 Markdown 块边界持续输出，RPM 安装后默认全局生效 |
 | 2：REPL 与控制命令 | REPL 循环、slash 命令、`shell-control`、会话管理 | REPL 与 ask 单轮输出一致，shell 模式 control 路径可用 |
 | 3：展示与流式增强 | presenter、Phase 2 渲染器（即时回显+ANSI 擦除）、错误重试/重连 | tool/step/agent/permission/question 展示完整，Phase 2 渲染可开关 |
-| 4：产品化与运维 | `witty doctor`、配置/日志完善、RPM 打包、兼容性诊断 | 可发布产物，doctor 可定位常见接入问题 |
+| 4：产品化与运维 | `witty doctor`、Server 自动启动与管理、配置/日志完善、RPM 打包、兼容性诊断 | 可发布产物，doctor 可定位常见接入问题，server 自动启动零手动干预 |
 
 ---
 
@@ -1161,6 +1230,7 @@ c.Send("\u68c0\u67e5\u7cfb\u7edf\u5185\u5b58\n")   // 应路由到 agent
 | 渲染体验不稳定 | block 边界跨 delta | Phase 1 保持块级刷新；Phase 2 明确作为增强能力隔离推进 |
 | 权限 / 问题交互打断输出 | TTY 输入与流式文本冲突 | 统一由 `permission.Manager` 接管当前 prompt，并处理 `question.asked` |
 | 本地状态过重 | 过早引入 DB 或大量缓存 | 只保留最小配置与少量状态文件 |
+| Server 多用户冲突 | 同一台服务器上多用户共享 loopback | HTTP Basic Auth + state file 权限隔离 + 非固定端口 |
 
 ---
 

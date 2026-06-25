@@ -4,6 +4,7 @@
 
 - [`design/witty-overview.md`](design/witty-overview.md)：`witty` 产品定位、核心需求、会话/渲染/权限模型，以及与 `opencode serve` 的总体关系。
 - [`design/shell-adapter.md`](design/shell-adapter.md)：Bash Shell Adapter 设计，包括 Readline Hook、分类器、dispatch、history 与兼容性边界。
+- [`design/server-lifecycle.md`](design/server-lifecycle.md)：OpenCode Server 生命周期管理设计，包括自动启动、健康检测、跨会话复用、多用户安全隔离。
 
 ## 开发文档
 

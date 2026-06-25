@@ -801,9 +801,9 @@
 
 ---
 
-## 7. Phase 4：产品化、Doctor 与发布
+## 7. Phase 4：产品化、Server 管理、Doctor 与发布
 
-目标：提供可诊断、可安装、可发布的 openEuler 产物。完成 `witty doctor`、配置/日志完善、RPM 打包和发布前验证。
+目标：提供可诊断、可安装、可发布的 openEuler 产物。完成 Server 自动启动、`witty doctor`、配置/日志完善、RPM 打包和发布前验证。
 
 ### P4-1：Doctor 诊断命令
 
@@ -834,6 +834,34 @@
 - [ ] 配置 migration 或兼容策略明确。
 - [ ] debug/off 两种模式测试通过。
 - [ ] 日志脱敏测试覆盖常见敏感字段。
+
+### P4-6：Server 自动启动与生命周期管理
+
+> 设计文档：[`../design/server-lifecycle.md`](../design/server-lifecycle.md)
+
+- [ ] 创建 `internal/server/` 模块骨架：`server.go`（接口）、`manager.go`（生命周期）、`state.go`（状态持久化）、`discovery.go`（端口探测+health check）、`process.go`（子进程管理）、`password.go`（随机密码生成）。
+- [ ] 实现 TCP 端口探测：`net.DialTimeout` 快速判断端口是否已被占用。
+- [ ] 实现 `/global/health` 健康检查：发送 HTTP GET 请求，验证返回 `{"healthy":true}`。
+- [ ] 实现子进程启动：`os/exec` 启动 `opencode serve --port <port>`，支持自定义 `OPENCODE_SERVER_PASSWORD` 环境变量。
+- [ ] 实现 PID 存活性验证：`os.FindProcess` + `Signal(syscall.Signal(0))`（Unix）确认进程是否存活。
+- [ ] 实现 state file 持久化：`~/.config/witty/server-state.json`（权限 0600），原子写入（tmpfile + rename）。
+- [ ] 实现默认端口 4096 探测 + 端口冲突时自动选择下一个可用端口（4097, 4098...）。
+- [ ] 新增配置字段 `[server]` 块（`auto_start`、`port`、`hostname`、`startup_timeout_seconds`）。
+- [ ] 新增环境变量覆盖：`WITTY_SERVER_AUTO_START`、`WITTY_SERVER_PORT`。
+- [ ] 向后兼容：`auto_start = false`（或环境变量 `WITTY_SERVER_AUTO_START=false`）时，行为完全回退到当前手动模式。
+- [ ] 在 `internal/app/wiring.go` 中集成 `server.Manager`：在创建 transport client 之前调用 `Ensure()`。
+- [ ] 实现并发启动保护：通过 advisory file lock 或 coalesce 防止两个 witty 进程同时 spawn server。
+- [ ] 更新 `internal/core/core.go` 中的错误提示：移除硬编码的 `opencode serve --port 4096` hint，改为更友好的通用提示。
+- [ ] 单元测试：mock opencode binary（shell 脚本模拟）、PID 验证、端口探测、state file 损坏降级。
+
+#### 验收 checkpoint：C4-6
+
+- [ ] `witty ask "hello"` 首次运行时自动启动 opencode serve，无需用户手动干预。
+- [ ] `witty ask` 第二次运行时自动检测并复用已有 server，零冷启动延迟。
+- [ ] `WITTY_SERVER_AUTO_START=false witty ask "hello"` 回退到手动模式，server 不可达时给出合理提示。
+- [ ] 两个不同用户（不同 UID）在同一台机器上分别启动 witty，各自的 server 互相隔离。
+- [ ] Server 进程崩溃后，下次启动 witty 能自动重新启动新的 server。
+- [ ] `witty doctor` 能显示 server 管理状态（自动启动/手动、当前端口、PID）。
 
 ### P4-3：Shell 安装与卸载说明
 
@@ -928,6 +956,7 @@
 | Shell 直输 | `internal/shellinit`, `internal/shellbridge` | 自然语言走 Agent；shell 命令保持原样 |
 | REPL | `internal/repl` | 与 `witty ask` 共用核心输出管线 |
 | 诊断 | `internal/doctor` | server/config/shell/terminal 检查可定位常见问题 |
+| Server 管理 | `internal/server` | 自动启动、跨会话复用、多用户隔离、PID 追踪 |
 | 发布 | `packaging/` | openEuler RPM 可安装运行 |
 
 ---
@@ -967,6 +996,15 @@
 - [ ] 不把 permission/question 的敏感输入写入 debug 日志。
 - [ ] 外部输入长度有边界，避免无界内存增长。
 
+### 9.5 Server 生命周期与多用户隔离
+
+- [ ] 两个用户（不同 UID）同时启动 witty 时，各自的 server 互相隔离。
+- [ ] `OPENCODE_SERVER_PASSWORD` 通过环境变量传递，不出现于命令行参数（`/proc` 安全）。
+- [ ] `~/.config/witty/server-state.json` 权限 0600，防止其他用户读取。
+- [ ] 无密码的 server 被探测到时给出 warning。
+- [ ] `witty doctor` 输出不泄露 server password。
+- [ ] Server 子进程在 witty 退出后优雅守护（不被误杀）。
+
 ---
 
 ## 10. 推荐开发顺序
@@ -981,7 +1019,7 @@
 8. `P1-12`：MVP E2E 验收。
 9. `P2-*`：补 REPL 与控制命令一致性。
 10. `P3-*`：增强展示、流式体验与可靠性。
-11. `P4-*`：Doctor、打包、发布验证。
+11. `P4-*`：Server 自动启动、Doctor、打包、发布验证。
 
 ---
 
