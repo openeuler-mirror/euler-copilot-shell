@@ -33,6 +33,9 @@ type Client interface {
 	ReplyPermission(ctx context.Context, requestID string, directory string, decision PermissionDecision) (bool, error)
 	ReplyQuestion(ctx context.Context, requestID string, directory string, answers [][]string) (bool, error)
 	RejectQuestion(ctx context.Context, requestID string, directory string) (bool, error)
+	// Dispose calls POST /global/dispose to gracefully shut down all OpenCode
+	// instances on the server, releasing all resources.
+	Dispose(ctx context.Context) error
 	SubscribeEvents(ctx context.Context, filter EventFilter) (<-chan RawEvent, <-chan error)
 	ListAgents(ctx context.Context, directory, workspace string) ([]Agent, error)
 }
@@ -48,15 +51,21 @@ type Options struct {
 	// Password is the HTTP Basic Auth password for the opencode server.
 	// When non-empty, every request includes an Authorization header.
 	Password string
+
+	// OnRequestSuccess, when non-nil, is invoked after a non-SSE JSON request
+	// completes successfully. It is used to refresh server idle timestamps so
+	// that idle timeout does not fire during active use.
+	OnRequestSuccess func()
 }
 
 type client struct {
-	baseURL    *url.URL
-	httpClient *http.Client
-	sseClient  *http.Client
-	userAgent  string
-	logger     *slog.Logger
-	password   string
+	baseURL          *url.URL
+	httpClient       *http.Client
+	sseClient        *http.Client
+	userAgent        string
+	logger           *slog.Logger
+	password         string
+	onRequestSuccess func()
 }
 
 func NewClient(opts Options) (Client, error) {
@@ -94,12 +103,13 @@ func NewClient(opts Options) (Client, error) {
 	}
 
 	return &client{
-		baseURL:    parsed,
-		httpClient: httpClient,
-		sseClient:  sseClient,
-		userAgent:  userAgent,
-		logger:     logger,
-		password:   opts.Password,
+		baseURL:          parsed,
+		httpClient:       httpClient,
+		sseClient:        sseClient,
+		userAgent:        userAgent,
+		logger:           logger,
+		password:         opts.Password,
+		onRequestSuccess: opts.OnRequestSuccess,
 	}, nil
 }
 
@@ -309,6 +319,16 @@ func (c *client) RejectQuestion(ctx context.Context, requestID string, directory
 	return ok, nil
 }
 
+// Dispose calls POST /global/dispose to gracefully shut down the OpenCode
+// server, releasing all resources. The server responds with a boolean.
+func (c *client) Dispose(ctx context.Context) error {
+	var ok bool
+	if err := c.doJSON(ctx, http.MethodPost, "/global/dispose", nil, nil, &ok, http.StatusOK); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *client) doJSON(ctx context.Context, method, endpoint string, query url.Values, body any, out any, expectedStatus int) error {
 	var requestBody io.Reader
 	if body != nil {
@@ -338,12 +358,23 @@ func (c *client) doJSON(ctx context.Context, method, endpoint string, query url.
 		return c.httpError(endpoint, resp)
 	}
 	if out == nil || resp.StatusCode == http.StatusNoContent {
+		c.notifyRequestSuccess()
 		return nil
 	}
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
 		return fmt.Errorf("decode response %s: %w", endpoint, err)
 	}
+	c.notifyRequestSuccess()
 	return nil
+}
+
+// notifyRequestSuccess invokes the OnRequestSuccess callback when configured.
+// It is best-effort: a nil callback is a no-op and panics in the callback are
+// not recovered (they indicate a programming bug in the caller).
+func (c *client) notifyRequestSuccess() {
+	if c.onRequestSuccess != nil {
+		c.onRequestSuccess()
+	}
 }
 
 func (c *client) endpointURL(endpoint string, query url.Values) string {

@@ -112,6 +112,9 @@ func (f *fakeTransport) SubscribeEvents(ctx context.Context, filter transport.Ev
 func (f *fakeTransport) ListAgents(ctx context.Context, directory, workspace string) ([]transport.Agent, error) {
 	return nil, nil
 }
+func (f *fakeTransport) Dispose(ctx context.Context) error {
+	return nil
+}
 
 type fakeConfigWriter struct {
 	path  string

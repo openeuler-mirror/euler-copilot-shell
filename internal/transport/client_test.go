@@ -348,3 +348,106 @@ func mustClient(t *testing.T, opts Options) Client {
 	}
 	return client
 }
+
+func TestClient_Dispose(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/global/dispose" {
+			t.Fatalf("request = %s %s, want POST /global/dispose", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("true"))
+	}))
+	defer server.Close()
+
+	client := mustClient(t, Options{BaseURL: server.URL})
+	if err := client.Dispose(context.Background()); err != nil {
+		t.Fatalf("Dispose() error = %v", err)
+	}
+}
+
+func TestClient_Dispose_SendPassword(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, pass, ok := r.BasicAuth()
+		if !ok || user != "opencode" || pass != "secret" {
+			t.Fatalf("missing/incorrect auth: user=%q pass=%q", user, pass)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("true"))
+	}))
+	defer server.Close()
+
+	client := mustClient(t, Options{BaseURL: server.URL, Password: "secret"})
+	if err := client.Dispose(context.Background()); err != nil {
+		t.Fatalf("Dispose() error = %v", err)
+	}
+}
+
+func TestClient_Dispose_ErrorStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	client := mustClient(t, Options{BaseURL: server.URL})
+	if err := client.Dispose(context.Background()); err == nil {
+		t.Fatal("Dispose() error = nil, want error for 500")
+	}
+}
+
+func TestClient_OnRequestSuccess_CalledOnSuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"healthy":true,"version":"1.0.0"}`))
+	}))
+	defer server.Close()
+
+	calls := 0
+	client := mustClient(t, Options{
+		BaseURL:          server.URL,
+		OnRequestSuccess: func() { calls++ },
+	})
+	if _, err := client.Health(context.Background()); err != nil {
+		t.Fatalf("Health() error = %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("OnRequestSuccess called %d times, want 1", calls)
+	}
+}
+
+func TestClient_OnRequestSuccess_NotCalledOnFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "bad", http.StatusTeapot)
+	}))
+	defer server.Close()
+
+	calls := 0
+	client := mustClient(t, Options{
+		BaseURL:          server.URL,
+		OnRequestSuccess: func() { calls++ },
+	})
+	if _, err := client.Health(context.Background()); err == nil {
+		t.Fatal("Health() error = nil, want error")
+	}
+	if calls != 0 {
+		t.Fatalf("OnRequestSuccess called %d times, want 0 on failure", calls)
+	}
+}
+
+func TestClient_OnRequestSuccess_CalledForNoContent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	calls := 0
+	client := mustClient(t, Options{
+		BaseURL:          server.URL,
+		OnRequestSuccess: func() { calls++ },
+	})
+	if err := client.SendPromptAsync(context.Background(), "ses_1", PromptRequest{Parts: []PromptPart{{Type: "text", Text: "hi"}}}); err != nil {
+		t.Fatalf("SendPromptAsync() error = %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("OnRequestSuccess called %d times, want 1", calls)
+	}
+}
