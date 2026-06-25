@@ -313,14 +313,14 @@ conn, err := serverMgr.Ensure(ctx)
 
 ### Phase 1（本阶段）：核心自动启动
 
-- [ ] `internal/server` 模块骨架 + 接口定义
-- [ ] state file 读写
-- [ ] 端口探测 + health check
-- [ ] 子进程启动（`os/exec`）
-- [ ] PID 验证
-- [ ] 配置文件 `server.auto_start` 字段
-- [ ] `internal/app/wiring.go` 集成
-- [ ] 单元测试（mock opencode binary）
+- [x] `internal/server` 模块骨架 + 接口定义
+- [x] state file 读写
+- [x] 端口探测 + health check
+- [x] 子进程启动（`os/exec`）
+- [x] PID 验证
+- [x] 配置文件 `server.auto_start` 字段
+- [x] `internal/app/wiring.go` 集成
+- [x] 单元测试（mock opencode binary）
 
 ### Phase 2（后续）：安全加固
 

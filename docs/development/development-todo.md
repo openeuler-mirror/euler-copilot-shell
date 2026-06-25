@@ -839,20 +839,20 @@
 
 > 设计文档：[`../design/server-lifecycle.md`](../design/server-lifecycle.md)
 
-- [ ] 创建 `internal/server/` 模块骨架：`server.go`（接口）、`manager.go`（生命周期）、`state.go`（状态持久化）、`discovery.go`（端口探测+health check）、`process.go`（子进程管理）、`password.go`（随机密码生成）。
-- [ ] 实现 TCP 端口探测：`net.DialTimeout` 快速判断端口是否已被占用。
-- [ ] 实现 `/global/health` 健康检查：发送 HTTP GET 请求，验证返回 `{"healthy":true}`。
-- [ ] 实现子进程启动：`os/exec` 启动 `opencode serve --port <port>`，支持自定义 `OPENCODE_SERVER_PASSWORD` 环境变量。
-- [ ] 实现 PID 存活性验证：`os.FindProcess` + `Signal(syscall.Signal(0))`（Unix）确认进程是否存活。
-- [ ] 实现 state file 持久化：`~/.config/witty/server-state.json`（权限 0600），原子写入（tmpfile + rename）。
-- [ ] 实现默认端口 4096 探测 + 端口冲突时自动选择下一个可用端口（4097, 4098...）。
-- [ ] 新增配置字段 `[server]` 块（`auto_start`、`port`、`hostname`、`startup_timeout_seconds`）。
-- [ ] 新增环境变量覆盖：`WITTY_SERVER_AUTO_START`、`WITTY_SERVER_PORT`。
-- [ ] 向后兼容：`auto_start = false`（或环境变量 `WITTY_SERVER_AUTO_START=false`）时，行为完全回退到当前手动模式。
-- [ ] 在 `internal/app/wiring.go` 中集成 `server.Manager`：在创建 transport client 之前调用 `Ensure()`。
+- [x] 创建 `internal/server/` 模块骨架：`server.go`（接口）、`manager.go`（生命周期）、`state.go`（状态持久化）、`discovery.go`（端口探测+health check）、`process.go`（子进程管理）、`password.go`（随机密码生成——Phase 2）。
+- [x] 实现 TCP 端口探测：`net.DialTimeout` 快速判断端口是否已被占用。
+- [x] 实现 `/global/health` 健康检查：发送 HTTP GET 请求，验证返回 `{"healthy":true}`。
+- [x] 实现子进程启动：`os/exec` 启动 `opencode serve --port <port>`。
+- [x] 实现 PID 存活性验证：`os.FindProcess` + `Signal(syscall.Signal(0))`（Unix）确认进程是否存活。
+- [x] 实现 state file 持久化：`~/.local/state/witty/server-state.json`（权限 0600）。
+- [x] 实现默认端口 4096 探测 + 端口冲突时自动选择下一个可用端口（4097, 4098...）。
+- [x] 新增配置字段 `[server]` 块（`auto_start`、`port`、`hostname`、`startup_timeout_seconds`）。
+- [x] 新增环境变量覆盖：`WITTY_SERVER_AUTO_START`、`WITTY_SERVER_PORT`、`WITTY_SERVER_HOSTNAME`。
+- [x] 向后兼容：`auto_start = false`（或环境变量 `WITTY_SERVER_AUTO_START=false`）时，行为完全回退到当前手动模式。
+- [x] 在 `internal/app/wiring.go` 中集成 `server.Manager`：在创建 transport client 之前调用 `Ensure()`。
 - [ ] 实现并发启动保护：通过 advisory file lock 或 coalesce 防止两个 witty 进程同时 spawn server。
 - [ ] 更新 `internal/core/core.go` 中的错误提示：移除硬编码的 `opencode serve --port 4096` hint，改为更友好的通用提示。
-- [ ] 单元测试：mock opencode binary（shell 脚本模拟）、PID 验证、端口探测、state file 损坏降级。
+- [x] 单元测试：mock opencode binary（Go 二进制模拟）、PID 验证、端口探测、state file 损坏降级。
 
 #### 验收 checkpoint：C4-6
 
@@ -862,6 +862,55 @@
 - [ ] 两个不同用户（不同 UID）在同一台机器上分别启动 witty，各自的 server 互相隔离。
 - [ ] Server 进程崩溃后，下次启动 witty 能自动重新启动新的 server。
 - [ ] `witty doctor` 能显示 server 管理状态（自动启动/手动、当前端口、PID）。
+
+### P4-6b：Server 生命周期 Phase 2 — 安全加固
+
+> 设计文档：[`../design/server-lifecycle.md`](../design/server-lifecycle.md) §4 安全设计、§8 Phase 2
+
+- [ ] 创建 `internal/server/password.go`：使用 `crypto/rand` 生成 32 字节 hex 编码随机密码（禁止使用 `math/rand`）。
+- [ ] 通过环境变量 `OPENCODE_SERVER_PASSWORD` 向子进程传递密码，不出现在命令行参数中（`/proc` 安全）。
+- [ ] 将 password 写入 `server-state.json`（权限 0600），`Connection.Password` 字段开始填充。
+- [ ] 实现 HTTP Basic Auth 认证探测：health check 时携带 `Authorization: Basic <base64(password)>` header。
+- [ ] 实现 password 身份识别逻辑：探测到已有 server 时，用本地 password 尝试请求；200 → 复用，401 → 对方是别人的 server → 换端口。
+- [ ] 实现非固定端口自动选择：当默认端口 4096 被别人的 server 占用时，自动尝试 4097-4105。
+- [ ] 实现并发启动的 coalesce 防御：通过 `O_EXCL` 创建 lock file 或 advisory file lock 防止两个 witty 进程同时 spawn server。
+- [ ] 确保日志中不输出 password（遵循安全红线）。
+- [ ] 单元测试：密码生成随机性、Basic Auth 探测、身份隔离（不同 password 的两个 server）、并发 lock 竞态。
+
+#### 验收 checkpoint：C4-6b
+
+- [ ] 两个用户同时使用 witty，各自的 server 端口不同且 password 互相隔离（401 验证）。
+- [ ] 并发启动两个 witty 进程时，只 spawn 一个 server，另一个复用。
+- [ ] password 不出现在命令行参数、日志、进程列表中。
+
+### P4-6c：Server 生命周期 Phase 3 — 运维能力
+
+> 设计文档：[`../design/server-lifecycle.md`](../design/server-lifecycle.md) §8 Phase 3
+
+- [ ] 实现 `witty server status` 命令：显示 server 运行状态（Running/Port/PID/Managed/StartedAt）。
+- [ ] 实现 `witty server stop` 命令：停止当前进程管理的 server（`Manager.Stop()`），非托管 server 提示无法停止。
+- [ ] 实现 idle timeout 自动清理：基于 `state.last_used` 字段，超过阈值（如 30 分钟无活动）自动停止 server。
+- [ ] 增强 `witty doctor`：在诊断输出中显示 server 管理状态（自动启动/手动、当前端口、PID、托管状态）。
+- [ ] 在 `internal/app` 中暴露 `serverMgr` 给 CLI 命令（当前 `serverMgr` 存储在 `App` 但未通过 `Container` 接口暴露）。
+- [ ] 为 `manager.managedPID` 添加并发保护（mutex 或 atomic），因为 Phase 3 的 `stop`/`status` 命令可能从不同 goroutine 调用。
+- [ ] 单元测试：CLI 命令输出格式、stop 非托管 server 的提示、idle timeout 触发逻辑。
+
+#### 验收 checkpoint：C4-6c
+
+- [ ] `witty server status` 正确显示运行中的 server 信息。
+- [ ] `witty server stop` 能停止由 witty 启动的 server，对非托管 server 给出合理提示。
+- [ ] `witty doctor` 输出中包含 server 管理状态行。
+- [ ] idle timeout 后 server 自动停止，下次启动 witty 能重新启动。
+
+### P4-6d：Phase 1 遗留问题修复
+
+> 来源：Phase 1 代码审查（2026-06-25）
+
+- [ ] **`WITTY_STATE_PATH` 语义统一**：`internal/server/state.go` 的 `DefaultServerStateDir`/`DefaultServerStatePath` 将 `WITTY_STATE_PATH` 当作目录（追加 `witty/` 子目录），而 `internal/session/state.go` 的 `DefaultStatePath` 将其当作完整文件路径。需统一两者语义，避免用户混淆。
+- [ ] **删除或利用 `DefaultServerStatePath` 死代码**：`internal/server/state.go:63` 的 `DefaultServerStatePath` 已导出但生产代码无调用（`wiring.go` 用的是 `DefaultServerStateDir`），仅测试引用。删除该函数及测试，或标记为 Phase 3 预留。
+- [ ] **启动失败时区分错误类型**：`internal/server/manager.go:97-102` 在 `startServer` 失败时静默返回默认 URL。设计文档 §7 要求 `opencode` 二进制不在 PATH 时报明确错误。应区分"二进制不存在"（返回明确错误或 logger warn）和"其他启动失败"（可保持降级）。
+- [ ] **`resolveServerStateDir` 参数清理**：`internal/app/wiring.go:231` 的 `resolveServerStateDir(loadOpts config.LoadOptions)` 接收参数但完全不用，直接调 `DefaultServerStateDir(nil, nil)`。移除无用参数或实现从 `loadOpts` 读取自定义路径。
+- [ ] **`manager.managedPID` 并发保护注释**：当前无 mutex，`-race` 测试通过仅因为无并发调用。添加注释说明非线程安全，Phase 3 接入 CLI 命令时需加锁。
 
 ### P4-3：Shell 安装与卸载说明
 
