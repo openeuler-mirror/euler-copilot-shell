@@ -910,6 +910,7 @@
 > 设计文档：[`../design/server-lifecycle.md`](../design/server-lifecycle.md) §6.2.1 Stop 双层停止策略、§6.5 轻量初始化、§8 Phase 3.1
 >
 > 来源：Phase 3 代码审查（2026-06-25），发现三个设计缺陷：
+>
 > 1. `witty server stop` 无法跨进程停止 server
 > 2. idle timeout 在 CLI 模式失效
 > 3. `status`/`stop` 命令有 `Ensure()` 启动副作用

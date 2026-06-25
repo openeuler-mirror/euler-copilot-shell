@@ -61,7 +61,7 @@ Shell Adapter 依赖 Bash 的 `DEBUG` trap、`extdebug`、`BASH_COMMAND` 和 `hi
 | Shell 脚本质量 | `shellcheck` + `shfmt` | 系统工具 | 校验 `witty init bash` 输出模板 |
 | CJK 字符宽度 | `go-runewidth` | `github.com/mattn/go-runewidth` | Phase 2 渲染器行数追踪时用于计算 CJK 字符实际终端宽度 |
 | PTY 集成测试 | `go-expect` | `github.com/Netflix/go-expect` | 验证 Bash readline 行为；PTY 上发送按键、断言输出；TERM=xterm-256color |
-| 发布 | `rpmbuild` + RPM spec（离线 vendor 构建） | openEuler 原生打包，CGO_ENABLED=0, GOAMD64=v1 |
+| 发布 | `rpmbuild` + RPM spec（离线 vendor 构建） | 系统工具 | openEuler 原生打包，CGO_ENABLED=0, GOAMD64=v1 |
 
 ## 2.3 工程原则
 
