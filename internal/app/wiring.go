@@ -38,6 +38,12 @@ type Options struct {
 	// and connects directly to the given URL. This is used when the
 	// user explicitly provides --server-url.
 	ServerURL string
+
+	// SkipServerEnsure, when true, skips calling serverMgr.Ensure(ctx) during
+	// construction. The Manager is still created so commands like `server status`
+	// and `server stop` can inspect or stop an existing server without the side
+	// effect of starting one.
+	SkipServerEnsure bool
 }
 
 // New loads config, initializes shared infrastructure, and returns the app container.
@@ -67,30 +73,43 @@ func New(ctx context.Context, opts Options) (Container, error) {
 	if opts.ServerURL != "" {
 		conn = server.Connection{URL: opts.ServerURL}
 	} else {
-		serverStateDir := resolveServerStateDir(opts.Config)
+		serverStateDir := resolveServerStateDir()
+		idleTimeout := time.Duration(cfg.Server.IdleTimeoutMinutes) * time.Minute
 		serverMgr, err = server.NewManager(server.Options{
 			StateDir:           serverStateDir,
 			AutoStart:          cfg.Server.AutoStart,
 			PreferredPort:      cfg.Server.Port,
 			Hostname:           cfg.Server.Hostname,
 			StartupTimeout:     time.Duration(cfg.Server.StartupTimeoutSeconds) * time.Second,
+			IdleTimeout:        idleTimeout,
 			OpenCodeBinaryPath: "opencode",
 		})
 		if err != nil {
 			return nil, fmt.Errorf("create server manager: %w", err)
 		}
-		conn, err = serverMgr.Ensure(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("ensure opencode server: %w", err)
+		// SkipServerEnsure avoids the side effect of starting a server for
+		// read-only commands like `server status`/`server stop`.
+		if !opts.SkipServerEnsure {
+			conn, err = serverMgr.Ensure(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("ensure opencode server: %w", err)
+			}
 		}
 	}
 	logger.Debug("server connection resolved", "url", conn.URL)
 
-	transportClient, err := transport.NewClient(transport.Options{
+	transportOpts := transport.Options{
 		BaseURL:  conn.URL,
 		Logger:   logger,
 		Password: conn.Password,
-	})
+	}
+	// Refresh the server's last_used timestamp after each successful request so
+	// idle timeout does not fire during active REPL conversations. Only wire the
+	// callback when we own the server lifecycle (no explicit --server-url).
+	if serverMgr != nil {
+		transportOpts.OnRequestSuccess = serverMgr.TouchLastUsed
+	}
+	transportClient, err := transport.NewClient(transportOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -184,6 +203,16 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		return nil, fmt.Errorf("create repl: %w", err)
 	}
 
+	// Collect server management status for doctor diagnostics.
+	var serverManaged bool
+	var serverPort, serverPID int
+	if serverMgr != nil {
+		st := serverMgr.Status(ctx)
+		serverManaged = st.Managed
+		serverPort = st.Port
+		serverPID = st.PID
+	}
+
 	return &App{
 		cfg:          cfg,
 		logger:       logger,
@@ -201,14 +230,18 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		serverMgr:    serverMgr,
 		doctor: doctor.New(doctor.Options{
 			Config: doctor.ConfigSummary{
-				ServerURL:      conn.URL,
-				DefaultAgent:   cfg.DefaultAgent,
-				DefaultModel:   cfg.DefaultModel,
-				Theme:          cfg.Theme,
-				NoColor:        cfg.NoColor,
-				ShellEnabled:   cfg.Shell.Enabled,
-				RendererPhase:  cfg.RendererPhase,
-				TimeoutSeconds: cfg.Doctor.TimeoutSeconds,
+				ServerURL:       conn.URL,
+				DefaultAgent:    cfg.DefaultAgent,
+				DefaultModel:    cfg.DefaultModel,
+				Theme:           cfg.Theme,
+				NoColor:         cfg.NoColor,
+				ShellEnabled:    cfg.Shell.Enabled,
+				RendererPhase:   cfg.RendererPhase,
+				TimeoutSeconds:  cfg.Doctor.TimeoutSeconds,
+				ServerAutoStart: cfg.Server.AutoStart,
+				ServerManaged:   serverManaged,
+				ServerPort:      serverPort,
+				ServerPID:       serverPID,
 			},
 			Env: doctor.Environment{
 				ConfigSearchPaths: config.ConfigSearchPaths(opts.Config, os.LookupEnv),
@@ -228,9 +261,9 @@ func New(ctx context.Context, opts Options) (Container, error) {
 }
 
 // resolveServerStateDir determines the directory for server-state.json.
-// It defaults to the same directory as the session state file.
-func resolveServerStateDir(loadOpts config.LoadOptions) string {
-	// TODO: in future, allow explicit override via config or env.
+// It resolves via WITTY_STATE_PATH / XDG_STATE_HOME / ~/.local/state/witty,
+// keeping server state in the same directory as the session state file.
+func resolveServerStateDir() string {
 	path, err := server.DefaultServerStateDir(nil, nil)
 	if err != nil {
 		return ""

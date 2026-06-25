@@ -16,6 +16,7 @@ import (
 	"atomgit.com/openeuler/euler-copilot-shell/internal/permission"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/presenter"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/renderer"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/server"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/session"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/version"
@@ -136,6 +137,7 @@ type fakeContainer struct {
 	continueSessionID    string
 	continueSessionErr   error
 	configWriter         config.Writer
+	serverMgr            server.Manager
 }
 
 func (f *fakeContainer) Config() config.Config           { return f.cfg }
@@ -175,6 +177,8 @@ func (f *fakeContainer) ContinueSession(_ context.Context, id string) (session.C
 }
 func (f *fakeContainer) Doctor(context.Context) (string, error) { return "", nil }
 func (f *fakeContainer) StartREPL(context.Context) error        { return nil }
+func (f *fakeContainer) ServerManager() server.Manager          { return f.serverMgr }
+func (f *fakeContainer) Close()                                 {}
 
 type fakeConfigWriter struct{}
 

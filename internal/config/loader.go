@@ -123,6 +123,7 @@ func defaultMap() map[string]any {
 		"server.port":                    cfg.Server.Port,
 		"server.hostname":                cfg.Server.Hostname,
 		"server.startup_timeout_seconds": cfg.Server.StartupTimeoutSeconds,
+		"server.idle_timeout_minutes":    cfg.Server.IdleTimeoutMinutes,
 		"repl.auto_resume":               cfg.REPL.AutoResume,
 		"shell.enabled":                  cfg.Shell.Enabled,
 		"shell.debug":                    cfg.Shell.Debug,
@@ -220,6 +221,7 @@ func readConfig(k *koanf.Koanf) Config {
 			Port:                  k.Int("server.port"),
 			Hostname:              k.String("server.hostname"),
 			StartupTimeoutSeconds: k.Int("server.startup_timeout_seconds"),
+			IdleTimeoutMinutes:    k.Int("server.idle_timeout_minutes"),
 		},
 		REPL: REPLConfig{
 			AutoResume: k.Bool("repl.auto_resume"),

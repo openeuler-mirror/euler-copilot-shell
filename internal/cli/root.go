@@ -23,6 +23,11 @@ type rootOptions struct {
 	stdout     io.Writer
 	stderr     io.Writer
 	loadAppFn  func(ctx context.Context, cmd *cobra.Command) (app.Container, error)
+
+	// skipServerEnsure prevents loadApp from calling serverMgr.Ensure(),
+	// avoiding the side effect of starting a server. Used by read-only
+	// commands like `server status` and `server stop`.
+	skipServerEnsure bool
 }
 
 // Execute builds and runs the Cobra command tree.
@@ -72,6 +77,7 @@ func newRootCommandWithOptions(opts *rootOptions) *cobra.Command {
 	cmd.AddCommand(newContinueCommand(opts))
 	cmd.AddCommand(newProviderCommand(opts))
 	cmd.AddCommand(newDoctorCommand(opts))
+	cmd.AddCommand(newServerCommand(opts))
 	cmd.AddCommand(newShellControlCommand(opts))
 	cmd.AddCommand(newVersionCommand(opts))
 	return cmd
@@ -107,9 +113,10 @@ func (o *rootOptions) loadApp(ctx context.Context, cmd *cobra.Command) (app.Cont
 			ConfigPath: o.configPath,
 			Overrides:  overrides,
 		},
-		Version:   o.version,
-		Stdout:    o.stdout,
-		Stderr:    o.stderr,
-		ServerURL: overrides.ServerURL,
+		Version:          o.version,
+		Stdout:           o.stdout,
+		Stderr:           o.stderr,
+		ServerURL:        overrides.ServerURL,
+		SkipServerEnsure: o.skipServerEnsure,
 	})
 }

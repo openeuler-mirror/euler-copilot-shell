@@ -32,6 +32,7 @@ type Container interface {
 	Renderer() renderer.TextRenderer
 	Presenter() presenter.Presenter
 	Permission() permission.Manager
+	ServerManager() server.Manager
 	Version() version.Info
 	Ask(ctx context.Context, req core.AskRequest) error
 	InitBash(ctx context.Context) (string, error)
@@ -42,6 +43,10 @@ type Container interface {
 	StartREPL(ctx context.Context) error
 	Doctor(ctx context.Context) (string, error)
 	WriteConfig(ctx context.Context) config.Writer
+	// Close releases resources held by the container, such as the server
+	// manager's idle monitor goroutine. It should be called when the
+	// application is done with the container.
+	Close()
 }
 
 type bashInitRenderer interface {
@@ -96,6 +101,18 @@ func (a *App) Presenter() presenter.Presenter {
 
 func (a *App) Permission() permission.Manager {
 	return a.permission
+}
+
+func (a *App) ServerManager() server.Manager {
+	return a.serverMgr
+}
+
+// Close releases resources held by the App, including the server manager's
+// idle monitor goroutine. It is safe to call multiple times.
+func (a *App) Close() {
+	if a.serverMgr != nil {
+		a.serverMgr.Close()
+	}
 }
 
 func (a *App) Version() version.Info {

@@ -40,9 +40,10 @@ type DoctorConfig struct {
 // ServerConfig controls the opencode serve lifecycle management.
 type ServerConfig struct {
 	AutoStart             bool
-	Port                  int  // 0 = auto-select
+	Port                  int // 0 = auto-select
 	Hostname              string
 	StartupTimeoutSeconds int
+	IdleTimeoutMinutes    int // 0 = disabled
 }
 
 // DisplayConfig controls how intermediate process (reasoning, tool calls, steps)
@@ -79,6 +80,7 @@ func Default() Config {
 			Port:                  0,
 			Hostname:              "127.0.0.1",
 			StartupTimeoutSeconds: 10,
+			IdleTimeoutMinutes:    30,
 		},
 		REPL: REPLConfig{
 			AutoResume: true,
