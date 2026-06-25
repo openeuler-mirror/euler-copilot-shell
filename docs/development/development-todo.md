@@ -867,21 +867,21 @@
 
 > 设计文档：[`../design/server-lifecycle.md`](../design/server-lifecycle.md) §4 安全设计、§8 Phase 2
 
-- [ ] 创建 `internal/server/password.go`：使用 `crypto/rand` 生成 32 字节 hex 编码随机密码（禁止使用 `math/rand`）。
-- [ ] 通过环境变量 `OPENCODE_SERVER_PASSWORD` 向子进程传递密码，不出现在命令行参数中（`/proc` 安全）。
-- [ ] 将 password 写入 `server-state.json`（权限 0600），`Connection.Password` 字段开始填充。
-- [ ] 实现 HTTP Basic Auth 认证探测：health check 时携带 `Authorization: Basic <base64(password)>` header。
-- [ ] 实现 password 身份识别逻辑：探测到已有 server 时，用本地 password 尝试请求；200 → 复用，401 → 对方是别人的 server → 换端口。
-- [ ] 实现非固定端口自动选择：当默认端口 4096 被别人的 server 占用时，自动尝试 4097-4105。
-- [ ] 实现并发启动的 coalesce 防御：通过 `O_EXCL` 创建 lock file 或 advisory file lock 防止两个 witty 进程同时 spawn server。
-- [ ] 确保日志中不输出 password（遵循安全红线）。
-- [ ] 单元测试：密码生成随机性、Basic Auth 探测、身份隔离（不同 password 的两个 server）、并发 lock 竞态。
+- [x] 创建 `internal/server/password.go`：使用 `crypto/rand` 生成 32 字节 hex 编码随机密码（禁止使用 `math/rand`）。
+- [x] 通过环境变量 `OPENCODE_SERVER_PASSWORD` 向子进程传递密码，不出现在命令行参数中（`/proc` 安全）。
+- [x] 将 password 写入 `server-state.json`（权限 0600），`Connection.Password` 字段开始填充。
+- [x] 实现 HTTP Basic Auth 认证探测：health check 时携带 `Authorization: Basic <base64(password)>` header。
+- [x] 实现 password 身份识别逻辑：探测到已有 server 时，用本地 password 尝试请求；200 → 复用，401 → 对方是别人的 server → 换端口。
+- [x] 实现非固定端口自动选择：当默认端口 4096 被别人的 server 占用时，自动尝试 4097-4105。
+- [x] 实现并发启动的 coalesce 防御：通过 `O_EXCL` 创建 lock file 或 advisory file lock 防止两个 witty 进程同时 spawn server。
+- [x] 确保日志中不输出 password（遵循安全红线）。
+- [x] 单元测试：密码生成随机性、Basic Auth 探测、身份隔离（不同 password 的两个 server）、并发 lock 竞态。
 
 #### 验收 checkpoint：C4-6b
 
-- [ ] 两个用户同时使用 witty，各自的 server 端口不同且 password 互相隔离（401 验证）。
-- [ ] 并发启动两个 witty 进程时，只 spawn 一个 server，另一个复用。
-- [ ] password 不出现在命令行参数、日志、进程列表中。
+- [x] 两个用户同时使用 witty，各自的 server 端口不同且 password 互相隔离（401 验证）。
+- [x] 并发启动两个 witty 进程时，只 spawn 一个 server，另一个复用。
+- [x] password 不出现在命令行参数、日志、进程列表中。
 
 ### P4-6c：Server 生命周期 Phase 3 — 运维能力
 

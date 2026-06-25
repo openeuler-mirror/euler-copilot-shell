@@ -324,10 +324,10 @@ conn, err := serverMgr.Ensure(ctx)
 
 ### Phase 2（后续）：安全加固
 
-- [ ] 随机 password 生成 + HTTP Basic Auth
-- [ ] 密码认证探测（区分"我的"和"别人的" server）
-- [ ] 非固定端口自动选择
-- [ ] 并发启动的 coalesce 防御
+- [x] 随机 password 生成 + HTTP Basic Auth
+- [x] 密码认证探测（区分"我的"和"别人的" server）
+- [x] 非固定端口自动选择
+- [x] 并发启动的 coalesce 防御
 
 ### Phase 3（后续）：运维能力
 
