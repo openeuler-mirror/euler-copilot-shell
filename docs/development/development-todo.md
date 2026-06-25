@@ -850,18 +850,18 @@
 - [x] 新增环境变量覆盖：`WITTY_SERVER_AUTO_START`、`WITTY_SERVER_PORT`、`WITTY_SERVER_HOSTNAME`。
 - [x] 向后兼容：`auto_start = false`（或环境变量 `WITTY_SERVER_AUTO_START=false`）时，行为完全回退到当前手动模式。
 - [x] 在 `internal/app/wiring.go` 中集成 `server.Manager`：在创建 transport client 之前调用 `Ensure()`。
-- [ ] 实现并发启动保护：通过 advisory file lock 或 coalesce 防止两个 witty 进程同时 spawn server。
-- [ ] 更新 `internal/core/core.go` 中的错误提示：移除硬编码的 `opencode serve --port 4096` hint，改为更友好的通用提示。
+- [x] 实现并发启动保护：通过 advisory file lock 或 coalesce 防止两个 witty 进程同时 spawn server。（P4-6b 中实现 `acquireSpawnLock` + `O_EXCL`）
+- [x] 更新 `internal/core/core.go` 中的错误提示：移除硬编码的 `opencode serve --port 4096` hint，改为引用实际 server URL 的通用提示。
 - [x] 单元测试：mock opencode binary（Go 二进制模拟）、PID 验证、端口探测、state file 损坏降级。
 
 #### 验收 checkpoint：C4-6
 
-- [ ] `witty ask "hello"` 首次运行时自动启动 opencode serve，无需用户手动干预。
-- [ ] `witty ask` 第二次运行时自动检测并复用已有 server，零冷启动延迟。
-- [ ] `WITTY_SERVER_AUTO_START=false witty ask "hello"` 回退到手动模式，server 不可达时给出合理提示。
-- [ ] 两个不同用户（不同 UID）在同一台机器上分别启动 witty，各自的 server 互相隔离。
-- [ ] Server 进程崩溃后，下次启动 witty 能自动重新启动新的 server。
-- [ ] `witty doctor` 能显示 server 管理状态（自动启动/手动、当前端口、PID）。
+- [x] `witty ask "hello" 首次运行时自动启动 opencode serve，无需用户手动干预。（openEuler 真实环境验证）
+- [x] `witty ask` 第二次运行时自动检测并复用已有 server，零冷启动延迟。（openEuler 验证：同一 PID，`last_used` 被 transport 层刷新）
+- [x] `WITTY_SERVER_AUTO_START=false witty ask "hello"` 回退到手动模式，server 不可达时给出合理提示。（openEuler 验证：提示 "no opencode server found...auto_start is disabled"）
+- [x] 两个不同用户（不同 UID）在同一台机器上分别启动 witty，各自的 server 互相隔离。（C4-6b 已验证：password 隔离 + 401 探测）
+- [x] Server 进程崩溃后，下次启动 witty 能自动重新启动新的 server。（openEuler 验证：kill -9 后重新运行 witty 自动重启）
+- [x] `witty doctor` 能显示 server 管理状态（自动启动/手动、当前端口、PID）。（openEuler 验证：输出含 "server management" 行）
 
 ### P4-6b：Server 生命周期 Phase 2 — 安全加固
 
@@ -887,30 +887,112 @@
 
 > 设计文档：[`../design/server-lifecycle.md`](../design/server-lifecycle.md) §8 Phase 3
 
-- [ ] 实现 `witty server status` 命令：显示 server 运行状态（Running/Port/PID/Managed/StartedAt）。
-- [ ] 实现 `witty server stop` 命令：停止当前进程管理的 server（`Manager.Stop()`），非托管 server 提示无法停止。
-- [ ] 实现 idle timeout 自动清理：基于 `state.last_used` 字段，超过阈值（如 30 分钟无活动）自动停止 server。
-- [ ] 增强 `witty doctor`：在诊断输出中显示 server 管理状态（自动启动/手动、当前端口、PID、托管状态）。
-- [ ] 在 `internal/app` 中暴露 `serverMgr` 给 CLI 命令（当前 `serverMgr` 存储在 `App` 但未通过 `Container` 接口暴露）。
-- [ ] 为 `manager.managedPID` 添加并发保护（mutex 或 atomic），因为 Phase 3 的 `stop`/`status` 命令可能从不同 goroutine 调用。
-- [ ] 单元测试：CLI 命令输出格式、stop 非托管 server 的提示、idle timeout 触发逻辑。
+- [x] 实现 `witty server status` 命令：显示 server 运行状态（Running/Port/PID/Managed/StartedAt）。
+- [x] 实现 `witty server stop` 命令：停止当前进程管理的 server（`Manager.Stop()`），非托管 server 提示无法停止。
+- [x] 实现 idle timeout 自动清理：基于 `state.last_used` 字段，超过阈值（如 30 分钟无活动）自动停止 server。
+- [x] 增强 `witty doctor`：在诊断输出中显示 server 管理状态（自动启动/手动、当前端口、PID、托管状态）。
+- [x] 在 `internal/app` 中暴露 `serverMgr` 给 CLI 命令（当前 `serverMgr` 存储在 `App` 但未通过 `Container` 接口暴露）。
+- [x] 为 `manager.managedPID` 添加并发保护（mutex 或 atomic），因为 Phase 3 的 `stop`/`status` 命令可能从不同 goroutine 调用。
+- [x] 单元测试：CLI 命令输出格式、stop 非托管 server 的提示、idle timeout 触发逻辑。
 
 #### 验收 checkpoint：C4-6c
 
-- [ ] `witty server status` 正确显示运行中的 server 信息。
-- [ ] `witty server stop` 能停止由 witty 启动的 server，对非托管 server 给出合理提示。
-- [ ] `witty doctor` 输出中包含 server 管理状态行。
-- [ ] idle timeout 后 server 自动停止，下次启动 witty 能重新启动。
+> ⚠️ 以下 checkpoint 标注了初版实现的真实状态。标记为 ✅ 的项确实通过；
+> 标记为 ❌ 的项存在设计缺陷，将在 P4-6e 中修正。
+
+- ✅ `witty server status` 正确显示运行中的 server 信息。
+- ❌ `witty server stop` 能停止由 witty 启动的 server，对非托管 server 给出合理提示。 — **缺陷**：在 CLI 多进程模式下，`stop` 无法停止由其他进程启动的 server（`managedPID` 始终为 0）。
+- ✅ `witty doctor` 输出中包含 server 管理状态行。
+- ❌ idle timeout 后 server 自动停止，下次启动 witty 能重新启动。 — **缺陷**：CLI 模式下 `last_used` 每次调用都刷新，后台 goroutine 随进程退出，idle timeout 永不触发。
+
+### P4-6e：Server 生命周期 Phase 3.1 — 运维能力修正
+
+> 设计文档：[`../design/server-lifecycle.md`](../design/server-lifecycle.md) §6.2.1 Stop 双层停止策略、§6.5 轻量初始化、§8 Phase 3.1
+>
+> 来源：Phase 3 代码审查（2026-06-25），发现三个设计缺陷：
+> 1. `witty server stop` 无法跨进程停止 server
+> 2. idle timeout 在 CLI 模式失效
+> 3. `status`/`stop` 命令有 `Ensure()` 启动副作用
+
+#### 任务 1：`Stop()` 改用 `/global/dispose` API + SIGTERM 兜底
+
+- [x] 在 `internal/transport/client.go` 的 `Client` 接口增加 `Dispose(ctx context.Context) error` 方法，实现 `POST /global/dispose`。
+- [x] 在 `internal/server/manager.go` 中重写 `Stop()`：
+  - 读取 state file 获取 URL + password + PID
+  - 优先调用 `POST {URL}/global/dispose`（带 Authorization header）
+  - HTTP 不可达时兜底 SIGTERM（发送前验证 `/proc/{pid}/cmdline` 含 `opencode serve`）
+  - SIGTERM 后轮询等待进程退出（带 5s 超时）
+  - 移除 `managedPID > 0` 前置检查
+  - 成功后删除 state file
+- [x] 在 `internal/cli/server.go` 的 `newServerStopCommand` 中移除 `!st.Managed` 前置检查，直接调用 `mgr.Stop()`。
+- [x] 单元测试：
+  - `Stop()` 调用 `/global/dispose` 成功后删除 state file
+  - `/global/dispose` 不可达时兜底 SIGTERM（Linux 验证进程退出，macOS 跳过）
+  - PID 不存活时清理 state file 返回 nil
+  - `Dispose()` transport 方法测试（mock httptest server）
+
+#### 任务 2：`status`/`stop` 命令跳过 `Ensure()`
+
+- [x] 在 `internal/app/wiring.go` 的 `Options` 结构增加 `SkipServerEnsure bool` 字段。
+- [x] 在 `New()` 中当 `SkipServerEnsure` 为 true 时跳过 `serverMgr.Ensure(ctx)`，但仍创建 Manager 实例。
+- [x] 在 `internal/cli/root.go` 的 `loadApp` 中支持传递 `SkipServerEnsure` 标志（通过 `rootOptions` 字段或 `loadAppFn` 扩展）。
+- [x] `newServerStatusCommand` 和 `newServerStopCommand` 设置 `SkipServerEnsure = true`。
+- [x] 单元测试：
+  - `status` 命令在无 server 运行时不启动新 server
+  - `stop` 命令在无 server 运行时不启动新 server
+  - `SkipServerEnsure` 不影响 `ask`/`repl` 等正常命令
+
+#### 任务 3：idle timeout 惰性清理
+
+- [x] 在 `internal/server/manager.go` 的 `Ensure()` fast path 中增加 idle timeout 检查：
+  - 读取 state file，如果 `IdleTimeout > 0` 且 `time.Since(state.LastUsed) > IdleTimeout`，先调用 `m.Stop(ctx)` 停掉旧 server
+  - 停掉后继续走正常启动流程
+  - 如果旧 server 停止失败，warn 但不阻塞（继续启动新的）
+- [x] 从 `Ensure()` fast path 中移除 `touchLastUsed` 调用（改由 transport 层负责）
+- [x] 单元测试：
+  - state file `last_used` 超时时 `Ensure()` 先停旧 server
+  - state file `last_used` 未超时时 `Ensure()` 正常复用
+  - 旧 server 停止失败时不阻塞新 server 启动（Stop 错误被忽略）
+
+#### 任务 4：transport 层 `OnRequestSuccess` 回调
+
+- [x] 在 `internal/transport/client.go` 的 `Options` 增加 `OnRequestSuccess func()` 字段。
+- [x] 在 `doJSON` 方法成功返回后调用 `OnRequestSuccess`（非 SSE 请求）。
+- [x] 在 `internal/app/wiring.go` 中注入回调：`OnRequestSuccess: serverMgr.TouchLastUsed`。
+- [x] 在 `internal/server/server.go` 的 `Manager` 接口增加 `TouchLastUsed()` 方法。
+- [x] 在 `internal/server/manager.go` 实现 `TouchLastUsed()`：读取当前 state，更新 `LastUsed` 为 `time.Now()`，写回 state file。忽略错误（best-effort）。
+- [x] 单元测试：
+  - transport 成功请求后 `last_used` 被更新
+  - transport 请求失败后 `last_used` 不更新
+  - `TouchLastUsed()` 在 state file 不存在时不报错
+
+#### 任务 5：`Manager.Close()` 方法
+
+- [x] 在 `internal/server/server.go` 的 `Manager` 接口增加 `Close()` 方法。
+- [x] 在 `internal/server/manager.go` 实现 `Close()`：取消 idle monitor context，释放 goroutine。
+- [x] 在 `internal/app/wiring.go` 中应用退出时调用 `serverMgr.Close()`（或通过 defer）。
+- [x] 单元测试：`Close()` 后 idle monitor goroutine 退出
+
+#### 验收 checkpoint：C4-6e
+
+- [x] `witty server stop` 能停止由**其他** witty 进程启动的 server（跨进程停止）。
+- [x] `witty server stop` 在 server 不运行时不启动新 server（无副作用）。
+- [x] `witty server status` 在 server 不运行时不启动新 server（无副作用）。
+- [x] 停止使用 witty 超过 `idle_timeout_minutes` 后，下次 `witty ask` 自动清理旧 server 并启动新的。
+- [x] REPL 模式下持续对话时，idle timeout 不误触发（`last_used` 被 transport 层实时刷新）。
+- [x] `witty server stop` 优先使用 `/global/dispose` API，HTTP 不可达时兜底 SIGTERM。
+- [x] `Stop()` 在 SIGTERM 后等待进程退出，不产生孤儿进程。
+- [x] 全部测试通过 `-race`。
 
 ### P4-6d：Phase 1 遗留问题修复
 
 > 来源：Phase 1 代码审查（2026-06-25）
 
-- [ ] **`WITTY_STATE_PATH` 语义统一**：`internal/server/state.go` 的 `DefaultServerStateDir`/`DefaultServerStatePath` 将 `WITTY_STATE_PATH` 当作目录（追加 `witty/` 子目录），而 `internal/session/state.go` 的 `DefaultStatePath` 将其当作完整文件路径。需统一两者语义，避免用户混淆。
-- [ ] **删除或利用 `DefaultServerStatePath` 死代码**：`internal/server/state.go:63` 的 `DefaultServerStatePath` 已导出但生产代码无调用（`wiring.go` 用的是 `DefaultServerStateDir`），仅测试引用。删除该函数及测试，或标记为 Phase 3 预留。
-- [ ] **启动失败时区分错误类型**：`internal/server/manager.go:97-102` 在 `startServer` 失败时静默返回默认 URL。设计文档 §7 要求 `opencode` 二进制不在 PATH 时报明确错误。应区分"二进制不存在"（返回明确错误或 logger warn）和"其他启动失败"（可保持降级）。
-- [ ] **`resolveServerStateDir` 参数清理**：`internal/app/wiring.go:231` 的 `resolveServerStateDir(loadOpts config.LoadOptions)` 接收参数但完全不用，直接调 `DefaultServerStateDir(nil, nil)`。移除无用参数或实现从 `loadOpts` 读取自定义路径。
-- [ ] **`manager.managedPID` 并发保护注释**：当前无 mutex，`-race` 测试通过仅因为无并发调用。添加注释说明非线程安全，Phase 3 接入 CLI 命令时需加锁。
+- [x] **`WITTY_STATE_PATH` 语义统一**：`internal/server/state.go` 的 `DefaultServerStateDir` 现将 `WITTY_STATE_PATH` 当作完整文件路径（与 `internal/session/state.go` 的 `DefaultStatePath` 一致），通过 `filepath.Dir()` 取目录。两者语义已统一。
+- [x] **删除 `DefaultServerStatePath` 死代码**：已删除 `internal/server/state.go` 的 `DefaultServerStatePath` 函数及其测试（`TestDefaultServerStatePath`）。生产代码使用 `DefaultServerStateDir`。
+- [x] **启动失败时区分错误类型**：`internal/server/manager.go` 的 `Ensure()` 现区分"二进制不存在"（`exec.ErrNotFound`/`fs.ErrNotExist` → 返回 `ErrOpenCodeBinaryNotFound` 明确错误）和"其他启动失败"（端口冲突、health 超时 → 降级为默认 URL）。
+- [x] **`resolveServerStateDir` 参数清理**：移除 `resolveServerStateDir` 的无用 `loadOpts config.LoadOptions` 参数。
+- [x] **`manager.managedPID` 并发保护注释**：P4-6c 已添加 `mu sync.Mutex` 保护 `managedPID`，字段注释已标注 `guarded by mu`。此项目已由 P4-6c 完成。
 
 ### P4-3：Shell 安装与卸载说明
 
