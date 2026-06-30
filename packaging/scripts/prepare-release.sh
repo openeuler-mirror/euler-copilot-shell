@@ -35,7 +35,7 @@ mkdir -p "${OUTDIR}"
 SOURCE_TARBALL="${OUTDIR}/euler-copilot-shell-${VERSION}.tar.gz"
 GO_AMD64="${OUTDIR}/go${GO_VERSION}.linux-amd64.tar.gz"
 GO_ARM64="${OUTDIR}/go${GO_VERSION}.linux-arm64.tar.gz"
-VENDOR_TARBALL="${OUTDIR}/witty-vendor-${VERSION}.tar.xz"
+VENDOR_TARBALL="${OUTDIR}/euler-copilot-shell-vendor-${VERSION}.tar.xz"
 BUILD_INFO="${OUTDIR}/build-info"
 
 # ── Step 1: Source tarball ─────────────────────────────────────────

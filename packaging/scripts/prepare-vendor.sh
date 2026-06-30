@@ -25,7 +25,7 @@ fi
 OUTDIR="${2:-.}"
 mkdir -p "${OUTDIR}"
 
-OUTPUT="${OUTDIR}/witty-vendor-${VERSION}.tar.xz"
+OUTPUT="${OUTDIR}/euler-copilot-shell-vendor-${VERSION}.tar.xz"
 
 echo "==> Running go mod vendor..."
 go mod vendor
