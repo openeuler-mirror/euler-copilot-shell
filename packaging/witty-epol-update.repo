@@ -1,0 +1,15 @@
+# Witty EPOL update repository
+# Installed by witty-release RPM to /etc/yum.repos.d/
+#
+# Provides updated packages from EPOL (Extra Packages for openEuler Linux)
+# that witty depends on. This file uses $releasever and $basearch so that
+# the same configuration works across all openEuler releases and mirrors.
+
+[witty-epol-update]
+name=EPOL update for witty
+baseurl=https://repo.openeuler.org/openEuler-$releasever/EPOL/update/main/$basearch/
+metalink=https://mirrors.openeuler.org/metalink?repo=$releasever/EPOL/update/main&arch=$basearch
+metadata_expire=1h
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.openeuler.org/openEuler-$releasever/OS/$basearch/RPM-GPG-KEY-openEuler
