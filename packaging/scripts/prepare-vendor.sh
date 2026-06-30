@@ -7,21 +7,25 @@
 # openEuler build system.
 #
 # Usage:
-#   bash packaging/scripts/prepare-vendor.sh <version>
+#   bash packaging/scripts/prepare-vendor.sh <version> [<output_dir>]
 #
 # Output:
-#   witty-vendor-<version>.tar.xz
+#   <output_dir>/witty-vendor-<version>.tar.xz  (default: .)
 
 set -euo pipefail
 
 VERSION="${1:-}"
 if [ -z "$VERSION" ]; then
-  echo "Usage: $0 <version>" >&2
+  echo "Usage: $0 <version> [output_dir]" >&2
   echo "Example: $0 3.0.0" >&2
+  echo "Example: $0 3.0.0 build/release" >&2
   exit 1
 fi
 
-OUTPUT="witty-vendor-${VERSION}.tar.xz"
+OUTDIR="${2:-.}"
+mkdir -p "${OUTDIR}"
+
+OUTPUT="${OUTDIR}/witty-vendor-${VERSION}.tar.xz"
 
 echo "==> Running go mod vendor..."
 go mod vendor

@@ -8,7 +8,7 @@
 # Defaults:
 #   go_version = 1.26.4
 #
-# Outputs (in current directory):
+# Outputs (under build/release/):
 #   euler-copilot-shell-<version>.tar.gz → Source0 (source code)
 #   go<go_version>.linux-amd64.tar.gz   → Source1 (Go toolchain amd64)
 #   go<go_version>.linux-arm64.tar.gz   → Source2 (Go toolchain arm64)
@@ -27,11 +27,16 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-SOURCE_TARBALL="euler-copilot-shell-${VERSION}.tar.gz"
-GO_AMD64="go${GO_VERSION}.linux-amd64.tar.gz"
-GO_ARM64="go${GO_VERSION}.linux-arm64.tar.gz"
-VENDOR_TARBALL="witty-vendor-${VERSION}.tar.xz"
-BUILD_INFO="build-info"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+OUTDIR="build/release"
+
+mkdir -p "${OUTDIR}"
+
+SOURCE_TARBALL="${OUTDIR}/euler-copilot-shell-${VERSION}.tar.gz"
+GO_AMD64="${OUTDIR}/go${GO_VERSION}.linux-amd64.tar.gz"
+GO_ARM64="${OUTDIR}/go${GO_VERSION}.linux-arm64.tar.gz"
+VENDOR_TARBALL="${OUTDIR}/witty-vendor-${VERSION}.tar.xz"
+BUILD_INFO="${OUTDIR}/build-info"
 
 # ── Step 1: Source tarball ─────────────────────────────────────────
 echo "==> [1/5] Generating source tarball: ${SOURCE_TARBALL}"
@@ -55,7 +60,7 @@ echo "==> [2/5] Go toolchain (amd64): ${GO_AMD64}"
 if [ -f "${GO_AMD64}" ]; then
   echo "       ${GO_AMD64} already exists, skipping"
 else
-  curl -fSL "https://go.dev/dl/${GO_AMD64}" -o "${GO_AMD64}"
+  curl -fSL "https://go.dev/dl/$(basename "${GO_AMD64}")" -o "${GO_AMD64}"
   echo "       ${GO_AMD64} ($(du -h "${GO_AMD64}" | cut -f1))"
 fi
 
@@ -64,13 +69,13 @@ echo "==> [3/5] Go toolchain (arm64): ${GO_ARM64}"
 if [ -f "${GO_ARM64}" ]; then
   echo "       ${GO_ARM64} already exists, skipping"
 else
-  curl -fSL "https://go.dev/dl/${GO_ARM64}" -o "${GO_ARM64}"
+  curl -fSL "https://go.dev/dl/$(basename "${GO_ARM64}")" -o "${GO_ARM64}"
   echo "       ${GO_ARM64} ($(du -h "${GO_ARM64}" | cut -f1))"
 fi
 
 # ── Step 4: Vendor tarball ─────────────────────────────────────────
 echo "==> [4/5] Generating vendor tarball: ${VENDOR_TARBALL}"
-bash packaging/scripts/prepare-vendor.sh "${VERSION}"
+bash "${SCRIPT_DIR}/prepare-vendor.sh" "${VERSION}" "${OUTDIR}"
 
 # ── Step 5: Build info ─────────────────────────────────────────────
 echo "==> [5/5] Generating build-info: ${BUILD_INFO}"
@@ -84,6 +89,10 @@ cat "${BUILD_INFO}"
 
 echo ""
 echo "══ All artifacts ready for openEuler build ══"
+echo ""
+echo "Output directory: ${OUTDIR}/"
+echo ""
+ls -lh "${OUTDIR}/"
 echo ""
 echo "Upload the following files to the openEuler build system:"
 echo "  Source0: ${SOURCE_TARBALL}"
