@@ -43,6 +43,8 @@ Obsoletes:      euler-copilot-shell < 3.0.0
 Provides:       witty-assistant = %{version}-%{release}
 Obsoletes:      witty-assistant < 3.0.0
 Requires:       witty-release = %{version}-%{release}
+Recommends:     witty-log-detection
+Recommends:     witty-lite-rag
 
 %description -n witty
 Witty is the terminal-side intelligent interaction entry point for openEuler.

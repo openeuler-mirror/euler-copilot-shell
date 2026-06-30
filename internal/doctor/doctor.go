@@ -126,6 +126,7 @@ func (r *runner) Run(ctx context.Context) []Check {
 
 	checks = append(checks, r.checkServerManagement())
 	checks = append(checks, r.checkShellIntegration())
+	checks = append(checks, r.checkAgentPackages())
 	checks = append(checks, r.checkBashEnvironment())
 	checks = append(checks, r.checkTerminal())
 	return checks
@@ -246,6 +247,38 @@ func (r *runner) checkShellIntegration() Check {
 		Detail: "not loaded in current shell",
 		Hint:   `run: eval "$(witty init bash)"`,
 	}
+}
+
+// agentPackages lists the optional RPM packages that enable server-ops and
+// RAG-based agents. They live in EPOL update, which is enabled by
+// witty-release. When any is missing the doctor reports a WARN with the
+// install command.
+var agentPackages = []string{"witty-log-detection", "witty-lite-rag"}
+
+func (r *runner) checkAgentPackages() Check {
+	const name = "agent packages"
+	var missing []string
+	for _, pkg := range agentPackages {
+		if !rpmInstalled(pkg) {
+			missing = append(missing, pkg)
+		}
+	}
+	if len(missing) == 0 {
+		return Check{Name: name, Status: StatusOK, Detail: "all agent packages installed"}
+	}
+	return Check{
+		Name:   name,
+		Status: StatusWARN,
+		Detail: fmt.Sprintf("missing: %s", strings.Join(missing, ", ")),
+		Hint:   fmt.Sprintf("run: dnf install %s", strings.Join(missing, " ")),
+	}
+}
+
+// rpmInstalled reports whether the named RPM package is installed.
+func rpmInstalled(pkg string) bool {
+	cmd := exec.Command("rpm", "-q", pkg)
+	// rpm -q exits 0 when installed, non-zero otherwise.
+	return cmd.Run() == nil
 }
 
 func (r *runner) checkBashEnvironment() Check {

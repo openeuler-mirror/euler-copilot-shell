@@ -66,8 +66,8 @@ func TestRun_AllChecksPass(t *testing.T) {
 	})
 
 	checks := r.Run(context.Background())
-	if len(checks) != 8 {
-		t.Fatalf("Run() returned %d checks, want 8", len(checks))
+	if len(checks) != 9 {
+		t.Fatalf("Run() returned %d checks, want 9", len(checks))
 	}
 
 	for _, c := range checks {
