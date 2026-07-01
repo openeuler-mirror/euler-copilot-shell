@@ -87,7 +87,7 @@ Source1: witty-v{version}-linux-arm64   # 预编译二进制 (arm64)
 Source0: witty-{version}.tar.gz            # 上游源码
 Source1: go1.26.x.linux-amd64.tar.gz       # Go 工具链 (amd64)
 Source2: go1.26.x.linux-arm64.tar.gz       # Go 工具链 (arm64)
-Source3: witty-vendor-{version}.tar.xz     # vendored 依赖
+Source3: witty-cli-vendor-{version}.tar.xz     # vendored 依赖
 ```
 
 | 优点 | 缺点 |
@@ -130,7 +130,7 @@ Source3: witty-vendor-{version}.tar.xz     # vendored 依赖
 │    - witty-3.0.0.tar.gz        (源码)                    │
 │    - go1.26.x.linux-amd64.tar.gz  (Go 工具链 amd64)       │
 │    - go1.26.x.linux-arm64.tar.gz  (Go 工具链 arm64)       │
-│    - witty-vendor-3.0.0.tar.xz (vendored 依赖)           │
+│    - witty-cli-vendor-3.0.0.tar.xz (vendored 依赖)           │
 └──────────────────────┬───────────────────────────────────┘
                        │ 上传至 openEuler 构建系统
                        ▼
@@ -321,7 +321,7 @@ RPM 安装后自动启用 Shell Adapter，用户无需手动修改 `.bashrc`：
 #   bash packaging/scripts/prepare-vendor.sh <version>
 #
 # 产物:
-#   witty-vendor-<version>.tar.xz
+#   witty-cli-vendor-<version>.tar.xz
 
 set -euo pipefail
 
@@ -331,7 +331,7 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
-OUTPUT="witty-vendor-${VERSION}.tar.xz"
+OUTPUT="witty-cli-vendor-${VERSION}.tar.xz"
 
 echo "==> Running go mod vendor..."
 go mod vendor
@@ -404,7 +404,7 @@ archives:
    - witty-3.0.0.tar.gz → Source0
    - go1.26.4.linux-amd64.tar.gz → Source1
    - go1.26.4.linux-arm64.tar.gz → Source2
-   - witty-vendor-3.0.0.tar.xz → Source3
+   - witty-cli-vendor-3.0.0.tar.xz → Source3
 6. CI 执行: rpmbuild -ba witty.spec
 7. 产物:
    - witty-3.0.0-1.oe2403.x86_64.rpm

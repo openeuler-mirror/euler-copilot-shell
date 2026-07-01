@@ -10,9 +10,14 @@
 #   bash packaging/scripts/prepare-vendor.sh <version> [<output_dir>]
 #
 # Output:
-#   <output_dir>/witty-vendor-<version>.tar.xz  (default: .)
+#   <output_dir>/witty-cli-vendor-<version>.tar.xz  (default: .)
 
 set -euo pipefail
+
+if [ "$(uname -s)" != "Linux" ]; then
+  echo "ERROR: This script must run on Linux. Current OS: $(uname -s)" >&2
+  exit 1
+fi
 
 VERSION="${1:-}"
 if [ -z "$VERSION" ]; then
@@ -25,7 +30,7 @@ fi
 OUTDIR="${2:-.}"
 mkdir -p "${OUTDIR}"
 
-OUTPUT="${OUTDIR}/euler-copilot-shell-vendor-${VERSION}.tar.xz"
+OUTPUT="${OUTDIR}/witty-cli-vendor-${VERSION}.tar.xz"
 
 echo "==> Running go mod vendor..."
 go mod vendor
