@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "witty/example": {
+      "description": "Example agent shipped by a sub-RPM.",
+      "mode": "subagent",
+      "prompt": "{file:../agents/witty-example/prompt.md}",
+      "color": "#00AFFF"
+    }
+  },
+  "mcp": {
+    "witty-example": {
+      "enabled": false
+    }
+  }
+}
