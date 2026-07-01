@@ -2,13 +2,23 @@
 %global shortcut_name witty
 %global debug_package %{nil}
 
+%global witty_managed_root %{_datadir}/witty/opencode
+%global witty_managed_config_dropins %{witty_managed_root}/config.d
+%global witty_managed_agents %{witty_managed_root}/agents
+%global witty_managed_skills %{witty_managed_root}/skills
+%global witty_managed_plugins %{witty_managed_root}/plugins
+%global witty_managed_logo %{witty_managed_plugins}/logo/witty-logo.tsx
+%global witty_managed_libexec %{_libexecdir}/witty-opencode
+%global witty_loader_source_dir %{_builddir}/witty-agent-loader-%{version}
+
 Name:           euler-copilot-shell
 Version:        2.0.3
-Release:        3%{?dev_timestamp:.dev%{dev_timestamp}}%{?dist}
+Release:        4
 Summary:        Witty Assistant 智能命令行工具集
 License:        MulanPSL-2.0
 URL:            https://atomgit.com/openeuler/euler-copilot-shell
 Source0:        %{name}-%{version}.tar.gz
+Source1:        witty-agent-loader-%{version}.tar.gz
 
 ExclusiveArch:  x86_64 aarch64 riscv64 loongarch64
 
@@ -49,8 +59,27 @@ Provides:       openeuler-intelligence-installer = %{version}-%{release}
 %description -n witty-assistant-installer
 Witty Assistant 部署安装工具包，包含部署脚本和相关资源文件。
 
+# witty-agent-loader 子包
+%package -n witty-agent-loader
+Summary:        Managed configuration and RPM integration assets for witty-opencode
+License:        MulanPSL-2.0
+BuildArch:      noarch
+Recommends:     opencode
+Recommends:     nodejs >= 20
+
+%description -n witty-agent-loader
+This package ships the managed-config assets for witty-opencode on openEuler.
+It owns the shared logo plugin, managed resource directories, the config
+generator, and the RPM transaction hooks that rebuild /etc/opencode/opencode.json
+and /etc/opencode/tui.json from installed config fragments and resource bundles.
+
 %prep
 %autosetup -n %{name}-%{version}
+
+# Extract witty-agent-loader source
+rm -rf %{witty_loader_source_dir}
+mkdir -p %{witty_loader_source_dir}
+tar -xzf %{SOURCE1} --strip-components=1 -C %{witty_loader_source_dir}
 
 %build
 # 创建虚拟环境
@@ -98,6 +127,26 @@ chmod -R +x %{buildroot}/usr/lib/witty-assistant/scripts/
 # 创建可执行文件的符号链接
 ln -sf /usr/lib/witty-assistant/scripts/deploy %{buildroot}%{_bindir}/witty-manager
 
+# Install witty-agent-loader assets
+cd %{witty_loader_source_dir}
+
+install -d "%{buildroot}%{_licensedir}/witty-agent-loader"
+install -Dm644 LICENSE "%{buildroot}%{_licensedir}/witty-agent-loader/LICENSE"
+install -d "%{buildroot}%{_docdir}/witty-agent-loader"
+install -Dm644 "docs/witty-opencode-base.md" "%{buildroot}%{_docdir}/witty-agent-loader/witty-opencode-base.md"
+install -Dm644 "README.md" "%{buildroot}%{_docdir}/witty-agent-loader/base-source-layout.md"
+
+install -d "%{buildroot}%{witty_managed_libexec}"
+install -Dm755 "bin/rebuild-managed-config.mjs" "%{buildroot}%{witty_managed_libexec}/rebuild-managed-config.mjs"
+install -Dm755 "bin/run-managed-config-hook.sh" "%{buildroot}%{witty_managed_libexec}/run-managed-config-hook.sh"
+
+install -d "%{buildroot}%{_sysconfdir}/opencode"
+install -d "%{buildroot}%{witty_managed_config_dropins}"
+install -d "%{buildroot}%{witty_managed_agents}"
+install -d "%{buildroot}%{witty_managed_skills}"
+install -d "%{buildroot}%{witty_managed_plugins}/logo"
+install -Dm644 "plugins/logo/witty-logo.tsx" "%{buildroot}%{witty_managed_logo}"
+
 %files -n witty-assistant
 %license LICENSE
 %doc README.md
@@ -109,6 +158,23 @@ ln -sf /usr/lib/witty-assistant/scripts/deploy %{buildroot}%{_bindir}/witty-mana
 %doc scripts/deploy/安装部署手册.md
 /usr/lib/witty-assistant
 %{_bindir}/witty-manager
+
+%files -n witty-agent-loader
+%license %{_licensedir}/witty-agent-loader/LICENSE
+%doc %{_docdir}/witty-agent-loader/witty-opencode-base.md
+%doc %{_docdir}/witty-agent-loader/base-source-layout.md
+%dir %{_sysconfdir}/opencode
+%ghost %config(noreplace) %{_sysconfdir}/opencode/opencode.json
+%ghost %config(noreplace) %{_sysconfdir}/opencode/tui.json
+%{witty_managed_libexec}/rebuild-managed-config.mjs
+%{witty_managed_libexec}/run-managed-config-hook.sh
+%dir %{witty_managed_root}
+%dir %{witty_managed_config_dropins}
+%dir %{witty_managed_agents}
+%dir %{witty_managed_skills}
+%dir %{witty_managed_plugins}
+%dir %{witty_managed_plugins}/logo
+%{witty_managed_logo}
 
 %postun -n witty-assistant
 if [ $1 -eq 0 ]; then
@@ -141,7 +207,19 @@ rm -f /etc/euler_Intelligence_install*
 rm -f /usr/lib/witty-assistant/scripts
 fi
 
+%posttrans -n witty-agent-loader
+%{witty_managed_libexec}/run-managed-config-hook.sh posttrans
+
+%transfiletriggerin -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills}
+%{witty_managed_libexec}/run-managed-config-hook.sh transfiletriggerin
+
+%transfiletriggerpostun -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills}
+%{witty_managed_libexec}/run-managed-config-hook.sh transfiletriggerpostun
+
 %changelog
+* Thu Jun 04 2026 SIG-Intelligence <intelligence@openeuler.org> - 2.0.3-4
+- Add witty-agent-loader subpackage (migrated from witty-opencode-base)
+
 * Fri May 08 2026 openEuler <contact@openeuler.org> - 2.0.3-3
 - chore: remove redundant logs
 - chore: exclude dev scripts from release package
