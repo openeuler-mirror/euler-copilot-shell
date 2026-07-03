@@ -70,6 +70,55 @@ orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && build/linux-<arch>/witty vers
 
 `version` 子命令不加载配置、不连接 server，是最安全的冒烟测试。禁止用 `go run ./cmd/witty` 代替。
 
+### 第四步：RPM 打包与 dnf 部署到 VM
+
+当用户要求"部署到 VM""安装到虚拟机""发到 VM"时，VM 编译和试运行通过后，必须通过 RPM 形式安装。**禁止**用 `cp` 把二进制直接拷贝到 `/usr/bin/` 或 `/usr/local/bin/`。
+
+Source 文件准备一律使用仓库已有脚本，**禁止**手动执行 `go mod vendor`（脚本会自动清理 `vendor/`）。
+
+#### 4a. 准备 Source 文件（使用 prepare-release.sh）
+
+```bash
+# 在 VM 上执行，spec 中的 Version 即为当前版本
+VERSION=$(grep "^Version:" packaging/euler-copilot-shell.spec | awk '{print $2}')
+bash packaging/scripts/prepare-release.sh ${VERSION}
+```
+
+产物落在 `build/release/`，其中 `prepare-vendor.sh`（由 prepare-release.sh 内部调用）会自动清理 `vendor/`。Go 工具链 tarball 首次下载后会缓存，后续构建跳过下载。
+
+#### 4b. 构建 RPM
+
+```bash
+mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+cp packaging/euler-copilot-shell.spec ~/rpmbuild/SPECS/
+rpmbuild -ba ~/rpmbuild/SPECS/euler-copilot-shell.spec \
+  --define "_sourcedir $(pwd)/build/release"
+```
+
+产物位于 `~/rpmbuild/RPMS/<arch>/witty-<version>-<release>.<arch>.rpm`。
+
+#### 4c. dnf 安装（版本检测分流）
+
+```bash
+VERSION=$(grep "^Version:" packaging/euler-copilot-shell.spec | awk '{print $2}')
+RELEASE=$(grep "^Release:" packaging/euler-copilot-shell.spec | awk '{print $2}')
+ARCH=$(uname -m)
+INSTALLED=$(rpm -q --qf '%{version}-%{release}' witty 2>/dev/null || echo "")
+RPM_PATH=~/rpmbuild/RPMS/${ARCH}/witty-${VERSION}-${RELEASE}.${ARCH}.rpm
+
+if [ -z "${INSTALLED}" ]; then
+  dnf install -y ${RPM_PATH}
+elif [ "${INSTALLED}" = "${VERSION}-${RELEASE}" ]; then
+  dnf reinstall -y ${RPM_PATH}
+else
+  dnf install -y ${RPM_PATH}
+fi
+
+witty version
+```
+
+> **与 `witty-release` Skill 的关系**：`witty-release` 描述完整发布流程（tag、双架构验证、上传构建系统），本 Skill 专注于开发阶段的快速 RPM 部署。`prepare-release.sh` 和 `prepare-vendor.sh` 在两个 Skill 中通用。
+
 ### 架构匹配规则
 
 宿主机与 openEuler VM 是**两个独立的原生构建环境**，架构无需匹配。VM 架构按**验证目标**选择——amd64 用于验证 `GOAMD64=v1` 兼容性，arm64 用于验证 ARM 服务器，两者都需验证则依次启动对应 VM。
@@ -92,6 +141,7 @@ orb run -m <vm> -u <user> sh -lc 'cd <work_dir> && build/linux-<arch>/witty vers
 - ❌ **用 `go run` 代替试运行**：试运行必须执行 `build/` 中刚产出的二进制
 - ❌ **用 `go build -o /dev/null` 跳过产物刷新**：测试验证流程必须刷新并验证 `build/` 二进制
 - ❌ **将构建产物写到 `build/` 以外**：禁止因终端工具限制而绕过正式构建流程，将二进制写到 `/tmp/`、项目根目录、随机文件名；如果无法正确构建，应**报告失败并停止**
+- ❌ **绕过 RPM 直接拷贝二进制**：禁止用 `cp` 将二进制拷贝到 VM 的 `/usr/bin/` 或 `/usr/local/bin/`；部署到 VM 必须走 RPM 打包 + dnf 安装流程
 
 ## 标准构建命令
 
@@ -275,6 +325,9 @@ GOAMD64=v1 bash scripts/build.sh
 - openEuler VM: go test -count=1 ./...
 - openEuler VM: bash scripts/build.sh → build/linux-<arch>/witty
 - openEuler VM: 试运行 build/linux-<arch>/witty version
+- openEuler VM: bash packaging/scripts/prepare-release.sh → build/release/
+- openEuler VM: rpmbuild -ba → ~/rpmbuild/RPMS/<arch>/witty-<version>.rpm
+- openEuler VM: dnf install/reinstall + witty version
 
 条件跳过:
 - shellcheck（模板目录尚未接入）

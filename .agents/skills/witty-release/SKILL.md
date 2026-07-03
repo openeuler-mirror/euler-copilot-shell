@@ -39,8 +39,11 @@ description: 执行版本发布流程。包括版本号管理、vendor tarball �
 5. **openEuler 远程 RPM 构建与验证**:
 
    ```bash
-   # 将 Source 文件放入 ~/rpmbuild/SOURCES/，拷贝 spec 后执行：
-   rpmbuild -ba packaging/euler-copilot-shell.spec
+   # Source 文件已在 build/release/ 下，直接构建
+   mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+   cp packaging/euler-copilot-shell.spec ~/rpmbuild/SPECS/
+   rpmbuild -ba ~/rpmbuild/SPECS/euler-copilot-shell.spec \
+     --define "_sourcedir $(pwd)/build/release"
    ```
 
 6. **上传至 openEuler 构建系统**: 将 Source0~Source4 和 spec 文件上传，由 CI 完成离线构建
@@ -56,15 +59,15 @@ description: 执行版本发布流程。包括版本号管理、vendor tarball �
 
 ```bash
 # 安装测试
-rpm -ivh witty-*.rpm
-# 升级测试
-rpm -Uvh witty-*.rpm
+dnf install -y ~/rpmbuild/RPMS/$(uname -m)/witty-*.rpm
+# 升级测试（同版本用 reinstall，跨版本用 install 即自动升级）
+dnf reinstall -y ~/rpmbuild/RPMS/$(uname -m)/witty-*.rpm
 # 文件清单验证
 rpm -ql witty
 # 版本信息
 witty version
 # 卸载
-rpm -e witty
+dnf remove -y witty
 ```
 
 ## 发布检查清单
