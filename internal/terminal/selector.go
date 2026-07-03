@@ -14,6 +14,10 @@ import (
 
 // Select renders an interactive list with arrow-key navigation and returns the
 // chosen index. It requires the input to be a terminal in raw mode.
+//
+// Rendering uses the alternate screen buffer (DECSET 1049) to avoid terminal
+// scrolling from interfering with cursor position tracking. On exit the main
+// screen buffer is restored automatically.
 func (p *linePrompter) Select(ctx context.Context, title string, options []SelectOption) (int, error) {
 	if len(options) == 0 {
 		return -1, fmt.Errorf("select: no options provided")
@@ -29,7 +33,13 @@ func (p *linePrompter) Select(ctx context.Context, title string, options []Selec
 	if err != nil {
 		return -1, fmt.Errorf("select: enter raw mode: %w", err)
 	}
-	defer func() { _ = term.Restore(fd, prevState) }()
+
+	// Enter alternate screen buffer before defer so exit happens last (LIFO).
+	_, _ = fmt.Fprint(p.out, "\x1b[?1049h\x1b[H")
+	defer func() {
+		_, _ = fmt.Fprint(p.out, "\x1b[?1049l")
+		_ = term.Restore(fd, prevState)
+	}()
 
 	// Wrap stdin with cancelreader so ctx.Done() can interrupt the blocking read.
 	cancelReader, err := cancelreader.NewReader(file)
@@ -50,7 +60,9 @@ func (p *linePrompter) Select(ctx context.Context, title string, options []Selec
 
 	// Print initial state.
 	selected := 0
-	renderSelect(p.out, title, options, selected)
+	isFirst := true
+	renderSelect(p.out, title, options, selected, isFirst)
+	isFirst = false
 
 	// Read keys.
 	buf := make([]byte, 6)
@@ -58,14 +70,11 @@ func (p *linePrompter) Select(ctx context.Context, title string, options []Selec
 		n, err := cancelReader.Read(buf)
 		if err != nil {
 			if errors.Is(err, cancelreader.ErrCanceled) && ctx.Err() != nil {
-				eraseSelect(p.out, len(options))
 				return -1, ctx.Err()
 			}
 			if errors.Is(err, io.EOF) {
-				eraseSelect(p.out, len(options))
 				return -1, nil
 			}
-			eraseSelect(p.out, len(options))
 			return -1, fmt.Errorf("select: read input: %w", err)
 		}
 
@@ -73,10 +82,8 @@ func (p *linePrompter) Select(ctx context.Context, title string, options []Selec
 
 		switch {
 		case isEnter(key):
-			eraseSelect(p.out, len(options))
 			return selected, nil
 		case isEscape(key):
-			eraseSelect(p.out, len(options))
 			return -1, nil
 		case isUp(key):
 			if selected > 0 {
@@ -87,38 +94,36 @@ func (p *linePrompter) Select(ctx context.Context, title string, options []Selec
 				selected++
 			}
 		case isCtrlC(key):
-			eraseSelect(p.out, len(options))
 			return -1, context.Canceled
 		default:
 			// number key quick-select: 1-9 map to indices 0-8
 			if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 				idx := int(key[0] - '1')
 				if idx < len(options) {
-					eraseSelect(p.out, len(options))
 					return idx, nil
 				}
 			}
 		}
 
-		renderSelect(p.out, title, options, selected)
+		renderSelect(p.out, title, options, selected, isFirst)
 	}
 }
 
 // renderSelect draws the select list at the current cursor position.
 // It assumes the terminal is in raw mode and uses ANSI escape codes.
-func renderSelect(out io.Writer, title string, options []SelectOption, selected int) {
-	// Move cursor back up to the first option line (or title line).
-	// We use a stable rendering: title + one line per option.
-	lines := len(options)
-	if title != "" {
-		lines++
-	}
-
+//
+// On the first render (isFirst=true), it prints at the current cursor position
+// without any clearing. On re-renders (isFirst=false), it moves to the top of
+// the screen with \x1b[H, clears to end of screen with \x1b[0J, and re-draws.
+//
+// The select loop uses the alternate screen buffer, so absolute positioning
+// (\x1b[H) is reliable — there is no scrollback to interfere.
+func renderSelect(out io.Writer, title string, options []SelectOption, selected int, isFirst bool) {
 	var b strings.Builder
 
-	// If this is a re-render, clear previous output and move cursor back up.
-	fmt.Fprintf(&b, "\x1b[%dA", lines) // move up
-	b.WriteString("\x1b[0J")           // clear from cursor to end
+	if !isFirst {
+		b.WriteString("\x1b[H\x1b[0J")
+	}
 
 	// Title.
 	if title != "" {
@@ -169,22 +174,7 @@ func renderSelect(out io.Writer, title string, options []SelectOption, selected 
 	b.WriteString("\r\n\x1b[2K")
 	b.WriteString("  ↑/↓ navigate  ↵ select  esc cancel")
 
-	// Move cursor back up to the first option.
-	cursorUp := len(options) + 1 // options + footer
-	if title != "" {
-		cursorUp++
-	}
-	fmt.Fprintf(&b, "\x1b[%dA", cursorUp)
-
 	_, _ = fmt.Fprint(out, b.String())
-}
-
-func eraseSelect(out io.Writer, optionCount int) {
-	// Clear the select UI: move cursor to start of options area and clear to end.
-	lines := optionCount + 1 // options + footer
-	if lines > 0 {
-		_, _ = fmt.Fprintf(out, "\x1b[%dB\x1b[%dA\x1b[0J", lines-1, lines)
-	}
 }
 
 func isEnter(key []byte) bool {
