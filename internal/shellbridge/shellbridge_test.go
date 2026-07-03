@@ -44,6 +44,8 @@ func TestClassify_RoutingRules(t *testing.T) {
 		{line: "explain how to check memory", want: RouteAgent},
 		{line: "how do I restart nginx", want: RouteAgent},
 		{line: "witty ask something", want: RouteShell},
+		{line: "where witty", want: RouteShell},
+		{line: "where ls", want: RouteShell},
 		{line: "/exit foo", want: RouteAgent},
 		{line: "/new extra", want: RouteAgent},
 		{line: "/help me", want: RouteAgent},

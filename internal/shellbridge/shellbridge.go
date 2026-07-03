@@ -167,7 +167,7 @@ func isKnownShellCommand(first string) bool {
 		"source", ".", "exec", "eval", "trap", "set", "shopt", "umask", "ulimit",
 		"dirs", "pushd", "popd", "ls", "cat", "grep", "egrep", "fgrep", "awk",
 		"sed", "find", "xargs", "sort", "uniq", "head", "tail", "cut", "tr", "wc",
-		"tee", "less", "more", "man", "which", "whereis", "stat", "file", "touch",
+		"tee", "less", "more", "man", "which", "where", "whereis", "stat", "file", "touch",
 		"mkdir", "rmdir", "rm", "cp", "mv", "ln", "chmod", "chown", "tar", "gzip",
 		"gunzip", "zip", "unzip", "ssh", "scp", "rsync", "curl", "wget", "git", "go",
 		"make", "gcc", "dnf", "yum", "rpm", "systemctl", "journalctl", "service", "ps",
