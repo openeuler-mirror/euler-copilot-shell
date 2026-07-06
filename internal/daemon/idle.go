@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -100,6 +101,9 @@ func isBusy(ctx context.Context, info ServerInfo) (bool, error) {
 		return false, err
 	}
 	req.Header.Set("Accept", "application/json")
+	if info.Password != "" {
+		req.Header.Set("Authorization", "Basic "+basicAuth(info.Password))
+	}
 
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Do(req)
@@ -141,6 +145,9 @@ func stopServer(ctx context.Context, info ServerInfo) error {
 		return err
 	}
 	req.Header.Set("Accept", "application/json")
+	if info.Password != "" {
+		req.Header.Set("Authorization", "Basic "+basicAuth(info.Password))
+	}
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
@@ -161,4 +168,11 @@ func stopServer(ctx context.Context, info ServerInfo) error {
 		return fmt.Errorf("find process %d: %w", info.PID, err)
 	}
 	return proc.Signal(os.Interrupt)
+}
+
+// basicAuth returns the Base64-encoded "opencode:<password>" value for
+// an HTTP Basic Authorization header.
+func basicAuth(password string) string {
+	auth := "opencode:" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
 }

@@ -12,16 +12,17 @@ import (
 	"time"
 )
 
-// ServerInfo describes a discovered opencode server process.
-type ServerInfo struct {
-	PID  int
-	Port int
-}
-
 // serverRecord tracks activity for a monitored server.
 type serverRecord struct {
 	info     ServerInfo
 	lastUsed time.Time
+}
+
+// ServerInfo describes a discovered opencode server process.
+type ServerInfo struct {
+	PID      int
+	Port     int
+	Password string // from /proc/<pid>/environ, empty if unknown
 }
 
 // Monitor discovers and tracks opencode server processes on the system.
@@ -71,8 +72,14 @@ func (m *Monitor) Discover() {
 		seen[port] = true
 		if rec, ok := m.servers[port]; ok {
 			rec.info.PID = pid
+			// Refresh password in case it changed.
+			if pw := readPassword(pid); pw != "" {
+				rec.info.Password = pw
+			}
 		} else {
-			m.servers[port] = &serverRecord{info: ServerInfo{PID: pid, Port: port}}
+			m.servers[port] = &serverRecord{
+				info: ServerInfo{PID: pid, Port: port, Password: readPassword(pid)},
+			}
 		}
 	}
 
@@ -138,4 +145,20 @@ func extractPort(cmdline string) int {
 	}
 	port, _ := strconv.Atoi(fields[0])
 	return port
+}
+
+// readPassword reads the OPENCODE_SERVER_PASSWORD from the process
+// environment of the given PID. The password is set by witty's server
+// manager when spawning the opencode process.
+func readPassword(pid int) string {
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/environ", pid))
+	if err != nil {
+		return ""
+	}
+	for _, entry := range strings.Split(string(data), "\x00") {
+		if after, ok := strings.CutPrefix(entry, "OPENCODE_SERVER_PASSWORD="); ok {
+			return after
+		}
+	}
+	return ""
 }
