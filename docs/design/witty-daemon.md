@@ -15,10 +15,9 @@
 设计一个最小化守护进程 `wittyd`：
 
 1. **开机自启**：作为 systemd 服务，随系统启动
-2. **管理 opencode server 生命周期**：启动、健康监控、停止
-3. **配置感知重启**：检测 `/etc/opencode/opencode.json` 变更后自动重启 server
-4. **真正的 idle timeout**：主动定时检查，idle 超时后立即停止 server
-5. **精简 witty CLI**：移除被 daemon 接管的功能
+2. **不启动 server**：wittyd 自身不启动任何 opencode server，server 仍由 witty CLI 按需 auto-start
+3. **系统级 idle 回收**：主动扫描所有用户的 opencode 进程，idle 超时后结束（但忙时不杀）
+4. **配置感知重启**：检测 `/etc/opencode/opencode.json` 变更后停止所有 server，下次使用自动拉新
 
 ---
 

@@ -9,11 +9,12 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-// ConfigWatcher watches the opencode configuration file and triggers a
-// server restart when it changes. This ensures that agent/skill/MCP config
-// changes installed via RPM take effect without manual intervention.
+// ConfigWatcher watches /etc/opencode/opencode.json and the config.d
+// directory. When config changes are detected (after RPM agent/skill
+// installs), it stops all tracked opencode servers so that the next
+// witty CLI invocation auto-starts fresh servers with the new config.
 type ConfigWatcher struct {
-	supervisor *Supervisor
+	monitor    *Monitor
 	configFile string
 	configDir  string
 	debounce   time.Duration
@@ -22,18 +23,14 @@ type ConfigWatcher struct {
 
 // ConfigWatcherOptions configures the config file watcher.
 type ConfigWatcherOptions struct {
-	// ConfigFile is the path to /etc/opencode/opencode.json.
 	ConfigFile string
-	// ConfigDir is the path to the config drop-in directory.
-	ConfigDir string
-	// Debounce is the minimum interval between restart triggers (default: 2s).
-	Debounce time.Duration
-	// Logger receives operational messages.
-	Logger *slog.Logger
+	ConfigDir  string
+	Debounce   time.Duration
+	Logger     *slog.Logger
 }
 
 // NewConfigWatcher creates a config watcher.
-func NewConfigWatcher(supervisor *Supervisor, opts ConfigWatcherOptions) *ConfigWatcher {
+func NewConfigWatcher(monitor *Monitor, opts ConfigWatcherOptions) *ConfigWatcher {
 	debounce := opts.Debounce
 	if debounce <= 0 {
 		debounce = 2 * time.Second
@@ -43,7 +40,7 @@ func NewConfigWatcher(supervisor *Supervisor, opts ConfigWatcherOptions) *Config
 		logger = slog.Default()
 	}
 	return &ConfigWatcher{
-		supervisor: supervisor,
+		monitor:    monitor,
 		configFile: opts.ConfigFile,
 		configDir:  opts.ConfigDir,
 		debounce:   debounce,
@@ -60,9 +57,6 @@ func (w *ConfigWatcher) Run(ctx context.Context) error {
 	defer watcher.Close()
 
 	if err := watcher.Add(w.configFile); err != nil {
-		// Config file may not exist yet (e.g. on macOS dev, or before
-		// witty-agent-loader creates it). Log and continue without
-		// watching the file; the directory watch may still catch changes.
 		w.logger.Warn("cannot watch config file, will retry on events from config dir",
 			"path", w.configFile, "error", err)
 	} else {
@@ -92,7 +86,7 @@ func (w *ConfigWatcher) Run(ctx context.Context) error {
 			if !ok {
 				return nil
 			}
-			if !isRelevantEvent(event) {
+			if !isRelevant(event) {
 				continue
 			}
 			w.logger.Debug("config change detected", "path", event.Name, "op", event.Op)
@@ -112,16 +106,19 @@ func (w *ConfigWatcher) Run(ctx context.Context) error {
 		case <-timerC:
 			timer = nil
 			timerC = nil
-			w.logger.Info("restarting server due to config change")
-			if _, err := w.supervisor.Restart(ctx); err != nil {
-				w.logger.Error("config-triggered restart failed", "error", err)
+			w.logger.Info("config changed, stopping all servers for restart on next use")
+			w.monitor.Discover()
+			for _, srv := range w.monitor.All() {
+				if err := stopServer(ctx, srv); err != nil {
+					w.logger.Error("failed to stop server after config change", "port", srv.Port, "error", err)
+				} else {
+					w.logger.Info("stopped server for config refresh", "port", srv.Port)
+				}
 			}
 		}
 	}
 }
 
-// isRelevantEvent returns true for events that indicate a config file was
-// created, modified, or removed.
-func isRelevantEvent(e fsnotify.Event) bool {
+func isRelevant(e fsnotify.Event) bool {
 	return e.Has(fsnotify.Create) || e.Has(fsnotify.Write) || e.Has(fsnotify.Remove) || e.Has(fsnotify.Rename)
 }
