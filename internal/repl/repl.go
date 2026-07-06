@@ -349,13 +349,19 @@ func (r *repl) handleAgentControl(ctx context.Context, action shellbridge.Contro
 			return true, fmt.Errorf("no agents available from server")
 		}
 
-		options := make([]terminal.ListOption, len(agents))
-		for i, a := range agents {
+		options := make([]terminal.ListOption, 0, len(agents))
+		for _, a := range agents {
+			if a.Hidden != nil && *a.Hidden {
+				continue
+			}
 			label := a.Name
 			if a.Description != nil && *a.Description != "" {
 				label = fmt.Sprintf("%s  — %s", a.Name, *a.Description)
 			}
-			options[i] = terminal.ListOption{Label: label, Value: a.Name}
+			options = append(options, terminal.ListOption{Label: label, Value: a.Name})
+		}
+		if len(options) == 0 {
+			return true, fmt.Errorf("no visible agents available from server")
 		}
 
 		_, _ = fmt.Fprintln(r.stdout) // move to new line before selector

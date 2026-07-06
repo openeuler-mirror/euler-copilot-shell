@@ -119,13 +119,19 @@ func runShellAgentControl(cmd *cobra.Command, opts *rootOptions, action shellbri
 			return fmt.Errorf("no agents available")
 		}
 
-		options := make([]terminal.ListOption, len(agents))
-		for i, a := range agents {
+		options := make([]terminal.ListOption, 0, len(agents))
+		for _, a := range agents {
+			if a.Hidden != nil && *a.Hidden {
+				continue
+			}
 			label := a.Name
 			if a.Description != nil && *a.Description != "" {
 				label = fmt.Sprintf("%s  — %s", a.Name, *a.Description)
 			}
-			options[i] = terminal.ListOption{Label: label, Value: a.Name}
+			options = append(options, terminal.ListOption{Label: label, Value: a.Name})
+		}
+		if len(options) == 0 {
+			return fmt.Errorf("no visible agents available")
 		}
 
 		selected, ok := terminal.RunSelect(cmd.Context(), inFile, outFile, "Select agent:", options)
