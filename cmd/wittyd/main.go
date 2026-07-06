@@ -10,16 +10,20 @@ import (
 	"time"
 
 	"atomgit.com/openeuler/euler-copilot-shell/internal/daemon"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/server"
 )
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	// Resolve state directory. When running as a systemd service, $HOME
-	// may not be set. Use /var/lib/witty as a configurable fallback.
-	stateDir := os.Getenv("WITTY_STATE_DIR")
-	if stateDir == "" {
-		stateDir = "/var/lib/witty"
+	// Resolve state directory. Try the standard paths first so wittyd
+	// can adopt an existing server previously managed by the witty CLI.
+	// When running as a systemd service without $HOME, try /root first,
+	// then fall back to /var/lib/witty.
+	stateDir, err := server.DefaultServerStateDir(os.LookupEnv, os.UserHomeDir)
+	if err != nil {
+		// systemd environment: try root user's state, then fall back.
+		stateDir = resolveSystemdStateDir()
 	}
 
 	supervisor, err := daemon.NewSupervisor(daemon.SupervisorOptions{
@@ -103,4 +107,21 @@ func main() {
 		fmt.Fprintln(os.Stderr, "wittyd:", firstErr)
 		os.Exit(1)
 	}
+}
+
+// resolveSystemdStateDir tries known state file locations for the root user
+// when running as a systemd service (no $HOME). It returns the first
+// directory that already contains a server-state.json, or falls back to
+// /var/lib/witty.
+func resolveSystemdStateDir() string {
+	candidates := []string{
+		"/root/.local/state/witty",
+		"/var/lib/witty",
+	}
+	for _, dir := range candidates {
+		if _, err := os.Stat(dir + "/server-state.json"); err == nil {
+			return dir
+		}
+	}
+	return "/var/lib/witty"
 }
