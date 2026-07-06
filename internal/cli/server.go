@@ -13,6 +13,7 @@ func newServerCommand(opts *rootOptions) *cobra.Command {
 	}
 	cmd.AddCommand(newServerStatusCommand(opts))
 	cmd.AddCommand(newServerStopCommand(opts))
+	cmd.AddCommand(newServerRestartCommand(opts))
 	return cmd
 }
 
@@ -89,6 +90,44 @@ func newServerStopCommand(opts *rootOptions) *cobra.Command {
 				return err
 			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), "Server stopped.")
+			return err
+		},
+	}
+}
+
+func newServerRestartCommand(opts *rootOptions) *cobra.Command {
+	return &cobra.Command{
+		Use:   "restart",
+		Short: "Restart the opencode server to pick up config changes",
+		Long: "Stop the currently running opencode server and start a fresh one. " +
+			"Use this after installing or removing agent/skill/MCP config files " +
+			"so the server picks up the latest configuration.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			// Load app WITHOUT skipServerEnsure (we want Ensure after stop).
+			container, err := opts.loadApp(cmd.Context(), cmd)
+			if err != nil {
+				return err
+			}
+			defer container.Close()
+			mgr := container.ServerManager()
+			if mgr == nil {
+				_, err = fmt.Fprintln(cmd.OutOrStdout(),
+					"Server management is not available (using explicit --server-url).")
+				return err
+			}
+
+			// 1. Stop the existing server.
+			if err := mgr.Stop(cmd.Context()); err != nil {
+				return fmt.Errorf("stop server: %w", err)
+			}
+
+			// 2. Start a fresh server via Ensure.
+			conn, err := mgr.Ensure(cmd.Context())
+			if err != nil {
+				return fmt.Errorf("start server: %w", err)
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Server restarted on %s.\n", conn.URL)
 			return err
 		},
 	}

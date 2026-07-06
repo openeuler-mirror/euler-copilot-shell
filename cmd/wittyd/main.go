@@ -10,17 +10,16 @@ import (
 	"time"
 
 	"atomgit.com/openeuler/euler-copilot-shell/internal/daemon"
-	"atomgit.com/openeuler/euler-copilot-shell/internal/server"
 )
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	// Resolve state directory.
-	stateDir, err := server.DefaultServerStateDir(os.LookupEnv, os.UserHomeDir)
-	if err != nil {
-		logger.Error("resolve state dir", "error", err)
-		os.Exit(1)
+	// Resolve state directory. When running as a systemd service, $HOME
+	// may not be set. Use /var/lib/witty as a configurable fallback.
+	stateDir := os.Getenv("WITTY_STATE_DIR")
+	if stateDir == "" {
+		stateDir = "/var/lib/witty"
 	}
 
 	supervisor, err := daemon.NewSupervisor(daemon.SupervisorOptions{
