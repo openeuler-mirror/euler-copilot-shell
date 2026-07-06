@@ -1,0 +1,21 @@
+[Unit]
+Description=Witty OpenCode Server Daemon
+Documentation=https://gitee.com/openeuler/euler-copilot-shell
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/wittyd
+Restart=on-failure
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/etc/opencode /run/wittyd /var/lib/witty
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

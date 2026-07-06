@@ -120,12 +120,25 @@ export GOAMD64=v1
     -o witty \
     %{import_path}/cmd/witty
 
+%{__goroot}/bin/go build \
+    -mod=vendor \
+    -trimpath \
+    -ldflags="-s -w
+        -X main.version=%{version}
+        -X main.commit=%{commit}
+        -X main.date=%{date}" \
+    -o wittyd \
+    %{import_path}/cmd/wittyd
+
 %install
 install -Dpm 0755 witty %{buildroot}%{_bindir}/witty
+install -Dpm 0755 wittyd %{buildroot}%{_bindir}/wittyd
 install -Dpm 0644 packaging/config.toml %{buildroot}%{_sysconfdir}/witty/config.toml
+install -Dpm 0644 packaging/daemon.toml %{buildroot}%{_sysconfdir}/witty/daemon.toml
 install -Dpm 0644 packaging/witty.bash-completion %{buildroot}%{_datadir}/bash-completion/completions/witty
 install -Dpm 0644 packaging/profile.d/witty.sh %{buildroot}%{_sysconfdir}/profile.d/witty.sh
 install -Dpm 0644 packaging/witty-epol-update.repo %{buildroot}%{_sysconfdir}/yum.repos.d/witty-epol-update.repo
+install -Dpm 0644 packaging/wittyd.service %{buildroot}%{_unitdir}/wittyd.service
 
 # Install witty-agent-loader assets
 cd %{witty_loader_source_dir}
@@ -157,8 +170,11 @@ install -Dm644 "plugins/logo/witty-logo.tsx" "%{buildroot}%{witty_managed_logo}"
 %license LICENSE
 %doc README.md
 %{_bindir}/witty
+%{_bindir}/wittyd
+%{_unitdir}/wittyd.service
 %dir %{_sysconfdir}/witty
 %config(noreplace) %{_sysconfdir}/witty/config.toml
+%config(noreplace) %{_sysconfdir}/witty/daemon.toml
 %{_datadir}/bash-completion/completions/witty
 %{_sysconfdir}/profile.d/witty.sh
 
@@ -190,6 +206,15 @@ install -Dm644 "plugins/logo/witty-logo.tsx" "%{buildroot}%{witty_managed_logo}"
 
 %transfiletriggerpostun -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills}
 %{witty_managed_libexec}/run-managed-config-hook.sh transfiletriggerpostun
+
+%post -n witty
+%systemd_post wittyd.service
+
+%preun -n witty
+%systemd_preun wittyd.service
+
+%postun -n witty
+%systemd_postun_with_restart wittyd.service
 
 %changelog
 * Tue Jun 30 2026 Witty Team <intelligence@openeuler.org> - 3.0.0-2

@@ -1,0 +1,22 @@
+# wittyd daemon configuration
+# /etc/witty/daemon.toml
+
+# Unix socket path for witty CLI communication
+socket_path = "/run/wittyd/wittyd.sock"
+
+[server]
+# Preferred port (0 = auto-select from 4096)
+port = 0
+# Bind hostname
+hostname = "127.0.0.1"
+# Auto-start server on daemon startup
+auto_start = true
+
+# Idle timeout: stop server after this duration of no activity
+# Set to 0 to disable
+idle_timeout_minutes = 30
+
+# Config file to watch for changes (triggers graceful restart)
+config_watch_file = "/etc/opencode/opencode.json"
+# Config directory to watch for agent/skill additions or removals
+config_watch_dir = "/usr/share/witty/opencode/config.d"

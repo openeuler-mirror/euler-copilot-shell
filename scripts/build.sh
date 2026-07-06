@@ -23,5 +23,6 @@ if [ "$GOOS" = "windows" ]; then
 fi
 
 CGO_ENABLED=0 go build -ldflags="-s -w" -o "${OUTDIR}/${BINARY}" ./cmd/witty
+CGO_ENABLED=0 go build -ldflags="-s -w" -o "${OUTDIR}/wittyd" ./cmd/wittyd
 
 echo "${OUTDIR}/${BINARY}"
