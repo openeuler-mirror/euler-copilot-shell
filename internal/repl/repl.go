@@ -349,19 +349,18 @@ func (r *repl) handleAgentControl(ctx context.Context, action shellbridge.Contro
 			return true, fmt.Errorf("no agents available from server")
 		}
 
-		options := make([]terminal.ListOption, 0, len(agents))
-		for _, a := range agents {
-			if a.Hidden != nil && *a.Hidden {
-				continue
-			}
+		agents = visibleAgents(agents)
+		if len(agents) == 0 {
+			return true, fmt.Errorf("no visible agents available from server")
+		}
+
+		options := make([]terminal.ListOption, len(agents))
+		for i, a := range agents {
 			label := a.Name
 			if a.Description != nil && *a.Description != "" {
 				label = fmt.Sprintf("%s  — %s", a.Name, *a.Description)
 			}
-			options = append(options, terminal.ListOption{Label: label, Value: a.Name})
-		}
-		if len(options) == 0 {
-			return true, fmt.Errorf("no visible agents available from server")
+			options[i] = terminal.ListOption{Label: label, Value: a.Name}
 		}
 
 		_, _ = fmt.Fprintln(r.stdout) // move to new line before selector
@@ -522,6 +521,22 @@ func (r *repl) findModel(ctx context.Context, providerID, modelID string) (*tran
 		}
 	}
 	return nil, nil // model not found; variants assumed empty
+}
+
+// visibleAgents filters out agents that should not appear in the interactive
+// agent selector: those explicitly hidden or marked as subagent-only.
+func visibleAgents(agents []transport.Agent) []transport.Agent {
+	out := make([]transport.Agent, 0, len(agents))
+	for _, a := range agents {
+		if a.Hidden != nil && *a.Hidden {
+			continue
+		}
+		if a.Mode == string(transport.AgentModeSubagent) {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
 }
 
 func formatUnixTime(ts int) string {

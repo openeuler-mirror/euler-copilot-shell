@@ -618,3 +618,36 @@ var _ Loop = (*repl)(nil)
 
 // Ensure terminal.Prompter is not required (scanner-based REPL).
 var _ = terminal.Prompter(nil)
+
+func TestVisibleAgents_FiltersSubagentAndHidden(t *testing.T) {
+	agents := []transport.Agent{
+		{Name: "build", Mode: "primary"},
+		{Name: "plan", Mode: "primary"},
+		{Name: "explore", Mode: string(transport.AgentModeSubagent)},
+		{Name: "general", Mode: string(transport.AgentModeSubagent)},
+		{Name: "compaction", Mode: "primary", Hidden: boolPtr(true)},
+		{Name: "custom-agent", Mode: "all"},
+		{Name: "chinese-agent", Mode: "all"},
+	}
+
+	result := visibleAgents(agents)
+
+	names := make([]string, len(result))
+	for i, a := range result {
+		names[i] = a.Name
+	}
+
+	// Should only keep: build, plan, custom-agent, chinese-agent
+	if len(result) != 4 {
+		t.Fatalf("visibleAgents count = %d, want 4; got: %v", len(result), names)
+	}
+
+	want := map[string]bool{"build": true, "plan": true, "custom-agent": true, "chinese-agent": true}
+	for _, a := range result {
+		if !want[a.Name] {
+			t.Errorf("unexpected visible agent: %s (mode=%s)", a.Name, a.Mode)
+		}
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }

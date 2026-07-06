@@ -124,6 +124,9 @@ func runShellAgentControl(cmd *cobra.Command, opts *rootOptions, action shellbri
 			if a.Hidden != nil && *a.Hidden {
 				continue
 			}
+			if a.Mode == string(transport.AgentModeSubagent) {
+				continue
+			}
 			label := a.Name
 			if a.Description != nil && *a.Description != "" {
 				label = fmt.Sprintf("%s  — %s", a.Name, *a.Description)

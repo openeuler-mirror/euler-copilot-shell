@@ -36,6 +36,12 @@ type ProviderAuthMethod = generated.ProviderAuthMethod
 type Agent = generated.Agent
 type Model = generated.Model
 
+const (
+	AgentModeSubagent = generated.AgentModeSubagent
+	AgentModePrimary  = generated.AgentModePrimary
+	AgentModeAll      = generated.AgentModeAll
+)
+
 type ProviderAuthMethods map[string][]ProviderAuthMethod
 
 // ProviderModels extracts Model objects from a Provider's Models map.
