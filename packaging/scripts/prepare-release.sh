@@ -95,7 +95,9 @@ fi
 
 STAGING="$(mktemp -d)"
 cp -a "${AGENT_LOADER_SRC}/bin"      "${STAGING}/bin"
-cp -a "${AGENT_LOADER_SRC}/plugins"  "${STAGING}/plugins"
+if [ -d "${AGENT_LOADER_SRC}/plugins" ]; then
+  cp -a "${AGENT_LOADER_SRC}/plugins"  "${STAGING}/plugins"
+fi
 cp -a "${AGENT_LOADER_SRC}/docs"     "${STAGING}/docs"
 cp    "${AGENT_LOADER_SRC}/README.md"   "${STAGING}/README.md"
 cp    "${AGENT_LOADER_SRC}/README.en.md" "${STAGING}/README.en.md"
