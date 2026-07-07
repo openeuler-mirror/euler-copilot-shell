@@ -17,16 +17,16 @@ import path from "node:path";
 import process from "node:process";
 
 const CONFIG_SCHEMA_URL = "https://opencode.ai/config.json";
-const TUI_SCHEMA_URL = "https://opencode.ai/tui.json";
 const FILE_TOKEN_RE = /\{file:([^}]+)\}/g;
+// Namespaces that must not have duplicate keys across drop-ins.
+// "plugin" is intentionally excluded: multiple sub-packages may each declare
+// their own plugin entries; the arrays are deduplicated and merged.
 const CONFLICT_NAMESPACES = ["agent", "command", "mode", "mcp"];
 
 const DEFAULTS = {
   configDropins: "/usr/share/witty/opencode/config.d",
   skillsRoot: "/usr/share/witty/opencode/skills",
   opencodeOutput: "/etc/opencode/opencode.json",
-  tuiOutput: "/etc/opencode/tui.json",
-  logoPlugin: "/usr/share/witty/opencode/plugins/logo/witty-logo.tsx",
 };
 
 const OPTION_ALIASES = {
@@ -40,8 +40,6 @@ Options:
   --agent-dropins <dir>    Deprecated alias of --config-dropins.
   --skills-root <dir>      Root directory for shared skill bundles.
   --opencode-output <file> Output path for /etc/opencode/opencode.json.
-  --tui-output <file>      Output path for /etc/opencode/tui.json.
-  --logo-plugin <file>     Absolute plugin path to install into tui.json.
   --dry-run                Print generated JSON to stdout without writing.
   --help                   Show this message.
 `;
@@ -245,18 +243,6 @@ async function buildManagedConfig(options) {
   return config;
 }
 
-function buildTuiConfig(options) {
-  const config = {
-    $schema: TUI_SCHEMA_URL,
-  };
-
-  if (options.logoPlugin) {
-    config.plugin = [options.logoPlugin];
-  }
-
-  return config;
-}
-
 async function writeJsonAtomic(outputPath, value) {
   const dirPath = path.dirname(outputPath);
   await fs.mkdir(dirPath, { recursive: true });
@@ -277,18 +263,14 @@ async function main() {
   }
 
   const opencodeConfig = await buildManagedConfig(options);
-  const tuiConfig = buildTuiConfig(options);
 
   if (options.dryRun) {
-    process.stdout.write(
-      JSON.stringify({ opencodeConfig, tuiConfig }, null, 2)
-    );
+    process.stdout.write(JSON.stringify(opencodeConfig, null, 2));
     process.stdout.write("\n");
     return;
   }
 
   await writeJsonAtomic(options.opencodeOutput, opencodeConfig);
-  await writeJsonAtomic(options.tuiOutput, tuiConfig);
 }
 
 main().catch((error) => {

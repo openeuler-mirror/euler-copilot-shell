@@ -20,7 +20,6 @@
 %global witty_managed_agents %{witty_managed_root}/agents
 %global witty_managed_skills %{witty_managed_root}/skills
 %global witty_managed_plugins %{witty_managed_root}/plugins
-%global witty_managed_logo %{witty_managed_plugins}/logo/witty-logo.tsx
 %global witty_managed_libexec %{_libexecdir}/witty-opencode
 %global witty_loader_source_dir %{_builddir}/witty-agent-loader-%{version}
 
@@ -80,8 +79,8 @@ Recommends:     nodejs >= 20
 %description -n witty-agent-loader
 This package ships the managed-config assets for witty-opencode on openEuler.
 It owns the managed resource directories, the config generator, and
-the RPM transaction hooks that rebuild /etc/opencode/opencode.json and
-/etc/opencode/tui.json from installed config fragments and resource bundles.
+the RPM transaction hooks that rebuild /etc/opencode/opencode.json
+from installed config fragments and resource bundles.
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -157,8 +156,7 @@ install -d "%{buildroot}%{_sysconfdir}/opencode"
 install -d "%{buildroot}%{witty_managed_config_dropins}"
 install -d "%{buildroot}%{witty_managed_agents}"
 install -d "%{buildroot}%{witty_managed_skills}"
-install -d "%{buildroot}%{witty_managed_plugins}/logo"
-install -Dm644 "plugins/logo/witty-logo.tsx" "%{buildroot}%{witty_managed_logo}"
+install -d "%{buildroot}%{witty_managed_plugins}"
 
 %check
 %{buildroot}%{_bindir}/witty version
@@ -187,7 +185,6 @@ install -Dm644 "plugins/logo/witty-logo.tsx" "%{buildroot}%{witty_managed_logo}"
 %doc %{_docdir}/witty-agent-loader/base-source-layout.md
 %dir %{_sysconfdir}/opencode
 %ghost %config(noreplace) %{_sysconfdir}/opencode/opencode.json
-%ghost %config(noreplace) %{_sysconfdir}/opencode/tui.json
 %{witty_managed_libexec}/rebuild-managed-config.mjs
 %{witty_managed_libexec}/run-managed-config-hook.sh
 %dir %{witty_managed_root}
@@ -195,16 +192,14 @@ install -Dm644 "plugins/logo/witty-logo.tsx" "%{buildroot}%{witty_managed_logo}"
 %dir %{witty_managed_agents}
 %dir %{witty_managed_skills}
 %dir %{witty_managed_plugins}
-%dir %{witty_managed_plugins}/logo
-%{witty_managed_logo}
 
 %posttrans -n witty-agent-loader
 %{witty_managed_libexec}/run-managed-config-hook.sh posttrans
 
-%transfiletriggerin -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills}
+%transfiletriggerin -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills} %{witty_managed_plugins}
 %{witty_managed_libexec}/run-managed-config-hook.sh transfiletriggerin
 
-%transfiletriggerpostun -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills}
+%transfiletriggerpostun -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills} %{witty_managed_plugins}
 %{witty_managed_libexec}/run-managed-config-hook.sh transfiletriggerpostun
 
 %post -n witty

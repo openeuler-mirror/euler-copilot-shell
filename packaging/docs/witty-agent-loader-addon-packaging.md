@@ -1,11 +1,11 @@
-# witty-agent-loader Agent / Skill / 配置子包打包指南
+# witty-agent-loader Agent / Skill / Plugin 子包打包指南
 
 这份文档面向**在其他仓库中维护自己 RPM 子包**的作者。
 
 目标很简单：
 
-- 子包只负责安装自己的 Agent / Skill / 配置资源
-- `witty-agent-loader` 负责统一重建 `/etc/opencode/opencode.json` 与 `/etc/opencode/tui.json`
+- 子包只负责安装自己的 Agent / Skill / Plugin / 配置资源
+- `witty-agent-loader` 负责统一重建 `/etc/opencode/opencode.json`
 - 子包之间不要直接改写托管配置文件，也不要互相抢 ownership
 
 一句话版本：**把资源放到约定目录，剩下的交给 loader 包。**
@@ -32,22 +32,22 @@
 - `/usr/share/witty/opencode/config.d/<rpm-name>.json`
 - `/usr/share/witty/opencode/agents/<rpm-name>/...`
 - `/usr/share/witty/opencode/skills/<rpm-name>/...`
+- `/usr/share/witty/opencode/plugins/<rpm-name>/...`（可选，用于部署 Plugin 文件）
 
 其中：
 
 - `config.d` 存放**标准 `opencode.json` 片段**
 - `agents/` 存放 Prompt Markdown 或其它被 `{file:...}` 引用的资源
 - `skills/` 存放 Skill 目录树
+- `plugins/` 存放 Plugin 文件（如 Bootstrap Plugin），需在 config.d 碎片中通过 `plugin` 字段声明加载路径
 
 ## 子包不应该做什么
 
 请不要在子包里做下面这些事：
 
 - 不要拥有或直接安装 `/etc/opencode/opencode.json`
-- 不要拥有或直接安装 `/etc/opencode/tui.json`
 - 不要在 `%post` / `%postun` 里自己改 JSON
-- 不要覆盖 `/usr/share/witty/opencode/plugins/logo/witty-logo.tsx`
-- 不要假设自己是唯一的 Agent / Skill 提供者
+- 不要假设自己是唯一的 Agent / Skill / Plugin 提供者
 
 这些操作会导致多包并存、升级和卸载时产生文件冲突或配置残留。
 
@@ -55,7 +55,7 @@
 
 `config.d/*.json` 必须是**标准 schema 兼容的 `opencode.json` 片段**。
 
-示例：
+示例（Agent + MCP）：
 
 ```json
 {
@@ -76,17 +76,39 @@
 }
 ```
 
+示例（Plugin 声明）：
+
+```json
+{
+  "plugin": [
+    "file:///usr/lib/vendor-example/vendor/dist/index.js",
+    "file:///usr/share/witty/opencode/plugins/vendor-example/bootstrap.js"
+  ]
+}
+```
+
 注意事项：
 
 - 相对 `{file:...}` 路径会以**当前 drop-in 文件所在目录**为基准解析
 - 生成器会把这些路径改写成绝对路径再写入最终的 `/etc/opencode/opencode.json`
-- 可以提供 `agent`、`mcp`、`provider`、`permission`、`command` 等标准字段
+- 可以提供 `agent`、`mcp`、`provider`、`permission`、`command`、`plugin` 等标准字段
 - 当前受保护的重复命名空间包括：`agent`、`command`、`mode`、`mcp`
+- `plugin` 字段是数组，多个子包的 plugin 条目会被去重合并，不会触发冲突报错
 
 建议始终使用带前缀的唯一名称，例如：
 
 - `vendor/example`
 - `suite:reviewer`
+
+## Plugin 子包
+
+如果子包需要加载 OpenCode Plugin（例如动态 Agent 工厂、Bootstrap Plugin 等）：
+
+1. 在 config.d 碎片中声明 `plugin` 数组，条目为 `file://` 路径或 npm 包名
+2. Plugin 文件可安装到 `/usr/share/witty/opencode/plugins/<rpm-name>/`，也可放在子包自有路径（如 `/usr/lib/<rpm-name>/vendor/`）
+3. Plugin 文件的安装/卸载会被 `%transfiletriggerin` / `%transfiletriggerpostun` 监控，自动触发配置重建
+
+`plugin` 字段不在冲突命名空间中，多个子包可以各自声明自己的 plugin 条目。
 
 ## 推荐的子包 spec 结构
 
@@ -97,7 +119,7 @@
 - 不写任何 trigger
 - 只在 `%install` 里安装资源文件
 
-因为 `witty-agent-loader` 已经通过文件触发器监控这些目录；只要你的文件落到约定路径，事务结束后它就会自动重建托管配置。
+因为 `witty-agent-loader` 已经通过文件触发器监控 `config.d`、`agents`、`skills`、`plugins` 目录；只要你的文件落到约定路径，事务结束后它就会自动重建托管配置。
 
 一个最小化示例：
 
@@ -138,7 +160,7 @@ cp -a skills/. %{buildroot}/usr/share/witty/opencode/skills/%{name}/
 只有在下面这种场景下，才考虑在子包里加入一个很薄的 `%posttrans` 回退：
 
 - 目标发行版/策略不允许或不依赖 loader 包的 `transfiletrigger`
-- 你的部署环境明确要求“每个子包自己确保事务完成后重建一次配置”
+- 你的部署环境明确要求"每个子包自己确保事务完成后重建一次配置"
 
 推荐的可选回退写法：
 
@@ -163,19 +185,20 @@ fi
 
 - 安装时只增加自己的文件
 - 卸载时只删除自己的文件
-- 不留下对 `/etc/opencode/*.json` 的残留修改
+- 不留下对 `/etc/opencode/opencode.json` 的残留修改
 
-也就是说，子包应尽量表现得像“声明式资源包”，而不是“事务脚本包”。
+也就是说，子包应尽量表现得像"声明式资源包"，而不是"事务脚本包"。
 
 ## 与 loader 包的契约边界
 
 当你在外部仓库维护子包时，可以把下面这些看作稳定契约：
 
 - 由 `witty-agent-loader` 负责托管 `/etc/opencode/opencode.json`
-- 由 `witty-agent-loader` 负责托管 `/etc/opencode/tui.json`
 - `skills.paths` 会指向 `/usr/share/witty/opencode/skills`
 - `config.d` 片段会被聚合成标准 `opencode.json`
 - 相对 `{file:...}` 会被改写为绝对路径
+- `plugin` 数组会被去重合并到 `/etc/opencode/opencode.json`
+- `config.d`、`agents`、`skills`、`plugins` 目录均被文件触发器监控
 
 ## 发布前自查清单
 
@@ -185,7 +208,7 @@ fi
 - 顶层字段是否符合 `opencode.json` schema
 - `{file:...}` 是否都能在安装后解析到真实文件
 - agent / mcp / command / mode 名称是否带唯一前缀
+- `plugin` 条目中的 `file://` 路径是否在安装后真实存在
 - spec 是否没有直接修改 `/etc/opencode/*.json`
-- spec 是否没有覆盖 logo 插件
 
 如果这些都满足，你的子包通常就能和其他维护者的包和平共处。

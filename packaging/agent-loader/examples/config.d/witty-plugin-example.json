@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "file:///usr/lib/witty-opencode-agent-example/vendor/dist/index.js",
+    "file:///usr/share/witty/opencode/plugins/witty-opencode-agent-example/bootstrap.js"
+  ],
+  "skill": {
+    "paths": ["/usr/share/witty/opencode/skills/witty-opencode-agent-example"]
+  }
+}

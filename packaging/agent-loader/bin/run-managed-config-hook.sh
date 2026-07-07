@@ -19,8 +19,6 @@ GENERATOR="${WITTY_OPENCODE_MANAGED_CONFIG_GENERATOR:-/usr/libexec/witty-opencod
 CONFIG_DROPINS="${WITTY_OPENCODE_CONFIG_DROPINS:-${WITTY_OPENCODE_AGENT_DROPINS:-/usr/share/witty/opencode/config.d}}"
 SKILLS_ROOT="${WITTY_OPENCODE_SKILLS_ROOT:-/usr/share/witty/opencode/skills}"
 OPENCODE_OUTPUT="${WITTY_OPENCODE_CONFIG_OUTPUT:-/etc/opencode/opencode.json}"
-TUI_OUTPUT="${WITTY_OPENCODE_TUI_OUTPUT:-/etc/opencode/tui.json}"
-LOGO_PLUGIN="${WITTY_OPENCODE_LOGO_PLUGIN:-/usr/share/witty/opencode/plugins/logo/witty-logo.tsx}"
 STRICT="${WITTY_OPENCODE_RPM_HOOK_STRICT:-0}"
 
 log() {
@@ -48,9 +46,7 @@ if [ ! -x "$GENERATOR" ]; then
         node "$GENERATOR" \
             --config-dropins "$CONFIG_DROPINS" \
             --skills-root "$SKILLS_ROOT" \
-            --opencode-output "$OPENCODE_OUTPUT" \
-            --tui-output "$TUI_OUTPUT" \
-            --logo-plugin "$LOGO_PLUGIN"
+            --opencode-output "$OPENCODE_OUTPUT"
     else
         finish 1 "generator is not executable and node is not available"
     fi
@@ -58,9 +54,7 @@ else
     "$GENERATOR" \
         --config-dropins "$CONFIG_DROPINS" \
         --skills-root "$SKILLS_ROOT" \
-        --opencode-output "$OPENCODE_OUTPUT" \
-        --tui-output "$TUI_OUTPUT" \
-        --logo-plugin "$LOGO_PLUGIN"
+        --opencode-output "$OPENCODE_OUTPUT"
 fi
 
 status="$?"
