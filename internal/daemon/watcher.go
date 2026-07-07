@@ -54,7 +54,7 @@ func (w *ConfigWatcher) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("create fsnotify watcher: %w", err)
 	}
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	if err := watcher.Add(w.configFile); err != nil {
 		w.logger.Warn("cannot watch config file, will retry on events from config dir",

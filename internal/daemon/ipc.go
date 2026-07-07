@@ -82,7 +82,7 @@ func (s *IPCServer) Listen(ctx context.Context) error {
 		<-ctx.Done()
 		s.mu.Lock()
 		if s.listener != nil {
-			s.listener.Close()
+			_ = s.listener.Close()
 		}
 		s.mu.Unlock()
 	}()
@@ -102,7 +102,7 @@ func (s *IPCServer) Listen(ctx context.Context) error {
 }
 
 func (s *IPCServer) handle(conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		var req request
@@ -111,6 +111,9 @@ func (s *IPCServer) handle(conn net.Conn) {
 			continue
 		}
 		s.reply(conn, s.dispatch(req))
+	}
+	if err := scanner.Err(); err != nil {
+		s.logger.Warn("IPC scanner error", "error", err)
 	}
 }
 

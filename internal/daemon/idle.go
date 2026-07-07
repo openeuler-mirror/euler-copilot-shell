@@ -110,7 +110,7 @@ func isBusy(ctx context.Context, info ServerInfo) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return false, nil
@@ -152,11 +152,11 @@ func stopServer(ctx context.Context, info ServerInfo) error {
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err == nil && resp.StatusCode == http.StatusOK {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil
 	}
 	if resp != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 
 	// Fallback: SIGTERM.
