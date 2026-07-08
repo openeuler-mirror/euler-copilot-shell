@@ -199,8 +199,13 @@ install -d "%{buildroot}%{witty_managed_plugins}"
 %transfiletriggerin -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills} %{witty_managed_plugins}
 %{witty_managed_libexec}/run-managed-config-hook.sh transfiletriggerin
 
-%transfiletriggerpostun -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills} %{witty_managed_plugins}
-%{witty_managed_libexec}/run-managed-config-hook.sh transfiletriggerpostun
+# NOTE: use %filetriggerpostun (per-package) instead of %transfiletriggerpostun.
+# %transfiletriggerpostun does not fire on package removal in rpm 4.17-4.19
+# (rpm-software-management/rpm#2324, #3048), so the managed config would go
+# stale when an addon subpackage is uninstalled. %filetriggerpostun fires
+# reliably per removed package; the rebuild hook is idempotent.
+%filetriggerpostun -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills} %{witty_managed_plugins}
+%{witty_managed_libexec}/run-managed-config-hook.sh filetriggerpostun
 
 %post -n witty
 %systemd_post wittyd.service
