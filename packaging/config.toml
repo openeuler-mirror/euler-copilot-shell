@@ -8,8 +8,8 @@
 # OpenCode MCP Server address (default: http://127.0.0.1:4096)
 # server_url = "http://127.0.0.1:4096"
 
-# Default agent model (provider/model)
-# default_agent = "build"
+# Default agent name to use when connecting to opencode
+default_agent = "witty-assistant-agent"
 # default_model = ""
 # default_variant = ""
 

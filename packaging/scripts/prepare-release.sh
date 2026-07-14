@@ -14,6 +14,11 @@
 #   go<go_version>.linux-arm64.tar.gz   → Source2 (Go toolchain arm64)
 #   witty-cli-vendor-<version>.tar.xz → Source3 (vendored deps)
 #   witty-agent-loader-<version>.tar.gz → Source4 (agent-loader assets)
+#   manpage-skill-<version>.zip         → Source5
+#   log-anomaly-detector-<version>.zip  → Source6
+#   html-report-generator-<version>.zip → Source7
+#   brainstorm-beagle-<version>.zip     → Source8
+#   plantuml-skill-<version>.zip        → Source9
 #   build-info                          → (commit + date, read by %%lua)
 
 set -euo pipefail
@@ -107,6 +112,39 @@ tar -czf "${AGENT_LOADER_TARBALL}" -C "${STAGING}" .
 rm -rf "${STAGING}"
 echo "       ${AGENT_LOADER_TARBALL} ($(du -h "${AGENT_LOADER_TARBALL}" | cut -f1))"
 
+# ── Step 5.5: Skill zip archives (Source5–Source9) ─────────────────
+echo "==> [5.5/6] Downloading Skill zip archives from SkillHub"
+
+SKILL_VERSIONS="${SCRIPT_DIR}/../builtin-agents/skill-versions.sh"
+if [ -f "$SKILL_VERSIONS" ]; then
+  source "$SKILL_VERSIONS"
+else
+  echo "ERROR: skill-versions.sh not found at $SKILL_VERSIONS" >&2
+  exit 1
+fi
+
+download_skill() {
+  local name="$1"
+  local version="$2"
+  local url="$3"
+  local outfile="${OUTDIR}/${name}-${version}.zip"
+
+  if [ -f "$outfile" ]; then
+    echo "       ${outfile} already exists, skipping"
+    return
+  fi
+
+  echo "       Downloading ${name} v${version}..."
+  curl -fSL "$url" -o "$outfile"
+  echo "       ${outfile} ($(du -h "$outfile" | cut -f1))"
+}
+
+download_skill "manpage-skill"           "$SKILL_MANPAGE_VERSION"      "$SKILL_MANPAGE_URL"
+download_skill "log-anomaly-detector"    "$SKILL_LOG_ANOMALY_VERSION"  "$SKILL_LOG_ANOMALY_URL"
+download_skill "html-report-generator"   "$SKILL_HTML_REPORT_VERSION"  "$SKILL_HTML_REPORT_URL"
+download_skill "brainstorm-beagle"       "$SKILL_BRAINSTORM_VERSION"    "$SKILL_BRAINSTORM_URL"
+download_skill "plantuml-skill"          "$SKILL_PLANTUML_VERSION"      "$SKILL_PLANTUML_URL"
+
 # ── Step 6: Build info ────────────────────────────────────────────
 echo "==> [6/6] Generating build-info: ${BUILD_INFO}"
 COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -130,6 +168,11 @@ echo "  Source1: ${GO_AMD64}"
 echo "  Source2: ${GO_ARM64}"
 echo "  Source3: ${VENDOR_TARBALL}"
 echo "  Source4: ${AGENT_LOADER_TARBALL}"
+echo "  Source5: ${OUTDIR}/manpage-skill-${SKILL_MANPAGE_VERSION}.zip"
+echo "  Source6: ${OUTDIR}/log-anomaly-detector-${SKILL_LOG_ANOMALY_VERSION}.zip"
+echo "  Source7: ${OUTDIR}/html-report-generator-${SKILL_HTML_REPORT_VERSION}.zip"
+echo "  Source8: ${OUTDIR}/brainstorm-beagle-${SKILL_BRAINSTORM_VERSION}.zip"
+echo "  Source9: ${OUTDIR}/plantuml-skill-${SKILL_PLANTUML_VERSION}.zip"
 echo "  build-info: ${BUILD_INFO}"
 echo ""
 echo "Then run:"

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "witty-assistant-agent": {
+      "description": "Witty Assistant，提供知识问答、命令查询、故障诊断、方案规划与可视化报告",
+      "mode": "primary",
+      "prompt": "{file:../agents/witty-assistant-agent/witty-assistant-agent.md}",
+      "color": "#5F87FF",
+      "permission": {
+        "*": "deny",
+        "experience-skill_*": "allow",
+        "manpage-skill_*": "allow",
+        "log-anomaly-detector_*": "allow",
+        "html-report-generator_*": "allow",
+        "brainstorm-beagle_*": "allow",
+        "plantuml-skill_*": "allow",
+        "openeuler_portal_*": "allow",
+        "Bash": "ask"
+      }
+    }
+  },
+  "mcp": {
+    "openeuler_portal": {
+      "type": "local",
+      "command": ["npx", "-y", "openeuler-portal-mcp"],
+      "environment": {
+        "OPENEULER_TOKEN": "${OPENEULER_TOKEN}",
+        "GITCODE_TOKEN": "${GITCODE_TOKEN}",
+        "FORUM_TOKEN": "${FORUM_TOKEN}"
+      },
+      "enabled": true,
+      "timeout": 30000
+    }
+  }
+}

@@ -1,5 +1,12 @@
 %global go_version  1.26.4
 %global import_path atomgit.com/openeuler/euler-copilot-shell
+
+%global skill_manpage_version        1.0.0
+%global skill_log_anomaly_version    1.0.0
+%global skill_html_report_version    1.0.0
+%global skill_brainstorm_version     1.0.5
+%global skill_plantuml_version       1.4.1
+%global skillhub_base_url            https://skillhub.cn/skills
 %global debug_package %{nil}
 
 # Resolve commit and date from build-info file (if present), then --define, finally fallback
@@ -24,8 +31,8 @@
 %global witty_loader_source_dir %{_builddir}/witty-agent-loader-%{version}
 
 Name:           euler-copilot-shell
-Version:        3.0.0
-Release:        2
+Version:        3.1.0
+Release:        1
 Summary:        openEuler terminal AI assistant
 
 License:        MulanPSL2
@@ -36,8 +43,14 @@ Source1:        go%{go_version}.linux-amd64.tar.gz
 Source2:        go%{go_version}.linux-arm64.tar.gz
 Source3:        witty-cli-vendor-%{version}.tar.xz
 Source4:        witty-agent-loader-%{version}.tar.gz
+Source5:        %{skillhub_base_url}/manpage-skill/archive/v%{skill_manpage_version}.zip#/manpage-skill-%{skill_manpage_version}.zip
+Source6:        %{skillhub_base_url}/log-anomaly-detector/archive/v%{skill_log_anomaly_version}.zip#/log-anomaly-detector-%{skill_log_anomaly_version}.zip
+Source7:        %{skillhub_base_url}/html-report-generator/archive/v%{skill_html_report_version}.zip#/html-report-generator-%{skill_html_report_version}.zip
+Source8:        %{skillhub_base_url}/brainstorm-beagle/archive/v%{skill_brainstorm_version}.zip#/brainstorm-beagle-%{skill_brainstorm_version}.zip
+Source9:        %{skillhub_base_url}/plantuml-skill/archive/v%{skill_plantuml_version}.zip#/plantuml-skill-%{skill_plantuml_version}.zip
 
 BuildRequires:  xz
+BuildRequires:  unzip
 Requires:       bash
 Requires:       glibc
 
@@ -52,6 +65,7 @@ Obsoletes:      euler-copilot-shell < 3.0.0
 Provides:       witty-assistant = %{version}-%{release}
 Obsoletes:      witty-assistant < 3.0.0
 Requires:       witty-release = %{version}-%{release}
+Requires:       witty-assistant-agent = %{version}-%{release}
 Recommends:     witty-log-detection
 Recommends:     witty-lite-rag
 
@@ -81,6 +95,22 @@ This package ships the managed-config assets for witty-opencode on openEuler.
 It owns the managed resource directories, the config generator, and
 the RPM transaction hooks that rebuild /etc/opencode/opencode.json
 from installed config fragments and resource bundles.
+
+%package -n witty-assistant-agent
+Summary:        Built-in agent, skills, and MCP config for Witty Assistant
+BuildArch:      noarch
+Requires:       witty-agent-loader >= %{version}-%{release}
+Requires:       nodejs >= 20
+Recommends:     witty-experience-skill
+Recommends:     opencode
+
+%description -n witty-assistant-agent
+This package ships the built-in Witty Assistant agent (Role Prompt),
+five core skills sourced from SkillHub (manpage-skill, log-anomaly-detector,
+html-report-generator, brainstorm-beagle, plantuml-skill), and the openEuler
+Portal MCP configuration. Together with the separately-packaged
+witty-experience-skill, they form the complete openEuler intelligent
+assistant agent system.
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -158,6 +188,29 @@ install -d "%{buildroot}%{witty_managed_agents}"
 install -d "%{buildroot}%{witty_managed_skills}"
 install -d "%{buildroot}%{witty_managed_plugins}"
 
+# witty-assistant-agent: config.d fragment
+install -Dpm 0644 packaging/builtin-agents/config.d/witty-assistant-agent.json \
+  %{buildroot}%{witty_managed_config_dropins}/witty-assistant-agent.json
+
+# witty-assistant-agent: agent prompt
+install -d %{buildroot}%{witty_managed_agents}/witty-assistant-agent
+install -Dpm 0644 packaging/builtin-agents/agents/witty-assistant-agent/witty-assistant-agent.md \
+  %{buildroot}%{witty_managed_agents}/witty-assistant-agent/witty-assistant-agent.md
+
+# witty-assistant-agent: 5 skills from SkillHub zips
+install -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent
+
+unzip -qo %{SOURCE5} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
+unzip -qo %{SOURCE6} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
+unzip -qo %{SOURCE7} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
+unzip -qo %{SOURCE8} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
+unzip -qo %{SOURCE9} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
+
+find %{buildroot}%{witty_managed_skills}/witty-assistant-agent/ \
+  -name '__MACOSX' -prune -exec rm -rf {} + 2>/dev/null || true
+find %{buildroot}%{witty_managed_skills}/witty-assistant-agent/ \
+  -name '.DS_Store' -delete 2>/dev/null || true
+
 %check
 %{buildroot}%{_bindir}/witty version
 %{buildroot}%{_bindir}/witty --help
@@ -193,6 +246,11 @@ install -d "%{buildroot}%{witty_managed_plugins}"
 %dir %{witty_managed_skills}
 %dir %{witty_managed_plugins}
 
+%files -n witty-assistant-agent
+%{witty_managed_config_dropins}/witty-assistant-agent.json
+%{witty_managed_agents}/witty-assistant-agent
+%{witty_managed_skills}/witty-assistant-agent
+
 %posttrans -n witty-agent-loader
 %{witty_managed_libexec}/run-managed-config-hook.sh posttrans
 
@@ -217,6 +275,14 @@ install -d "%{buildroot}%{witty_managed_plugins}"
 %systemd_postun_with_restart wittyd.service
 
 %changelog
+* Tue Jul 14 2026 Witty Team <intelligence@openeuler.org> - 3.1.0-1
+- Add witty-assistant-agent subpackage with built-in agent, skills, and MCP config
+- Ship Role Prompt and config.d fragment for Witty Assistant as default agent (mode=primary)
+- Download 5 SkillHub skills (manpage-skill, log-anomaly-detector, html-report-generator,
+  brainstorm-beagle, plantuml-skill) at build time via prepare-release.sh
+- witty now Requires witty-assistant-agent for out-of-the-box agent experience
+- Skill versions centralized in skill-versions.sh, spec Sources use real URLs for CI
+
 * Tue Jun 30 2026 Witty Team <intelligence@openeuler.org> - 3.0.0-2
 - Add witty-release subpackage to enable EPOL update repository
 - witty now Requires witty-release for automatic repo configuration
