@@ -117,6 +117,7 @@ echo "==> [5.5/6] Downloading Skill zip archives from SkillHub"
 
 SKILL_VERSIONS="${SCRIPT_DIR}/../builtin-agents/skill-versions.sh"
 if [ -f "$SKILL_VERSIONS" ]; then
+  # shellcheck source=../builtin-agents/skill-versions.sh
   source "$SKILL_VERSIONS"
 else
   echo "ERROR: skill-versions.sh not found at $SKILL_VERSIONS" >&2
