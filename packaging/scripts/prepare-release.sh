@@ -125,26 +125,30 @@ else
 fi
 
 download_skill() {
-  local name="$1"
-  local version="$2"
-  local url="$3"
-  local outfile="${OUTDIR}/${name}-${version}.zip"
+  local slug="$1"
+  local outfile="${OUTDIR}/${slug}-${2}.zip"
 
   if [ -f "$outfile" ]; then
     echo "       ${outfile} already exists, skipping"
     return
   fi
 
-  echo "       Downloading ${name} v${version}..."
-  curl -fSL "$url" -o "$outfile"
-  echo "       ${outfile} ($(du -h "$outfile" | cut -f1))"
+  echo "       Downloading ${slug} v${2} from SkillHub..."
+  curl -fSL \
+    -H "User-Agent: Mozilla/5.0" \
+    -H "Referer: https://skillhub.cn/" \
+    -H "Origin: https://skillhub.cn" \
+    -H "Accept: */*" \
+    "https://api.skillhub.cn/api/v1/download?slug=${slug}" \
+    -o "${outfile}"
+  echo "       ${outfile} ($(du -h "${outfile}" | cut -f1))"
 }
 
-download_skill "manpage-skill"           "$SKILL_MANPAGE_VERSION"      "$SKILL_MANPAGE_URL"
-download_skill "log-anomaly-detector"    "$SKILL_LOG_ANOMALY_VERSION"  "$SKILL_LOG_ANOMALY_URL"
-download_skill "html-report-generator"   "$SKILL_HTML_REPORT_VERSION"  "$SKILL_HTML_REPORT_URL"
-download_skill "brainstorm-beagle"       "$SKILL_BRAINSTORM_VERSION"    "$SKILL_BRAINSTORM_URL"
-download_skill "plantuml-skill"          "$SKILL_PLANTUML_VERSION"      "$SKILL_PLANTUML_URL"
+download_skill "${SKILL_MANPAGE_SLUG}"       "${SKILL_MANPAGE_VERSION}"
+download_skill "${SKILL_LOG_ANOMALY_SLUG}"   "${SKILL_LOG_ANOMALY_VERSION}"
+download_skill "${SKILL_HTML_REPORT_SLUG}"   "${SKILL_HTML_REPORT_VERSION}"
+download_skill "${SKILL_BRAINSTORM_SLUG}"     "${SKILL_BRAINSTORM_VERSION}"
+download_skill "${SKILL_PLANTUML_SLUG}"       "${SKILL_PLANTUML_VERSION}"
 
 # ── Step 6: Build info ────────────────────────────────────────────
 echo "==> [6/6] Generating build-info: ${BUILD_INFO}"

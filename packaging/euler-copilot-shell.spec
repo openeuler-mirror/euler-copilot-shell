@@ -1,12 +1,11 @@
 %global go_version  1.26.4
 %global import_path atomgit.com/openeuler/euler-copilot-shell
 
-%global skill_manpage_version        1.0.0
-%global skill_log_anomaly_version    1.0.0
-%global skill_html_report_version    1.0.0
-%global skill_brainstorm_version     1.0.5
-%global skill_plantuml_version       1.4.1
-%global skillhub_base_url            https://skillhub.cn/skills
+%global skill_manpage_slug        manpage-skill
+%global skill_log_anomaly_slug    log-anomaly-detector
+%global skill_html_report_slug    html-report-generator
+%global skill_brainstorm_slug     brainstorm-beagle
+%global skill_plantuml_slug       plantuml-skill
 %global debug_package %{nil}
 
 # Resolve commit and date from build-info file (if present), then --define, finally fallback
@@ -43,11 +42,11 @@ Source1:        https://go.dev/dl/go%{go_version}.linux-amd64.tar.gz#/go%{go_ver
 Source2:        https://go.dev/dl/go%{go_version}.linux-arm64.tar.gz#/go%{go_version}.linux-arm64.tar.gz
 Source3:        witty-cli-vendor-%{version}.tar.xz
 Source4:        witty-agent-loader-%{version}.tar.gz
-Source5:        %{skillhub_base_url}/manpage-skill/archive/v%{skill_manpage_version}.zip#/manpage-skill-%{skill_manpage_version}.zip
-Source6:        %{skillhub_base_url}/log-anomaly-detector/archive/v%{skill_log_anomaly_version}.zip#/log-anomaly-detector-%{skill_log_anomaly_version}.zip
-Source7:        %{skillhub_base_url}/html-report-generator/archive/v%{skill_html_report_version}.zip#/html-report-generator-%{skill_html_report_version}.zip
-Source8:        %{skillhub_base_url}/brainstorm-beagle/archive/v%{skill_brainstorm_version}.zip#/brainstorm-beagle-%{skill_brainstorm_version}.zip
-Source9:        %{skillhub_base_url}/plantuml-skill/archive/v%{skill_plantuml_version}.zip#/plantuml-skill-%{skill_plantuml_version}.zip
+Source5:        https://api.skillhub.cn/api/v1/download?slug=manpage-skill#/manpage-skill-1.0.0.zip
+Source6:        https://api.skillhub.cn/api/v1/download?slug=log-anomaly-detector#/log-anomaly-detector-1.0.0.zip
+Source7:        https://api.skillhub.cn/api/v1/download?slug=html-report-generator#/html-report-generator-1.0.0.zip
+Source8:        https://api.skillhub.cn/api/v1/download?slug=brainstorm-beagle#/brainstorm-beagle-1.0.5.zip
+Source9:        https://api.skillhub.cn/api/v1/download?slug=plantuml-skill#/plantuml-skill-1.4.1.zip
 
 BuildRequires:  xz
 BuildRequires:  unzip
@@ -199,14 +198,19 @@ install -d %{buildroot}%{witty_managed_agents}/witty-assistant-agent
 install -Dpm 0644 packaging/builtin-agents/agents/witty-assistant-agent/witty-assistant-agent.md \
   %{buildroot}%{witty_managed_agents}/witty-assistant-agent/witty-assistant-agent.md
 
-# witty-assistant-agent: 5 skills from SkillHub zips
+# witty-assistant-agent: 5 skills from SkillHub (HTTP API, no auth)
 install -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent
 
-unzip -qo %{SOURCE5} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
-unzip -qo %{SOURCE6} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
-unzip -qo %{SOURCE7} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
-unzip -qo %{SOURCE8} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
-unzip -qo %{SOURCE9} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
+mkdir -p %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_manpage_slug}
+unzip -qo %{SOURCE5} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_manpage_slug}/
+mkdir -p %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_log_anomaly_slug}
+unzip -qo %{SOURCE6} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_log_anomaly_slug}/
+mkdir -p %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_html_report_slug}
+unzip -qo %{SOURCE7} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_html_report_slug}/
+mkdir -p %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_brainstorm_slug}
+unzip -qo %{SOURCE8} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_brainstorm_slug}/
+mkdir -p %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_plantuml_slug}
+unzip -qo %{SOURCE9} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_plantuml_slug}/
 
 find %{buildroot}%{witty_managed_skills}/witty-assistant-agent/ \
   -name '__MACOSX' -prune -exec rm -rf {} + 2>/dev/null || true
