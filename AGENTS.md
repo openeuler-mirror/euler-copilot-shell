@@ -36,6 +36,14 @@ ssh <user>@<host> "cd <work_dir> && <command>"
 - 使用 `CGO_ENABLED=1`
 - 在 Bash 模板中使用 `{{ }}` 分隔符（只能用 `[[ ]]`）
 - 提交 secrets、token、`.agents/config.yaml`
+- **不查官方文档就修改外部工具的配置字段（opencode.json、RPM spec 等）**
+- **凭字段名猜测语义就做决策**
+
+## 🔴 决策铁律
+
+本仓库对接 opencode、rpm、openEuler、SkillHub 等多个上游系统。
+**禁止凭猜测决定外部配置的行为**。做任何涉及外部工具的判断前，
+必须查对应官方文档并以文档为依据。详见 `.agents/rules/decision-discipline.md`。
 
 ## ⚠️ Agent 每次终端操作前自检
 
