@@ -221,8 +221,6 @@ find %{buildroot}%{witty_managed_skills}/witty-assistant-agent/ \
 %{buildroot}%{_bindir}/witty version
 %{buildroot}%{_bindir}/witty --help
 
-%files
-
 %files -n witty
 %license LICENSE
 %doc README.md
