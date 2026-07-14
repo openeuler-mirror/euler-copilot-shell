@@ -188,6 +188,8 @@ install -d "%{buildroot}%{witty_managed_agents}"
 install -d "%{buildroot}%{witty_managed_skills}"
 install -d "%{buildroot}%{witty_managed_plugins}"
 
+cd -
+
 # witty-assistant-agent: config.d fragment
 install -Dpm 0644 packaging/builtin-agents/config.d/witty-assistant-agent.json \
   %{buildroot}%{witty_managed_config_dropins}/witty-assistant-agent.json
