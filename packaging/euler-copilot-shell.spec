@@ -39,8 +39,8 @@ License:        MulanPSL2
 URL:            https://atomgit.com/openeuler/euler-copilot-shell
 
 Source0:        %{name}-%{version}.tar.gz
-Source1:        go%{go_version}.linux-amd64.tar.gz
-Source2:        go%{go_version}.linux-arm64.tar.gz
+Source1:        https://go.dev/dl/go%{go_version}.linux-amd64.tar.gz#/go%{go_version}.linux-amd64.tar.gz
+Source2:        https://go.dev/dl/go%{go_version}.linux-arm64.tar.gz#/go%{go_version}.linux-arm64.tar.gz
 Source3:        witty-cli-vendor-%{version}.tar.xz
 Source4:        witty-agent-loader-%{version}.tar.gz
 Source5:        %{skillhub_base_url}/manpage-skill/archive/v%{skill_manpage_version}.zip#/manpage-skill-%{skill_manpage_version}.zip
