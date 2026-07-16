@@ -1,42 +1,28 @@
 #!/bin/bash
-# Witty 开发环境一键搭建 — macOS + OrbStack openEuler VM
-# 用法: ./macos-orbstack.sh [vm_name] [openeuler_version] [arch]
-#   arch: arm64 (默认) 或 amd64 (Apple Silicon 上通过 Rosetta 2 转译)
+# Witty 开发环境一键搭建 — Linux 原生 openEuler（裸金属 / VM / SSH）
+# 直接在 openEuler 系统中运行此脚本
+# 用法: bash dev/setup/linux-native.sh
 set -euo pipefail
 
-VM_NAME="${1:-witty-openeuler}"
-OPENEULER_VERSION="${2:-24.03}"
-VM_ARCH="${3:-arm64}"
-
-echo "=== Witty Dev Environment Setup (macOS + OrbStack) ==="
+echo "=== Witty Dev Environment Setup (Linux native) ==="
 echo ""
 
-# 1. 检查 OrbStack
-if ! command -v orb &>/dev/null; then
-  echo "❌ OrbStack 未安装。请从 https://orbstack.dev/download 下载安装后重试。"
-  exit 1
-fi
-echo "✅ OrbStack 已安装"
-
-# 2. 创建 openEuler VM
-if orb list 2>/dev/null | grep -q "^${VM_NAME} "; then
-  echo "✅ VM '${VM_NAME}' 已存在，跳过创建"
-else
-  echo "📦 创建 openEuler VM: ${VM_NAME}（版本: ${OPENEULER_VERSION}，架构: ${VM_ARCH}）..."
-  if [ "${VM_ARCH}" = "amd64" ]; then
-    orb create --arch amd64 "openeuler:${OPENEULER_VERSION}" "${VM_NAME}"
+# 1. 检查是否在 openEuler 环境中
+if [ ! -f /etc/openEuler-release ] 2>/dev/null; then
+  if grep -qi openeuler /etc/os-release 2>/dev/null; then
+    :
   else
-    orb create "openeuler:${OPENEULER_VERSION}" "${VM_NAME}"
+    echo "⚠️  当前不是 openEuler 系统。请确保在 openEuler 服务器上运行此脚本。"
+    echo "   检测到的系统:"
+    cat /etc/os-release 2>/dev/null | head -3 || echo "  无法检测"
+    echo ""
+    echo "  继续安装？(y/n)"
+    read -r CONTINUE
+    [ "$CONTINUE" = "y" ] || exit 1
   fi
-  echo "✅ VM 创建完成"
 fi
 
-# 3. 安装开发依赖
-echo "📦 在 VM 中安装开发依赖..."
-orb -m "${VM_NAME}" -u root <<'DEPS'
-set -euo pipefail
-
-# 带重试的下载函数，防止 GitHub 间歇性 504
+# 2. 带重试的下载函数
 download() {
     local url="$1" out="$2" max_retries=3 retry=0 delay=5 http_code
     while [ $retry -lt $max_retries ]; do
@@ -64,7 +50,7 @@ dnf makecache -q 2>/dev/null || true
 echo "  安装基础工具 (git, make)..."
 dnf install -y git make 2>/dev/null
 
-# 动态检测 VM 内架构
+# 动态检测架构
 HOST_ARCH=$(uname -m)
 case "$HOST_ARCH" in
     aarch64)  GO_ARCH="arm64";  SC_ARCH="aarch64"; SF_ARCH="arm64"  ;;
@@ -84,7 +70,7 @@ else
     echo "  Go 1.26 已安装，跳过"
 fi
 
-# ShellCheck (从 GitHub 下载)
+# ShellCheck
 echo "  安装 ShellCheck..."
 if ! command -v shellcheck &>/dev/null; then
     download "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.${SC_ARCH}.tar.xz" /tmp/sc.tar.xz
@@ -96,7 +82,7 @@ else
     echo "  ShellCheck 已安装，跳过"
 fi
 
-# shfmt (从 GitHub 下载)
+# shfmt
 echo "  安装 shfmt..."
 if ! command -v shfmt &>/dev/null; then
     download "https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_${SF_ARCH}" /usr/local/bin/shfmt
@@ -108,14 +94,14 @@ fi
 
 # Witty-Builder yum repo (OpenCode RPM)
 echo "  配置 Witty-Builder yum repo..."
-cat > /etc/yum.repos.d/Witty-Builder.repo <<YUMREPO
+cat > /etc/yum.repos.d/Witty-Builder.repo <<'YUMREPO'
 [Witty-Builder]
 name=EulerMaker Witty Builder
-baseurl=https://eulermaker.openeuler.openatom.cn/api/ems5/repositories/witty-builder/openEuler:24.03-LTS-SP3/\$basearch/
+baseurl=https://eulermaker.openeuler.openatom.cn/api/ems5/repositories/witty-builder/openEuler:24.03-LTS-SP3/$basearch/
 metadata_expire=60
 enabled=1
 gpgcheck=1
-gpgkey=https://eulermaker.openeuler.openatom.cn/api/ems5/repositories/witty-builder/openEuler:24.03-LTS-SP3/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=https://eulermaker.openeuler.openatom.cn/api/ems5/repositories/witty-builder/openEuler:24.03-LTS-SP3/$basearch/RPM-GPG-KEY-openEuler
 YUMREPO
 dnf makecache -q
 echo "  ✅ Witty-Builder repo 已配置"
@@ -124,32 +110,30 @@ echo "  安装 OpenCode..."
 dnf install -y opencode
 echo "  ✅ OpenCode 安装完成"
 
+# 3. 验证
 echo ""
 echo "  --- 版本验证 ---"
 export PATH=/usr/local/go/bin:$PATH
 go version 2>/dev/null || echo "  ⚠️  Go 未安装"
 shellcheck --version 2>/dev/null | head -1 || echo "  ⚠️  shellcheck 未安装"
 shfmt --version 2>/dev/null || echo "  ⚠️  shfmt 未安装"
-DEPS
 
 # 4. 提示下一步
 echo ""
 echo "=== 环境搭建完成 ==="
 echo ""
+echo "注意: 需 export PATH=/usr/local/go/bin:\$PATH 以使用 Go 1.26"
+echo ""
 echo "下一步操作:"
-echo "  1. OrbStack VM 可直接访问 macOS 文件系统"
-echo "     在 VM 中 cd 到你的项目路径即可（如 /Users/<yourname>/path/to/witty）"
-echo ""
-echo "  2. 配置 Agent 连接:"
+echo "  1. 配置 Agent 连接:"
 echo "     cp .agents/config.template.yaml .agents/config.yaml"
-echo "     # 编辑 .agents/config.yaml，确认 active 为 orbstack"
+echo "     # 编辑 .agents/config.yaml，将 active 设为 ssh"
 echo ""
-echo "  3. 验证工具链:"
-echo "     orb -m ${VM_NAME} -u root bash -c 'export PATH=/usr/local/go/bin:\$PATH && go version && shellcheck --version && shfmt --version'"
+echo "  2. 验证构建（严禁 go build，必须用 build 脚本）:"
+echo "     bash scripts/build.sh"
 echo ""
-echo "常用命令:"
-echo "  orb -m ${VM_NAME}              # 进入 VM shell"
-echo "  orb -m ${VM_NAME} '<command>'  # 在 VM 中执行命令"
-echo "  orb list                       # 列出所有机器"
+echo "  3. 运行测试:"
+echo "     go test -count=1 ./..."
 echo ""
-echo "注意: VM 中需 export PATH=/usr/local/go/bin:\$PATH 以使用 Go 1.26"
+echo "  4. 试运行:"
+echo "     build/linux-\$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')/witty version"
