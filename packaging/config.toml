@@ -9,7 +9,7 @@
 # server_url = "http://127.0.0.1:4096"
 
 # Default agent name to use when connecting to opencode
-default_agent = "witty-assistant-agent"
+default_agent = "witty-builtin-agent"
 # default_model = ""
 # default_variant = ""
 

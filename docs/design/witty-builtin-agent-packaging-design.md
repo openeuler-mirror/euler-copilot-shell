@@ -3,8 +3,8 @@
 > **前提约定：**
 >
 > - `experience-skill` 由 `euler-copilot-rag` 源包的 `witty-experience-skill` 子包提供，依赖 `witty-agent-loader` 加载
-> - 其余 5 个 Skill（manpage-skill、log-anomaly-detector、html-report-generator、brainstorm-beagle、plantuml-skill）从 SkillHub 下载 zip 归档，由 `euler-copilot-shell` 仓库的 `witty-assistant-agent` 子包打包和分发
-> - 分发形式为 RPM 子包 `witty-assistant-agent`（附加到 `euler-copilot-shell.spec`）
+> - 其余 5 个 Skill（manpage-skill、log-anomaly-detector、html-report-generator、brainstorm-beagle、plantuml-skill）从 SkillHub 下载 zip 归档，由 `euler-copilot-shell` 仓库的 `witty-builtin-agent` 子包打包和分发
+> - 分发形式为 RPM 子包 `witty-builtin-agent`（附加到 `euler-copilot-shell.spec`）
 
 ---
 
@@ -15,7 +15,7 @@ flowchart TB
     subgraph Source[源码仓库 euler-copilot-shell]
         S1[cmd/witty<br/>Go CLI 源码] --> B1[witty<br/>二进制 RPM]
         S2[packaging/agent-loader/] --> B2[witty-agent-loader<br/>托管配置基础设施 RPM]
-        S3[packaging/builtin-agents/<br/>Config + Prompt<br/>+ skill-versions.sh] --> B3[witty-assistant-agent<br/>内置 Agent 数据 RPM<br/>Skills 来自 SkillHub zip]
+        S3[packaging/builtin-agents/<br/>Config + Prompt<br/>+ skill-versions.sh] --> B3[witty-builtin-agent<br/>内置 Agent 数据 RPM<br/>Skills 来自 SkillHub zip]
         S4[packaging/euler-copilot-shell.spec] --> BALL[构建入口]
     end
 
@@ -52,7 +52,7 @@ flowchart TB
 | --- | ------- | ---- | ------- | ---- |
 | `witty` | euler-copilot-shell | 二进制 | CLI (`witty`, `wittyd`)、配置、systemd 服务 | `witty-release` |
 | `witty-agent-loader` | euler-copilot-shell | noarch | `rebuild-managed-config.mjs`、目录、RPM hooks | `nodejs` (Recommends) |
-| `witty-assistant-agent` | euler-copilot-shell | noarch | config.d 碎片、Agent Prompt、5 Skills | `witty-agent-loader` |
+| `witty-builtin-agent` | euler-copilot-shell | noarch | config.d 碎片、Agent Prompt、5 Skills | `witty-agent-loader` |
 | `witty-experience-skill` | euler-copilot-rag | 二进制 | experience-skill（SKILL.md + CLI + .venv） | `witty-agent-loader` |
 
 ---
@@ -68,10 +68,10 @@ shell/
 ├── packaging/
 │   ├── builtin-agents/                           # ← 新增
 │   │   ├── config.d/
-│   │   │   └── witty-assistant-agent.json         # Agent + MCP 配置碎片
+│   │   │   └── witty-builtin-agent.json         # Agent + MCP 配置碎片
 │   │   ├── agents/
-│   │   │   └── witty-assistant-agent/
-│   │   │       └── witty-assistant-agent.md        # Role Prompt（仓库维护）
+│   │   │   └── witty-builtin-agent/
+│   │   │       └── witty-builtin-agent.md        # Role Prompt（仓库维护）
 │   │   └── skill-versions.sh                     # Skill 版本及下载 URL 声明
 │   ├── agent-loader/                             # 已有
 │   ├── witty-diagnosis-agent/                    # 已有（参考实现）
@@ -84,11 +84,11 @@ shell/
 
 | Skill | SkillHub 版本 | 下载格式 | 运行时安装路径 |
 | ----- | ------------ | ------- | ------------ |
-| `manpage-skill` | 1.0.0 | `.zip` | `%{witty_managed_skills}/witty-assistant-agent/manpage-skill/` |
-| `log-anomaly-detector` | 1.0.0 | `.zip` | `%{witty_managed_skills}/witty-assistant-agent/log-anomaly-detector/` |
-| `html-report-generator` | 1.0.0 | `.zip` | `%{witty_managed_skills}/witty-assistant-agent/html-report-generator/` |
-| `brainstorm-beagle` | 1.0.5 | `.zip` | `%{witty_managed_skills}/witty-assistant-agent/brainstorm-beagle/` |
-| `plantuml-skill` | 1.4.1 | `.zip` | `%{witty_managed_skills}/witty-assistant-agent/plantuml-skill/` |
+| `manpage-skill` | 1.0.0 | `.zip` | `%{witty_managed_skills}/witty-builtin-agent/manpage-skill/` |
+| `log-anomaly-detector` | 1.0.0 | `.zip` | `%{witty_managed_skills}/witty-builtin-agent/log-anomaly-detector/` |
+| `html-report-generator` | 1.0.0 | `.zip` | `%{witty_managed_skills}/witty-builtin-agent/html-report-generator/` |
+| `brainstorm-beagle` | 1.0.5 | `.zip` | `%{witty_managed_skills}/witty-builtin-agent/brainstorm-beagle/` |
+| `plantuml-skill` | 1.4.1 | `.zip` | `%{witty_managed_skills}/witty-builtin-agent/plantuml-skill/` |
 
 > **关于 experience-skill：** 上表 5 个 Skill 来自 SkillHub 下载。而 `experience-skill` 不走此路径——它由 `euler-copilot-rag` 源包的 `witty-experience-skill` 子包提供，直接安装到 `/usr/share/witty/opencode/skills/experience-skill/`。其 SKILL.md 中的 `name` 字段（`experience-skill`）即为安装目标目录名，由 `euler-copilot-rag.spec` 在 `%install` 阶段动态解析。详见[§10.2](#102-experience-skill-的来源)。
 
@@ -122,7 +122,7 @@ SKILL_PLANTUML_VERSION=1.4.1
 SKILL_PLANTUML_URL=https://skillhub.cn/skills/plantuml-skill/archive/v1.4.1.zip
 ```
 
-> **设计决策：** 5 个 Skill 打包为**单一 `witty-assistant-agent` 子包**而非 5 个独立子包。理由是 Phase 1 MVP 中这些 Skill 总是协同使用。后续可按需拆分为独立 RPM。
+> **设计决策：** 5 个 Skill 打包为**单一 `witty-builtin-agent` 子包**而非 5 个独立子包。理由是 Phase 1 MVP 中这些 Skill 总是协同使用。后续可按需拆分为独立 RPM。
 
 ---
 
@@ -158,7 +158,7 @@ BuildRequires:  unzip
 ### 3.3 子包定义（追加到现有 `%package -n witty-agent-loader` 块之后）
 
 ```spec
-%package -n witty-assistant-agent
+%package -n witty-builtin-agent
 Summary:        Built-in agent, skills, and MCP config for Witty Assistant
 BuildArch:      noarch
 Requires:       witty-agent-loader >= %{version}-%{release}
@@ -168,7 +168,7 @@ Requires:       nodejs >= 20
 Recommends:     witty-experience-skill
 Recommends:     opencode
 
-%description -n witty-assistant-agent
+%description -n witty-builtin-agent
 This package ships the built-in Witty Assistant agent (Role Prompt),
 five core skills sourced from SkillHub (manpage-skill, log-anomaly-detector,
 html-report-generator, brainstorm-beagle, plantuml-skill), and the openEuler
@@ -180,51 +180,51 @@ assistant agent system.
 ### 3.4 %install 段追加
 
 ```spec
-# ── witty-assistant-agent ────────────────────────────────────────────
+# ── witty-builtin-agent ────────────────────────────────────────────
 
-# witty-assistant-agent: config.d fragment (仓库内维护)
-install -Dpm 0644 packaging/builtin-agents/config.d/witty-assistant-agent.json \
-  %{buildroot}%{witty_managed_config_dropins}/witty-assistant-agent.json
+# witty-builtin-agent: config.d fragment (仓库内维护)
+install -Dpm 0644 packaging/builtin-agents/config.d/witty-builtin-agent.json \
+  %{buildroot}%{witty_managed_config_dropins}/witty-builtin-agent.json
 
-# witty-assistant-agent: agent prompt (仓库内维护)
-install -d %{buildroot}%{witty_managed_agents}/witty-assistant-agent
-install -Dpm 0644 packaging/builtin-agents/agents/witty-assistant-agent/witty-assistant-agent.md \
-  %{buildroot}%{witty_managed_agents}/witty-assistant-agent/witty-assistant-agent.md
+# witty-builtin-agent: agent prompt (仓库内维护)
+install -d %{buildroot}%{witty_managed_agents}/witty-builtin-agent
+install -Dpm 0644 packaging/builtin-agents/agents/witty-builtin-agent/witty-builtin-agent.md \
+  %{buildroot}%{witty_managed_agents}/witty-builtin-agent/witty-builtin-agent.md
 
-# witty-assistant-agent: 5 skills (从 SkillHub zip 解压，不入库)
-install -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent
+# witty-builtin-agent: 5 skills (从 SkillHub zip 解压，不入库)
+install -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent
 
-unzip -qo %{SOURCE5} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
-unzip -qo %{SOURCE6} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
-unzip -qo %{SOURCE7} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
-unzip -qo %{SOURCE8} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
-unzip -qo %{SOURCE9} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/
+unzip -qo %{SOURCE5} -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent/
+unzip -qo %{SOURCE6} -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent/
+unzip -qo %{SOURCE7} -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent/
+unzip -qo %{SOURCE8} -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent/
+unzip -qo %{SOURCE9} -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent/
 
 # 清理 zip 中可能携带的 __MACOSX 等无关文件
-find %{buildroot}%{witty_managed_skills}/witty-assistant-agent/ \
+find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
   -name '__MACOSX' -prune -exec rm -rf {} + 2>/dev/null || true
-find %{buildroot}%{witty_managed_skills}/witty-assistant-agent/ \
+find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
   -name '.DS_Store' -delete 2>/dev/null || true
 ```
 
 > **zip 解压行为说明：**
 >
 > - 假设每个 SkillHub zip 归档的根目录内包含 `<skill-name>/SKILL.md` 结构
-> - 直接 `unzip -d` 到目标目录即可得到 `.../witty-assistant-agent/<skill-name>/SKILL.md`
+> - 直接 `unzip -d` 到目标目录即可得到 `.../witty-builtin-agent/<skill-name>/SKILL.md`
 > - 若 SkillHub 的实际 zip 结构不同，需调整解压参数或增加 `mv` 步骤
 
 ### 3.5 %files 段追加
 
 ```spec
-%files -n witty-assistant-agent
-%{witty_managed_config_dropins}/witty-assistant-agent.json
-%{witty_managed_agents}/witty-assistant-agent
-%{witty_managed_skills}/witty-assistant-agent
+%files -n witty-builtin-agent
+%{witty_managed_config_dropins}/witty-builtin-agent.json
+%{witty_managed_agents}/witty-builtin-agent
+%{witty_managed_skills}/witty-builtin-agent
 ```
 
 ### 3.6 witty 主包依赖更新
 
-在 `%package -n witty` 块中，新增对 `witty-assistant-agent` 的强依赖：
+在 `%package -n witty` 块中，新增对 `witty-builtin-agent` 的强依赖：
 
 ```spec
 # 修改前：
@@ -232,12 +232,12 @@ Recommends:     witty-log-detection
 Recommends:     witty-lite-rag
 
 # 修改后：
-Requires:       witty-assistant-agent = %{version}-%{release}
+Requires:       witty-builtin-agent = %{version}-%{release}
 Recommends:     witty-log-detection
 Recommends:     witty-lite-rag
 ```
 
-> **说明：** `witty-assistant-agent` 作为内置 Agent 的基础组件，应使用 `Requires` 而非 `Recommends`，确保安装 `witty` 后 Agent 自动可用。
+> **说明：** `witty-builtin-agent` 作为内置 Agent 的基础组件，应使用 `Requires` 而非 `Recommends`，确保安装 `witty` 后 Agent 自动可用。
 
 ### 3.7 无需自行编写 %post / %preun
 
@@ -251,18 +251,18 @@ Recommends:     witty-lite-rag
 
 ## 4. 配置碎片设计
 
-### 4.1 `witty-assistant-agent.json`
+### 4.1 `witty-builtin-agent.json`
 
-文件路径：`packaging/builtin-agents/config.d/witty-assistant-agent.json`
+文件路径：`packaging/builtin-agents/config.d/witty-builtin-agent.json`
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
-    "witty-assistant-agent": {
+    "witty-builtin-agent": {
       "description": "Witty Assistant，提供知识问答、命令查询、故障诊断、方案规划与可视化报告",
       "mode": "primary",
-      "prompt": "{file:../agents/witty-assistant-agent/witty-assistant-agent.md}",
+      "prompt": "{file:../agents/witty-builtin-agent/witty-builtin-agent.md}",
       "color": "#5F87FF",
       "permission": {
         "*": "deny",
@@ -297,7 +297,7 @@ Recommends:     witty-lite-rag
 
 | 字段 | 说明 |
 | ---- | ---- |
-| `agent.witty-assistant-agent` | namespaced Agent 名称，避免与用户自定义 Agent 冲突 |
+| `agent.witty-builtin-agent` | namespaced Agent 名称，避免与用户自定义 Agent 冲突 |
 | `mode: "primary"` | 主 Agent，opencode 启动时默认使用的 Agent |
 | `prompt: "{file:../agents/...}"` | 相对路径引用，由 `rebuild-managed-config.mjs` 解析为绝对路径 |
 | `permission` | Agent 级别的工具/技能权限矩阵，`*_*` 通配符精准控制 |
@@ -306,7 +306,7 @@ Recommends:     witty-lite-rag
 
 ### 4.3 冲突命名空间
 
-当前受保护的命名空间为 `agent`、`command`、`mode`、`mcp`。`witty-assistant-agent` 和 `openeuler_portal` 使用带前缀的唯一命名，不与其他子包冲突。
+当前受保护的命名空间为 `agent`、`command`、`mode`、`mcp`。`witty-builtin-agent` 和 `openeuler_portal` 使用带前缀的唯一命名，不与其他子包冲突。
 
 ---
 
@@ -316,14 +316,14 @@ Recommends:     witty-lite-rag
 
 | 内容 | 维护方式 | 说明 |
 | ---- | ------- | ---- |
-| **Role Prompt** (`witty-assistant-agent.md`) | 本仓库维护 | Agent 的行为准则、工作流程、Skill 编排逻辑 |
+| **Role Prompt** (`witty-builtin-agent.md`) | 本仓库维护 | Agent 的行为准则、工作流程、Skill 编排逻辑 |
 | **5 个 Skill SKILL.md** | SkillHub 下载 | 各 SKILL.md 的 YAML front-matter（name / allowed-tools / metadata）和 Markdown 正文由 SkillHub 上游维护，构建时从 SkillHub 下载 zip 归档 |
 
 > **关键原则：** SKILL.md 的源码不在本仓库。SkillHub 是上游，本仓库只声明版本号并下载归档。
 
-### 5.2 Role Prompt（witty-assistant-agent.md）
+### 5.2 Role Prompt（witty-builtin-agent.md）
 
-文件路径：`packaging/builtin-agents/agents/witty-assistant-agent/witty-assistant-agent.md`
+文件路径：`packaging/builtin-agents/agents/witty-builtin-agent/witty-builtin-agent.md`
 
 ```markdown
 ---
@@ -451,7 +451,7 @@ flowchart LR
     B -->|2. git tag vX.Y.Z| C[git archive<br/>Source0 tarball]
     C -->|3a. prepare-release.sh<br/>打包源码| D1[build/release/]
     D2[SkillHub CDN] -->|3b. prepare-release.sh<br/>下载 5 个 Skill zip| D1
-    D1 -->|4. rpmbuild -ba| E[产出 RPMs<br/>witty, witty-assistant-agent, ...]
+    D1 -->|4. rpmbuild -ba| E[产出 RPMs<br/>witty, witty-builtin-agent, ...]
     D3[euler-copilot-rag<br/>witty-experience-skill] -.->|独立构建| E3[experience-skill RPM]
     E -->|5. 上传 YUM 仓库| F[用户 dnf install witty]
     E3 -.->|同一 YUM 仓库| F
@@ -476,7 +476,7 @@ git add packaging/builtin-agents/agents/
 git add packaging/builtin-agents/skill-versions.sh
 git add packaging/euler-copilot-shell.spec
 git add packaging/scripts/prepare-release.sh
-git commit -m "feat: add witty-assistant-agent subpackage with SkillHub-delivered skills"
+git commit -m "feat: add witty-builtin-agent subpackage with SkillHub-delivered skills"
 
 # Step 2: 打版本标签
 git tag v3.1.0
@@ -496,7 +496,7 @@ rpmbuild -ba packaging/euler-copilot-shell.spec
 | ---- | ---- |
 | `witty-3.1.0-1.x86_64.rpm` | CLI 二进制包 |
 | `witty-agent-loader-3.1.0-1.noarch.rpm` | 托管配置基础设施 |
-| `witty-assistant-agent-3.1.0-1.noarch.rpm` | **新增** -- 内置 Agent + 5 Skills（来自 SkillHub zip）+ MCP 配置 |
+| `witty-builtin-agent-3.1.0-1.noarch.rpm` | **新增** -- 内置 Agent + 5 Skills（来自 SkillHub zip）+ MCP 配置 |
 | `witty-release-3.1.0-1.noarch.rpm` | EPOL YUM 仓库配置 |
 
 ### 6.5 build/release/ 目录最终产物清单
@@ -570,7 +570,7 @@ build/release/
 dnf install witty
 
 # 或仅安装 agent 数据包（不含 CLI）
-dnf install witty-assistant-agent
+dnf install witty-builtin-agent
 
 # 安装 experience-skill（独立 RPM）
 dnf install witty-experience-skill
@@ -582,14 +582,14 @@ dnf install witty-experience-skill
 sequenceDiagram
     participant User as 用户
     participant DNF as dnf/rpm
-    participant WBA as witty-assistant-agent
+    participant WBA as witty-builtin-agent
     participant WAL as witty-agent-loader
     participant FS as 文件系统
 
     User->>DNF: dnf install witty
-    DNF->>WBA: 安装 witty-assistant-agent
-    WBA->>FS: 写入 config.d/witty-assistant-agent.json
-    WBA->>FS: 写入 agents/...witty-assistant-agent.md
+    DNF->>WBA: 安装 witty-builtin-agent
+    WBA->>FS: 写入 config.d/witty-builtin-agent.json
+    WBA->>FS: 写入 agents/...witty-builtin-agent.md
     WBA->>FS: 写入 skills/...manpage-skill/SKILL.md
     WBA->>FS: 写入 skills/...log-anomaly-detector/SKILL.md
     WBA->>FS: 写入 skills/...html-report-generator/SKILL.md
@@ -607,12 +607,12 @@ sequenceDiagram
 ```text
 /usr/share/witty/opencode/
 ├── config.d/
-│   └── witty-assistant-agent.json              # Agent + MCP 配置碎片
+│   └── witty-builtin-agent.json              # Agent + MCP 配置碎片
 ├── agents/
-│   └── witty-assistant-agent/
-│       └── witty-assistant-agent.md             # Role Prompt
+│   └── witty-builtin-agent/
+│       └── witty-builtin-agent.md             # Role Prompt
 ├── skills/
-│   ├── witty-assistant-agent/                  # 本包提供的 5 个 Skill
+│   ├── witty-builtin-agent/                  # 本包提供的 5 个 Skill
 │   │   ├── manpage-skill/SKILL.md
 │   │   ├── log-anomaly-detector/SKILL.md
 │   │   ├── html-report-generator/SKILL.md
@@ -642,10 +642,10 @@ sequenceDiagram
     "paths": ["/usr/share/witty/opencode/skills"]
   },
   "agent": {
-    "witty-assistant-agent": {
+    "witty-builtin-agent": {
       "description": "Witty Assistant...",
       "mode": "primary",
-      "prompt": "{file:/usr/share/witty/opencode/agents/witty-assistant-agent/witty-assistant-agent.md}",
+      "prompt": "{file:/usr/share/witty/opencode/agents/witty-builtin-agent/witty-builtin-agent.md}",
       "color": "#5F87FF",
       "permission": {
         "*": "deny",
@@ -680,9 +680,9 @@ sequenceDiagram
 
 ```bash
 # 卸载时文件触发器自动清理配置
-dnf remove witty-assistant-agent
+dnf remove witty-builtin-agent
 # → transfiletriggerpostun 触发 → rebuild-managed-config.mjs
-# → /etc/opencode/opencode.json 自动移除 witty-assistant-agent 条目
+# → /etc/opencode/opencode.json 自动移除 witty-builtin-agent 条目
 ```
 
 ---
@@ -726,7 +726,7 @@ systemctl start wittyd
 ```mermaid
 sequenceDiagram
     participant U as 用户
-    participant A as Agent<br/>(witty-assistant-agent)
+    participant A as Agent<br/>(witty-builtin-agent)
     participant ES as experience-skill
     participant M5 as 5 Built-in Skills
     participant MCP as openEuler Portal MCP
@@ -775,7 +775,7 @@ flowchart LR
     PROMPT --> EXEC
 ```
 
-- **Agent 级权限**：在 `witty-assistant-agent.json` 中定义，控制 Agent 能否**调用**某个 Skill/MCP
+- **Agent 级权限**：在 `witty-builtin-agent.json` 中定义，控制 Agent 能否**调用**某个 Skill/MCP
 - **Skill 级权限**：在各 SKILL.md 的 `allowed-tools` 中定义，控制该 Skill 能**使用**哪些系统工具
 - **两层叠加**：Agent 必须有权调用该 Skill，且该 Skill 只能使用其声明的工具
 
@@ -788,16 +788,16 @@ flowchart LR
 | 检查项 | 验证命令 | 预期结果 |
 | ------ | ------- | ------- |
 | RPM 可构建 | `rpmbuild -ba packaging/euler-copilot-shell.spec` | 无错误，产出 5 个 RPM |
-| 子包文件列表正确 | `rpm -qlp witty-assistant-agent-*.noarch.rpm` | 包含 1 config + 1 prompt + 5 SKILL.md |
-| config.d 碎片合法 JSON | `jq . /usr/share/witty/opencode/config.d/witty-assistant-agent.json` | 无 JSON 语法错误 |
+| 子包文件列表正确 | `rpm -qlp witty-builtin-agent-*.noarch.rpm` | 包含 1 config + 1 prompt + 5 SKILL.md |
+| config.d 碎片合法 JSON | `jq . /usr/share/witty/opencode/config.d/witty-builtin-agent.json` | 无 JSON 语法错误 |
 | 无命名冲突 | `rebuild-managed-config.mjs --dry-run` | 无 "Duplicate" 错误 |
 
 ### 9.2 安装验证
 
 | 检查项 | 验证命令 | 预期结果 |
 | ------ | ------- | ------- |
-| 依赖正确拉取 | `dnf install witty` | 自动安装 witty-assistant-agent, witty-agent-loader 等 |
-| opencode.json 正确生成 | `cat /etc/opencode/opencode.json \| jq .agent` | 包含 `witty-assistant-agent` 条目 |
+| 依赖正确拉取 | `dnf install witty` | 自动安装 witty-builtin-agent, witty-agent-loader 等 |
+| opencode.json 正确生成 | `cat /etc/opencode/opencode.json \| jq .agent` | 包含 `witty-builtin-agent` 条目 |
 | skills.paths 生效 | `cat /etc/opencode/opencode.json \| jq .skills.paths` | 包含 `/usr/share/witty/opencode/skills` |
 | {file:...} 已解析 | `grep "prompt" /etc/opencode/opencode.json` | 路径为绝对路径，非相对 `../` |
 | experience-skill 并存 | 安装 `witty-experience-skill` 后 | `config.d` 无冲突，opencode.json 无需手动修改 |
@@ -806,13 +806,13 @@ flowchart LR
 
 | 检查项 | 操作 | 预期结果 |
 | ------ | ---- | ------- |
-| Agent 可见 | `opencode agent list` | 列表中包含 `witty-assistant-agent` |
+| Agent 可见 | `opencode agent list` | 列表中包含 `witty-builtin-agent` |
 | Agent 可加载 | 启动 opencode 会话 | 显示 "Witty Assistant" |
 | experience-skill 优先 | 询问技术问题 | Agent 先调用 experience-skill 再回答 |
 | manpage-skill 可查 | 询问 `ls` 命令用法 | 返回命令说明与示例 |
 | MCP 可查询 | 询问兼容性 | 返回官网兼容性数据（需 Token） |
 | 危险命令拦截 | 要求执行 `rm -rf /` | Agent 拒绝执行并给出风险提示 |
-| 卸载后清理 | `dnf remove witty-assistant-agent` | opencode.json 中移除对应 Agent |
+| 卸载后清理 | `dnf remove witty-builtin-agent` | opencode.json 中移除对应 Agent |
 | 重装不残留 | 卸载后重装 | opencode.json 正确重建，无重复条目 |
 
 ---
@@ -821,7 +821,7 @@ flowchart LR
 
 ### 10.1 版本对齐
 
-- `witty-assistant-agent` 和 `witty` 使用 `Requires: witty-assistant-agent = %{version}-%{release}` 绑定版本
+- `witty-builtin-agent` 和 `witty` 使用 `Requires: witty-builtin-agent = %{version}-%{release}` 绑定版本
 - 当 Skill SKILL.md 或 Role Prompt 内容更新时，必须**同步提升 euler-copilot-shell 的 Version** 并重新打包
 
 ### 10.2 experience-skill 的来源
@@ -841,7 +841,7 @@ euler-copilot-rag (源包)
         安装到: /usr/share/witty/opencode/skills/experience-skill/
 
 witty (主包)
-  Requires:  witty-assistant-agent
+  Requires:  witty-builtin-agent
   Requires:  witty-release
   Recommends: witty-log-detection, witty-lite-rag
 ```
@@ -855,10 +855,10 @@ witty (主包)
    %define exp_skill_name %(tar xzf %{SOURCE0} .../SKILL.md | sed ... | grep . || echo experience-skill)
    ```
 
-3. 目标安装目录为 `/usr/share/witty/opencode/skills/experience-skill/`，与 `witty-assistant-agent` 的 skills 在同一 `skills.paths` 下，由 `witty-agent-loader` 统一发现
+3. 目标安装目录为 `/usr/share/witty/opencode/skills/experience-skill/`，与 `witty-builtin-agent` 的 skills 在同一 `skills.paths` 下，由 `witty-agent-loader` 统一发现
 4. `witty-experience-skill` 不仅包含 SKILL.md，还包含 `.venv`、CLI 工具、中文分词器 `libsimple.so` 等运行时依赖
 
-**对 `witty-assistant-agent` 的依赖建议：**
+**对 `witty-builtin-agent` 的依赖建议：**
 
 | 依赖类型 | 建议 | 理由 |
 | -------- | ---- | ---- |
@@ -866,7 +866,7 @@ witty (主包)
 | `Recommends` | ✅ 使用 | 用户体验最佳：`dnf install witty` 时如果 EPOL 仓库可达，会自动安装 `euler-copilot-rag` 全家桶 |
 | `Suggests` | 备选 | 更宽松，适合最小化安装场景 |
 
-建议在 `witty-assistant-agent` 中保留 `Recommends: witty-experience-skill`：
+建议在 `witty-builtin-agent` 中保留 `Recommends: witty-experience-skill`：
 
 ```spec
 Recommends:     witty-experience-skill
@@ -886,7 +886,7 @@ MCP Server 通过 `npx -y openeuler-portal-mcp` 按需启动。这要求：
 
 ### 10.4 离线构建
 
-`witty-assistant-agent` 作为 `noarch` 子包，其构建依赖两个来源：
+`witty-builtin-agent` 作为 `noarch` 子包，其构建依赖两个来源：
 
 | 来源 | 离线可行性 | 说明 |
 | ---- | --------- | ---- |
@@ -905,7 +905,7 @@ MCP Server 通过 `npx -y openeuler-portal-mcp` 按需启动。这要求：
 
 1. 创建独立的 Skill 子包（如 `witty-skill-manpage`）
 2. 每个子包写入自己的 `config.d/<name>.json` 和 `skills/<name>/` 目录
-3. `witty-assistant-agent` 将对应 Skill 改为 `Recommends` 或 `Suggests`
+3. `witty-builtin-agent` 将对应 Skill 改为 `Recommends` 或 `Suggests`
 4. `rebuild-managed-config.mjs` 自动处理合并，无需修改下游配置
 
 ---
@@ -914,14 +914,14 @@ MCP Server 通过 `npx -y openeuler-portal-mcp` 按需启动。这要求：
 
 | 决策 | 选择 | 理由 |
 | ---- | ---- | ---- |
-| 打包粒度 | 单一 `witty-assistant-agent` 子包 | Phase 1 MVP 简化，后续可拆分 |
-| 命名空间 | `witty-assistant-agent` | 避免与其他 Agent Provider 冲突 |
+| 打包粒度 | 单一 `witty-builtin-agent` 子包 | Phase 1 MVP 简化，后续可拆分 |
+| 命名空间 | `witty-builtin-agent` | 避免与其他 Agent Provider 冲突 |
 | Skill 源码存放 | 5 个 Skill 不入库，构建时从 SkillHub 下载；experience-skill 由 euler-copilot-rag 子包提供 | 遵循各 skill 的实际来源 |
 | 权限位置 | Agent 级定义于 config fragment | 与 opencode 标准一致，声明式管理 |
 | 配置生成 | 依赖 `witty-agent-loader` file triggers | 遵循现有托管配置架构，零代码修改 |
 | MCP 依赖 | `npx -y` 按需启动 | 轻量部署，不要求全局安装 |
 | MCP 上游 | <https://atomgit.com/openeuler/openEuler-portal-mcp> | openEuler 官方 Portal MCP Server |
-| 版本绑定 | `Requires: witty-assistant-agent = version` | 强一致性，避免版本不匹配 |
+| 版本绑定 | `Requires: witty-builtin-agent = version` | 强一致性，避免版本不匹配 |
 | 构建脚本 | `prepare-release.sh` 新增 Skill 下载步骤 | 统一管理外部依赖下载 |
 | Skill 版本管理 | `skill-versions.sh` 单一事实来源 | spec 和 prepare-release.sh 共享同一版本声明 |
 
@@ -931,11 +931,11 @@ MCP Server 通过 `npx -y openeuler-portal-mcp` 按需启动。这要求：
 
 | 文件 | 操作 | 说明 |
 | ---- | ---- | ---- |
-| `packaging/builtin-agents/config.d/witty-assistant-agent.json` | **新增** | Agent + MCP 配置碎片（仓库内维护） |
-| `packaging/builtin-agents/agents/witty-assistant-agent/witty-assistant-agent.md` | **新增** | Role Prompt（仓库内维护） |
+| `packaging/builtin-agents/config.d/witty-builtin-agent.json` | **新增** | Agent + MCP 配置碎片（仓库内维护） |
+| `packaging/builtin-agents/agents/witty-builtin-agent/witty-builtin-agent.md` | **新增** | Role Prompt（仓库内维护） |
 | `packaging/builtin-agents/skill-versions.sh` | **新增** | Skill 版本与下载 URL 声明（唯一事实来源） |
 | `packaging/scripts/prepare-release.sh` | **修改** | 新增 Step 5.5：从 SkillHub 下载 5 个 Skill zip |
-| `packaging/euler-copilot-shell.spec` | **修改** | 新增 Source5~Source9、BuildRequires: unzip、witty-assistant-agent 子包定义及 install/files 段 |
+| `packaging/euler-copilot-shell.spec` | **修改** | 新增 Source5~Source9、BuildRequires: unzip、witty-builtin-agent 子包定义及 install/files 段 |
 
 > **不入库的文件：** 5 个 SKILL.md 及其所在目录树均不在本仓库中。它们由 `prepare-release.sh` 从 SkillHub 下载、由 spec 的 `%install` 解压到托管目录。
 

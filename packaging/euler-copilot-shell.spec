@@ -64,9 +64,7 @@ Obsoletes:      euler-copilot-shell < 3.0.0
 Provides:       witty-assistant = %{version}-%{release}
 Obsoletes:      witty-assistant < 3.0.0
 Requires:       witty-release = %{version}-%{release}
-Requires:       witty-assistant-agent = %{version}-%{release}
-Recommends:     witty-log-detection
-Recommends:     witty-lite-rag
+Requires:       witty-builtin-agent = %{version}-%{release}
 
 %description -n witty
 Witty is the terminal-side intelligent interaction entry point for openEuler.
@@ -95,7 +93,7 @@ It owns the managed resource directories, the config generator, and
 the RPM transaction hooks that rebuild /etc/opencode/opencode.json
 from installed config fragments and resource bundles.
 
-%package -n witty-assistant-agent
+%package -n witty-builtin-agent
 Summary:        Built-in agent, skills, and MCP config for Witty Assistant
 BuildArch:      noarch
 Requires:       witty-agent-loader >= %{version}-%{release}
@@ -103,7 +101,7 @@ Requires:       nodejs >= 20
 Recommends:     witty-experience-skill
 Recommends:     opencode
 
-%description -n witty-assistant-agent
+%description -n witty-builtin-agent
 This package ships the built-in Witty Assistant agent (Role Prompt),
 five core skills sourced from SkillHub (manpage-skill, log-anomaly-detector,
 html-report-generator, brainstorm-beagle, plantuml-skill), and the openEuler
@@ -189,32 +187,32 @@ install -d "%{buildroot}%{witty_managed_plugins}"
 
 cd -
 
-# witty-assistant-agent: config.d fragment
-install -Dpm 0644 packaging/builtin-agents/config.d/witty-assistant-agent.json \
-  %{buildroot}%{witty_managed_config_dropins}/witty-assistant-agent.json
+# witty-builtin-agent: config.d fragment
+install -Dpm 0644 packaging/builtin-agents/config.d/witty-builtin-agent.json \
+  %{buildroot}%{witty_managed_config_dropins}/witty-builtin-agent.json
 
-# witty-assistant-agent: agent prompt
-install -d %{buildroot}%{witty_managed_agents}/witty-assistant-agent
-install -Dpm 0644 packaging/builtin-agents/agents/witty-assistant-agent/witty-assistant-agent.md \
-  %{buildroot}%{witty_managed_agents}/witty-assistant-agent/witty-assistant-agent.md
+# witty-builtin-agent: agent prompt
+install -d %{buildroot}%{witty_managed_agents}/witty-builtin-agent
+install -Dpm 0644 packaging/builtin-agents/agents/witty-builtin-agent/witty-builtin-agent.md \
+  %{buildroot}%{witty_managed_agents}/witty-builtin-agent/witty-builtin-agent.md
 
-# witty-assistant-agent: 5 skills from SkillHub (HTTP API, no auth)
-install -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent
+# witty-builtin-agent: 5 skills from SkillHub (HTTP API, no auth)
+install -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent
 
-mkdir -p %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_manpage_slug}
-unzip -qo %{SOURCE5} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_manpage_slug}/
-mkdir -p %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_log_anomaly_slug}
-unzip -qo %{SOURCE6} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_log_anomaly_slug}/
-mkdir -p %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_html_report_slug}
-unzip -qo %{SOURCE7} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_html_report_slug}/
-mkdir -p %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_brainstorm_slug}
-unzip -qo %{SOURCE8} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_brainstorm_slug}/
-mkdir -p %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_plantuml_slug}
-unzip -qo %{SOURCE9} -d %{buildroot}%{witty_managed_skills}/witty-assistant-agent/%{skill_plantuml_slug}/
+mkdir -p %{buildroot}%{witty_managed_skills}/witty-builtin-agent/%{skill_manpage_slug}
+unzip -qo %{SOURCE5} -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent/%{skill_manpage_slug}/
+mkdir -p %{buildroot}%{witty_managed_skills}/witty-builtin-agent/%{skill_log_anomaly_slug}
+unzip -qo %{SOURCE6} -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent/%{skill_log_anomaly_slug}/
+mkdir -p %{buildroot}%{witty_managed_skills}/witty-builtin-agent/%{skill_html_report_slug}
+unzip -qo %{SOURCE7} -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent/%{skill_html_report_slug}/
+mkdir -p %{buildroot}%{witty_managed_skills}/witty-builtin-agent/%{skill_brainstorm_slug}
+unzip -qo %{SOURCE8} -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent/%{skill_brainstorm_slug}/
+mkdir -p %{buildroot}%{witty_managed_skills}/witty-builtin-agent/%{skill_plantuml_slug}
+unzip -qo %{SOURCE9} -d %{buildroot}%{witty_managed_skills}/witty-builtin-agent/%{skill_plantuml_slug}/
 
-find %{buildroot}%{witty_managed_skills}/witty-assistant-agent/ \
+find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
   -name '__MACOSX' -prune -exec rm -rf {} + 2>/dev/null || true
-find %{buildroot}%{witty_managed_skills}/witty-assistant-agent/ \
+find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
   -name '.DS_Store' -delete 2>/dev/null || true
 
 %check
@@ -250,10 +248,10 @@ find %{buildroot}%{witty_managed_skills}/witty-assistant-agent/ \
 %dir %{witty_managed_skills}
 %dir %{witty_managed_plugins}
 
-%files -n witty-assistant-agent
-%{witty_managed_config_dropins}/witty-assistant-agent.json
-%{witty_managed_agents}/witty-assistant-agent
-%{witty_managed_skills}/witty-assistant-agent
+%files -n witty-builtin-agent
+%{witty_managed_config_dropins}/witty-builtin-agent.json
+%{witty_managed_agents}/witty-builtin-agent
+%{witty_managed_skills}/witty-builtin-agent
 
 %posttrans -n witty-agent-loader
 %{witty_managed_libexec}/run-managed-config-hook.sh posttrans
@@ -280,11 +278,11 @@ find %{buildroot}%{witty_managed_skills}/witty-assistant-agent/ \
 
 %changelog
 * Tue Jul 14 2026 Witty Team <intelligence@openeuler.org> - 3.1.0-1
-- Add witty-assistant-agent subpackage with built-in agent, skills, and MCP config
+- Add witty-builtin-agent subpackage with built-in agent, skills, and MCP config
 - Ship Role Prompt and config.d fragment for Witty Assistant as default agent (mode=primary)
 - Download 5 SkillHub skills (manpage-skill, log-anomaly-detector, html-report-generator,
   brainstorm-beagle, plantuml-skill) at build time via prepare-release.sh
-- witty now Requires witty-assistant-agent for out-of-the-box agent experience
+- witty now Requires witty-builtin-agent for out-of-the-box agent experience
 - Skill versions centralized in skill-versions.sh, spec Sources use real URLs for CI
 
 * Tue Jun 30 2026 Witty Team <intelligence@openeuler.org> - 3.0.0-2

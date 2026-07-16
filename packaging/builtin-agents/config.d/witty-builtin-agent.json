@@ -1,10 +1,10 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
-    "witty-assistant-agent": {
+    "witty-builtin-agent": {
       "description": "Witty Assistant，提供知识问答、命令查询、故障诊断、方案规划与可视化报告",
       "mode": "primary",
-      "prompt": "{file:../agents/witty-assistant-agent/witty-assistant-agent.md}",
+      "prompt": "{file:../agents/witty-builtin-agent/witty-builtin-agent.md}",
       "color": "#5F87FF",
       "permission": {
         "*": "deny",
