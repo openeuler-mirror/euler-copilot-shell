@@ -148,8 +148,8 @@ func TestPresenter_NonTTYOutputHasNoANSI(t *testing.T) {
 	if !strings.Contains(got, "[model] switched to deepseek/v4") {
 		t.Fatalf("non-TTY output = %q, want readable model line", got)
 	}
-	if !strings.Contains(got, "[unknown] custom.event test") {
-		t.Fatalf("non-TTY output = %q, want readable unknown line", got)
+	if strings.Contains(got, "[unknown]") {
+		t.Fatalf("non-TTY output = %q, want no unknown output", got)
 	}
 	if !strings.Contains(got, "[server] http /event: status 500: boom") {
 		t.Fatalf("non-TTY output = %q, want readable error line", got)

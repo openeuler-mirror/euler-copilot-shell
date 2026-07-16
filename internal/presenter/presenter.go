@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/url"
 	"os"
@@ -69,6 +70,7 @@ type Options struct {
 	StepStyle         string // "line", "minimal", "none"
 	GroupContextTools bool   // group consecutive read/grep/glob/list calls
 	Width             int    // terminal width, used for command word-wrapping; 0 = no wrap
+	Logger            *slog.Logger
 }
 
 type defaultPresenter struct {
@@ -80,6 +82,7 @@ type defaultPresenter struct {
 	stepStyle    string
 	groupContext bool
 	width        int
+	logger       *slog.Logger
 	// contextGroup accumulates consecutive read/grep/glob/list tool calls
 	// for collapsed display. When a non-context tool or step boundary
 	// arrives, the group is flushed.
@@ -123,6 +126,10 @@ func NewPresenter(opts Options) Presenter {
 	if out == nil {
 		out = io.Discard
 	}
+	logger := opts.Logger
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
 	colorEnabled := opts.IsTTY && !opts.NoColor
 	_, isFile := out.(*os.File)
 	stepStyle := opts.StepStyle
@@ -138,6 +145,7 @@ func NewPresenter(opts Options) Presenter {
 		stepStyle:    stepStyle,
 		groupContext: opts.GroupContextTools,
 		width:        opts.Width,
+		logger:       logger,
 		toolNames:    make(map[string]string),
 	}
 }
@@ -628,11 +636,11 @@ func (p *defaultPresenter) PresentQuestion(ctx context.Context, payload event.Qu
 }
 
 func (p *defaultPresenter) PresentUnknown(ctx context.Context, payload event.UnknownPayload) error {
-	message := payload.Type
-	if payload.Summary != "" {
-		message += " " + payload.Summary
+	if err := ctx.Err(); err != nil {
+		return err
 	}
-	return p.writeLabelLine(ctx, p.styles.unknown, "[unknown]", summarizeText(message))
+	p.logger.Debug("event: unknown type suppressed", "type", payload.Type, "summary", payload.Summary)
+	return nil
 }
 
 func (p *defaultPresenter) PresentError(ctx context.Context, err error) error {

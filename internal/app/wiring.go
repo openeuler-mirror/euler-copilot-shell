@@ -164,6 +164,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		StepStyle:         cfg.Display.StepStyle,
 		GroupContextTools: cfg.Display.GroupContextTools,
 		Width:             width,
+		Logger:            logger,
 	})
 	var prompt terminal.Prompter
 	if interactiveTTY {
