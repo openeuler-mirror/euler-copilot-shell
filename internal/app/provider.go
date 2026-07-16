@@ -71,6 +71,32 @@ func (a *App) ConnectProviderWithAPIKey(ctx context.Context, input, apiKey strin
 	if err != nil {
 		return ProviderStatus{}, err
 	}
+	if !providerStatus.Connected && a.serverMgr != nil {
+		if stopErr := a.serverMgr.Stop(ctx); stopErr != nil {
+			a.logger.Debug("stop server before credentials reload", "error", stopErr)
+		}
+		conn, ensureErr := a.serverMgr.Ensure(ctx)
+		if ensureErr != nil {
+			return ProviderStatus{}, fmt.Errorf("restart server to activate credentials: %w", ensureErr)
+		}
+		newTransport, newTransportErr := transport.NewClient(transport.Options{
+			BaseURL:  conn.URL,
+			Logger:   a.logger,
+			Password: conn.Password,
+		})
+		if newTransportErr != nil {
+			return ProviderStatus{}, fmt.Errorf("reconnect after server restart: %w", newTransportErr)
+		}
+		a.transport = newTransport
+		refreshed, err = a.listAPIKeyProviders(ctx, cwd)
+		if err != nil {
+			return ProviderStatus{}, err
+		}
+		providerStatus, err = resolveProviderStatus(refreshed, providerStatus.ID)
+		if err != nil {
+			return ProviderStatus{}, err
+		}
+	}
 	if !providerStatus.Connected {
 		return ProviderStatus{}, fmt.Errorf("provider %s did not appear connected after updating credentials", providerStatus.ID)
 	}
