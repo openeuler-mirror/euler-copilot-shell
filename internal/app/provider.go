@@ -47,7 +47,7 @@ func (a *App) ConnectProviderWithAPIKey(ctx context.Context, input, apiKey strin
 	}
 	providerStatus := newProviderStatus(provider, providers)
 	if !providerStatus.Connected && !providerIsAPIKeyCapable(provider, authMethods) {
-		return ProviderStatus{}, fmt.Errorf("当前 Provider 暂不支持 API Key 认证方式")
+		return ProviderStatus{}, fmt.Errorf("the current provider does not support API key authentication")
 	}
 	key := strings.TrimSpace(apiKey)
 	if key == "" {

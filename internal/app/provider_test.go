@@ -175,7 +175,7 @@ func TestConnectProviderWithAPIKey_RejectsUnsupportedAuth(t *testing.T) {
 	if err == nil {
 		t.Fatal("ConnectProviderWithAPIKey() error = nil, want unsupported auth error")
 	}
-	if !strings.Contains(err.Error(), "当前 Provider 暂不支持 API Key 认证方式") {
+	if !strings.Contains(err.Error(), "the current provider does not support API key authentication") {
 		t.Fatalf("error = %q, want unsupported auth guidance", err)
 	}
 	if authCalls.Load() != 0 {

@@ -21,9 +21,9 @@ func newAskCommand(opts *rootOptions) *cobra.Command {
 		Short: "Ask opencode a single prompt",
 		Long:  "Send one prompt to opencode and stream the response. Prompt text can be passed as command arguments or piped on stdin.",
 		Example: strings.Join([]string{
-			`witty ask "检查系统内存"`,
-			`echo "解释这个函数" | witty ask --new`,
-			`witty ask --session ses_123 "继续上次的重构"`,
+			`witty ask "check system memory"`,
+			`echo "explain this function" | witty ask --new`,
+			`witty ask --session ses_123 "continue the last refactoring"`,
 		}, "\n"),
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
