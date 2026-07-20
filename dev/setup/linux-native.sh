@@ -47,8 +47,8 @@ download() {
 echo "  更新包索引..."
 dnf makecache -q 2>/dev/null || true
 
-echo "  安装基础工具 (git, make)..."
-dnf install -y git make 2>/dev/null
+echo "  安装基础工具 (git, make, gcc, gdb)..."
+dnf install -y git make gcc gdb 2>/dev/null
 
 # 动态检测架构
 HOST_ARCH=$(uname -m)
