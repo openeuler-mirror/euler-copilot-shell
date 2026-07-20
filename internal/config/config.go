@@ -2,7 +2,7 @@ package config
 
 const (
 	DefaultServerURL            = "http://127.0.0.1:4096"
-	DefaultAgent                = "build"
+	DefaultAgent                = "witty-builtin-agent"
 	DefaultTheme                = "auto"
 	DefaultDoctorTimeoutSeconds = 5
 )

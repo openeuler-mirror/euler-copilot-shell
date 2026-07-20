@@ -59,10 +59,11 @@ func (w *configWriter) loadConfig() (*koanf.Koanf, error) {
 		return nil, fmt.Errorf("load defaults: %w", err)
 	}
 
-	path := w.ConfigPath()
-	if _, err := os.Stat(path); err == nil {
-		if err := k.Load(file.Provider(path), toml.Parser()); err != nil {
-			return nil, fmt.Errorf("load config file %q: %w", path, err)
+	for _, path := range []string{"/etc/witty/config.toml", w.ConfigPath()} {
+		if _, err := os.Stat(path); err == nil {
+			if err := k.Load(file.Provider(path), toml.Parser()); err != nil {
+				return nil, fmt.Errorf("load config file %q: %w", path, err)
+			}
 		}
 	}
 	return k, nil
