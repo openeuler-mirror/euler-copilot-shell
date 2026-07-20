@@ -110,7 +110,12 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       printf 'control\n'
       return 0
       ;;
-    /new | /help | /exit | /quit | /q)
+    /new)
+      __WITTY_FORCE_NEXT=1
+      printf 'control\n'
+      return 0
+      ;;
+    /help | /exit | /quit | /q)
       printf 'control\n'
       return 0
       ;;
@@ -184,7 +189,12 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     builtin history -s -- "$raw" 2>/dev/null || true
     case "$route" in
     agent)
-      command "$__WITTY_BINARY" ask -- "$raw"
+      if [ "${__WITTY_FORCE_NEXT:-0}" = "1" ]; then
+        unset __WITTY_FORCE_NEXT
+        command "$__WITTY_BINARY" ask --new -- "$raw"
+      else
+        command "$__WITTY_BINARY" ask -- "$raw"
+      fi
       ;;
     control)
       command "$__WITTY_BINARY" shell-control -- "$raw"
