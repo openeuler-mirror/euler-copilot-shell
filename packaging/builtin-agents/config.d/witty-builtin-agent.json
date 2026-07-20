@@ -7,15 +7,18 @@
       "prompt": "{file:../agents/witty-builtin-agent/witty-builtin-agent.md}",
       "color": "#5F87FF",
       "permission": {
-        "*": "deny",
-        "experience-skill_*": "allow",
-        "manpage-skill_*": "allow",
-        "log-anomaly-detector_*": "allow",
-        "html-report-generator_*": "allow",
-        "brainstorm-beagle_*": "allow",
-        "plantuml-skill_*": "allow",
+        "skill": "allow",
+        "task": "allow",
+        "read": "allow",
+        "edit": "allow",
+        "write": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "todowrite": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
         "openeuler_portal_*": "allow",
-        "Bash": "ask"
+        "bash": "ask"
       }
     }
   },
