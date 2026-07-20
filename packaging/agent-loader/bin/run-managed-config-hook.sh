@@ -63,4 +63,18 @@ if [ "$status" -ne 0 ]; then
 fi
 
 log "managed config rebuild completed"
+
+# opencode does not support hot-loading of skills, so running opencode
+# instances must be stopped when skills are added or removed.  Stop all
+# managed instances via witty (if installed), then restart wittyd so it
+# picks up the updated configuration with the new skill set.
+if command -v witty >/dev/null 2>&1; then
+    log "stopping managed opencode instances"
+    witty server stop >/dev/null 2>&1 || log "witty server stop returned non-zero (no running server?)"
+fi
+if command -v systemctl >/dev/null 2>&1; then
+    log "restarting wittyd service"
+    systemctl try-restart wittyd.service >/dev/null 2>&1 || log "wittyd service not running or restart failed"
+fi
+
 exit 0
