@@ -200,17 +200,27 @@ func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, 
 		if r.permission == nil {
 			return false, fmt.Errorf("ask interaction: permission manager is not configured")
 		}
-		// Run permission handling in a goroutine so the event loop can
-		// keep draining SSE events. The server may send further deltas
-		// or auto-reject the permission on timeout while the user thinks.
-		go func() {
-			if err := r.permission.HandleEvent(context.WithoutCancel(ctx), evt); err != nil {
-				if r.presenter != nil {
-					_ = r.presenter.PresentError(context.WithoutCancel(ctx),
-						fmt.Errorf("interaction %s: %w", evt.Kind, err))
-				}
+		// Handle permission synchronously so the event loop pauses
+		// during interactive prompts. This prevents a RowTracker
+		// desync in the EchoRenderer: when the permission handler
+		// enters the alternate screen buffer (\x1b[?1049h), any
+		// text deltas processed by the event loop would be written
+		// to that buffer and tracked by the RowTracker. When the
+		// alternate screen exits, those tracked rows don't exist
+		// on the main screen, causing subsequent erase cycles to
+		// target wrong positions and corrupt the terminal display.
+		if err := r.permission.HandleEvent(context.WithoutCancel(ctx), evt); err != nil {
+			if r.presenter != nil {
+				_ = r.presenter.PresentError(context.WithoutCancel(ctx),
+					fmt.Errorf("interaction %s: %w", evt.Kind, err))
 			}
-		}()
+		}
+		// Reset the reasoning first-paragraph flag so the next
+		// reasoning block after a permission interaction starts
+		// with a fresh "Thinking:" label.
+		if r.renderer != nil {
+			r.renderer.ResetReasoning()
+		}
 		return false, nil
 	case event.EventSessionIdle:
 		// Flush any buffered text/reasoning before the summary line
