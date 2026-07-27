@@ -265,7 +265,16 @@ Recommends:     witty-lite-rag
       "prompt": "{file:../agents/witty-builtin-agent/witty-builtin-agent.md}",
       "color": "#5F87FF",
       "permission": {
-        "*": "deny",
+        "*": "ask",
+        "read": "allow",
+        "edit": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "todowrite": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+        "skill": "allow",
+        "task": "allow",
         "experience-skill_*": "allow",
         "manpage-skill_*": "allow",
         "log-anomaly-detector_*": "allow",
@@ -273,7 +282,7 @@ Recommends:     witty-lite-rag
         "brainstorm-beagle_*": "allow",
         "plantuml-skill_*": "allow",
         "openeuler_portal_*": "allow",
-        "Bash": "ask"
+        "bash": "ask"
       }
     }
   },
@@ -648,7 +657,16 @@ sequenceDiagram
       "prompt": "{file:/usr/share/witty/opencode/agents/witty-builtin-agent/witty-builtin-agent.md}",
       "color": "#5F87FF",
       "permission": {
-        "*": "deny",
+        "*": "ask",
+        "read": "allow",
+        "edit": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "todowrite": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+        "skill": "allow",
+        "task": "allow",
         "experience-skill_*": "allow",
         "manpage-skill_*": "allow",
         "log-anomaly-detector_*": "allow",
@@ -656,7 +674,7 @@ sequenceDiagram
         "brainstorm-beagle_*": "allow",
         "plantuml-skill_*": "allow",
         "openeuler_portal_*": "allow",
-        "Bash": "ask"
+        "bash": "ask"
       }
     }
   },

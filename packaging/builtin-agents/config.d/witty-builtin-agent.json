@@ -7,16 +7,16 @@
       "prompt": "{file:../agents/witty-builtin-agent/witty-builtin-agent.md}",
       "color": "#5F87FF",
       "permission": {
-        "skill": "allow",
-        "task": "allow",
+        "*": "ask",
         "read": "allow",
         "edit": "allow",
-        "write": "allow",
         "glob": "allow",
         "grep": "allow",
         "todowrite": "allow",
         "webfetch": "allow",
         "websearch": "allow",
+        "skill": "allow",
+        "task": "allow",
         "openeuler_portal_*": "allow",
         "bash": "ask"
       }
