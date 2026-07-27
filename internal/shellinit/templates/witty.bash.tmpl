@@ -2,8 +2,8 @@
 # Witty Bash integration [[ .Version ]]
 # Source with: eval "$(witty init bash)"
 
-if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
-  export __WITTY_SHELL_INIT_LOADED=1
+if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify >/dev/null 2>&1; then
+  __WITTY_SHELL_INIT_LOADED=1
   __WITTY_BINARY="[[ .BinaryPath ]]"
   __WITTY_DEFAULT_ENABLE="[[ .ShellEnabled ]]"
   __WITTY_DEFAULT_DEBUG="[[ .ShellDebug ]]"
@@ -44,7 +44,7 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
 
   __witty_is_shell_keyword() {
     case "$1" in
-    if | then | else | elif | fi | for | while | until | do | done | "case" | "esac" | function | time | coproc | select | in)
+    [[ .ShellKeywordCase ]])
       return 0
       ;;
     esac
@@ -53,7 +53,56 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
 
   __witty_is_shell_command() {
     case "$1" in
-    command | builtin | alias | unalias | type | hash | help | cd | pwd | exit | logout | history | jobs | fg | bg | disown | export | unset | readonly | local | declare | printf | echo | test | source | . | exec | eval | trap | set | shopt | umask | ulimit | dirs | pushd | popd | ls | cat | grep | egrep | fgrep | awk | sed | find | xargs | sort | uniq | head | tail | cut | tr | wc | tee | less | more | man | which | whereis | stat | file | touch | mkdir | rmdir | rm | cp | mv | ln | chmod | chown | tar | gzip | gunzip | zip | unzip | ssh | scp | rsync | curl | wget | git | go | make | gcc | dnf | yum | rpm | systemctl | journalctl | service | ps | top | free | df | du | ip | ss | ping | sudo | su | env | bash | sh | python | python3 | node | npm | docker | podman | kubectl | jq | yq | helm | terraform | cargo | rustc | brew | apt | snap | pip | pip3 | conda | mvn | gradle | cmake | ninja | vim | nano | tmux | screen | code)
+    [[ .ShellCommandCase ]])
+      return 0
+      ;;
+    esac
+    return 1
+  }
+
+  __witty_is_control() {
+    local line="${1:-}"
+    local -a words=()
+    local first=""
+    local subcommand=""
+    read -r -a words <<<"$line"
+    [ "${#words[@]}" -gt 0 ] || return 1
+    first="${words[0],,}"
+    case "$first" in
+    /exit | /quit | /q | /new | /help)
+      [ "${#words[@]}" -eq 1 ]
+      return
+      ;;
+    /ask)
+      [ "${#words[@]}" -ge 2 ]
+      return
+      ;;
+    /agent | /model)
+      return 0
+      ;;
+    /session)
+      [ "${#words[@]}" -ge 2 ] || return 1
+      subcommand="${words[1],,}"
+      case "$subcommand" in
+      list)
+        [ "${#words[@]}" -eq 2 ]
+        return
+        ;;
+      continue)
+        [ "${#words[@]}" -eq 3 ]
+        return
+        ;;
+      esac
+      ;;
+    esac
+    return 1
+  }
+
+  __witty_has_nl_prefix() {
+    local lower=""
+    lower="${1,,}"
+    case "$lower" in
+    [[ .NLPhraseCase ]])
       return 0
       ;;
     esac
@@ -64,14 +113,41 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     local line="${1:-}"
     local lower=""
     lower="${line,,}"
+
     case "$line" in
     *'?'* | *'？'* | *[一-龥]*)
       return 0
       ;;
     esac
+
     case "$lower" in
-    "how do "* | "how "* | "what's "* | "what "* | "why "* | "explain "* | "tell me "* | "show me "* | "please "* | "help me "* | "can you "* | "is there "* | *怎么* | *如何* | *帮我* | *请* | *分析* | *解释* | *排查* | *总结* | *检查* | *看看* | *为什么* | *是什么* | *能不能*)
+    [[ .NLPhraseCase ]])
       return 0
+      ;;
+    esac
+
+    return 1
+  }
+
+  __witty_has_command_nl_signal() {
+    local first="${1:-}"
+    local lower=""
+    lower="${2,,}"
+    case "$first:$lower" in
+    [[ .CommandNLCase ]])
+      return 0
+      ;;
+    esac
+    return 1
+  }
+
+  __witty_looks_like_shell_command() {
+    case "${1:-}" in
+    [A-Za-z0-9_]*)
+      case "$1" in
+      *[!A-Za-z0-9_.+@%-]*) return 1 ;;
+      *) return 0 ;;
+      esac
       ;;
     esac
     return 1
@@ -89,13 +165,13 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       __WITTY_CMD_CACHE["$cmd"]=1
       return 0
     fi
-    __WITTY_CMD_CACHE["$cmd"]=0
     return 1
   }
 
   __witty_classify() {
     local line="${1:-}"
     local first=""
+    local rest=""
     local compact="${line// /}"
     compact="${compact//$'\t'/}"
     compact="${compact//$'\r'/}"
@@ -105,23 +181,22 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       return 0
     fi
 
-    case "$line" in
-    /ask\ * | /agent | /agent\ * | /model | /model\ * | /session\ list | /session\ continue\ *)
+    if __witty_is_control "$line"; then
+      if [ "${line,,}" = "/new" ]; then
+        __WITTY_FORCE_NEXT=1
+      fi
       printf 'control\n'
       return 0
-      ;;
-    /new)
-      __WITTY_FORCE_NEXT=1
-      printf 'control\n'
-      return 0
-      ;;
-    /help | /exit | /quit | /q)
-      printf 'control\n'
-      return 0
-      ;;
-    esac
+    fi
 
-    read -r first _ <<<"$line"
+    read -r first rest <<<"$line"
+
+    case "$first" in
+    \\*) first="${first#\\}" ;;
+    esac
+    case "$first" in
+    \"*\" | \'*\') first="${first:1:-1}" ;;
+    esac
 
     case "$first" in
     witty)
@@ -132,6 +207,10 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       printf 'shell\n'
       return 0
       ;;
+    \$[A-Za-z_]* | \$[0-9]* | \$@ | \$\* | \$# | \$\? | \$\$ | \$! | \$_)
+      printf 'shell\n'
+      return 0
+      ;;
     esac
 
     local backtick=$'\140'
@@ -139,7 +218,7 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     local dollar_brace="\${"
     # shellcheck disable=SC2221,SC2222
     case "$line" in
-    *"|"* | *">"* | *"<"* | *";"* | *"&&"* | *"||"* | *"$backtick"* | *"$dollar_paren"* | *"$dollar_brace"*)
+    *"|"* | *">"* | *"<"* | *";"* | *"&&"* | *"||"* | *"$backtick"* | *"$dollar_paren"* | *"$dollar_brace"* | *"{"*","*"}"* | *"{"*".."*"}"*)
       printf 'shell\n'
       return 0
       ;;
@@ -161,22 +240,53 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
       return 0
     fi
 
-    if __witty_has_nl_signal "$line"; then
-      printf 'agent\n'
-      return 0
-    fi
-
+    # Known commands only yield to narrow, command-prefixed question phrases.
     if __witty_is_shell_command "$first"; then
+      if __witty_has_command_nl_signal "$first" "$rest"; then
+        printf 'agent\n'
+        return 0
+      fi
       printf 'shell\n'
       return 0
     fi
+
+    # Glob patterns as first token (e.g., *.sh)
+    case "$first" in
+    *\** | *\?* | *\[*\]*)
+      printf 'shell\n'
+      return 0
+      ;;
+    esac
+
+    # Arithmetic expressions: ((...))
+    case "$compact" in
+    \(\(*\)\))
+      printf 'shell\n'
+      return 0
+      ;;
+    esac
 
     if __witty_command_exists "$first"; then
       printf 'shell\n'
       return 0
     fi
 
-    printf 'agent\n'
+    if __witty_has_nl_prefix "$line"; then
+      printf 'agent\n'
+      return 0
+    fi
+
+    if __witty_looks_like_shell_command "$first"; then
+      printf 'shell\n'
+      return 0
+    fi
+
+    if __witty_has_nl_signal "$line"; then
+      printf 'agent\n'
+      return 0
+    fi
+
+    printf 'shell\n'
   }
 
   __witty_shell_dispatch() {
@@ -273,6 +383,7 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ]; then
     if [ "$(type -t command_not_found_handle 2>/dev/null)" = "function" ]; then
       __witty_prev_command_not_found_handle=$(declare -f command_not_found_handle)
     fi
+    # shellcheck disable=SC2329
     command_not_found_handle() { __witty_command_not_found_handle "$@"; }
 
     __WITTY_BINDINGS_INSTALLED=1

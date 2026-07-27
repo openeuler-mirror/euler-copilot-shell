@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+
+	"atomgit.com/openeuler/euler-copilot-shell/internal/shellbridge"
 )
 
 const bashTemplatePath = "templates/witty.bash.tmpl"
@@ -30,12 +32,40 @@ func NewRenderer() Renderer {
 	return &renderer{}
 }
 
+type bashTemplateData struct {
+	BinaryPath       string
+	Version          string
+	ShellEnabled     bool
+	ShellDebug       bool
+	ShellKeywordCase string
+	ShellCommandCase string
+	NLPhraseCase     string
+	CommandNLCase    string
+}
+
 func (r *renderer) RenderBash(ctx context.Context, opts BashOptions) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
 
-	data := normalizeBashOptions(opts)
+	rules := shellbridge.DefaultClassificationData()
+	data := bashTemplateData{
+		BinaryPath:       opts.BinaryPath,
+		Version:          opts.Version,
+		ShellEnabled:     opts.ShellEnabled,
+		ShellDebug:       opts.ShellDebug,
+		ShellKeywordCase: shellbridge.BashKeywordCase(rules.ShellKeywords),
+		ShellCommandCase: shellbridge.BashCommandCase(rules.KnownCommands),
+		NLPhraseCase:     shellbridge.BashNLPhraseCase(rules.NLPhrases),
+		CommandNLCase:    shellbridge.BashCommandNLPhraseCase(rules.CommandNLPhrases),
+	}
+	if strings.TrimSpace(data.BinaryPath) == "" {
+		data.BinaryPath = "witty"
+	}
+	if strings.TrimSpace(data.Version) == "" {
+		data.Version = "dev"
+	}
+
 	tmpl, err := template.New("witty-bash-init").
 		Delims("[[", "]]").
 		ParseFS(TemplateFS, bashTemplatePath)
@@ -56,14 +86,4 @@ func (r *renderer) RenderBash(ctx context.Context, opts BashOptions) (string, er
 		out += "\n"
 	}
 	return out, nil
-}
-
-func normalizeBashOptions(opts BashOptions) BashOptions {
-	if strings.TrimSpace(opts.BinaryPath) == "" {
-		opts.BinaryPath = "witty"
-	}
-	if strings.TrimSpace(opts.Version) == "" {
-		opts.Version = "dev"
-	}
-	return opts
 }

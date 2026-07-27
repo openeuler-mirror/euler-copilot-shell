@@ -22,7 +22,17 @@ type Classification struct {
 	Reason string
 }
 
-var assignmentPattern = regexp.MustCompile(`^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=`)
+var assignmentPattern = regexp.MustCompile(`^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*(\[[^]]+\])?\+?=`)
+
+var globPattern = regexp.MustCompile(`[*?]|\[[^]]+\]`)
+
+var arithmeticPattern = regexp.MustCompile(`^\(\(.+\)\)$`)
+
+var braceExpansionPattern = regexp.MustCompile(`\{[^{}\n]*(,|\.\.)[^{}\n]*\}`)
+
+var parameterCommandPattern = regexp.MustCompile(`^\$([A-Za-z_][A-Za-z0-9_]*|[0-9@*#?$!_-])$`)
+
+var commandTokenPattern = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.+@%-]*$`)
 
 // Classify routes a raw interactive Bash input line to shell, agent, control, or empty.
 func Classify(input string) Classification {
@@ -33,12 +43,17 @@ func Classify(input string) Classification {
 	if isSlashControl(line) {
 		return Classification{Route: RouteControl, Reason: "whitelisted slash control"}
 	}
-	first := firstField(line)
+	first, rest := firstFieldWithRest(line)
+	first = stripShellEscapes(first)
+
 	if isWittyCommand(first) {
 		return Classification{Route: RouteShell, Reason: "witty command"}
 	}
 	if isExplicitPath(first) {
 		return Classification{Route: RouteShell, Reason: "explicit path"}
+	}
+	if isParameterCommand(first) {
+		return Classification{Route: RouteShell, Reason: "parameter-expanded command"}
 	}
 	if hasStrongShellSyntax(line) {
 		return Classification{Route: RouteShell, Reason: "shell syntax"}
@@ -49,13 +64,28 @@ func Classify(input string) Classification {
 	if isShellKeyword(first) {
 		return Classification{Route: RouteShell, Reason: "shell keyword"}
 	}
+	if isKnownShellCommand(first) {
+		if hasCommandNaturalLanguageSignal(first, rest) {
+			return Classification{Route: RouteAgent, Reason: "known command + NL question"}
+		}
+		return Classification{Route: RouteShell, Reason: "known shell command"}
+	}
+	if isGlobPattern(first) {
+		return Classification{Route: RouteShell, Reason: "glob pattern"}
+	}
+	if isArithmeticExpression(line) {
+		return Classification{Route: RouteShell, Reason: "arithmetic expression"}
+	}
+	if hasNaturalLanguagePrefix(line) {
+		return Classification{Route: RouteAgent, Reason: "natural language"}
+	}
+	if isCommandToken(first) {
+		return Classification{Route: RouteShell, Reason: "command-shaped input"}
+	}
 	if hasNaturalLanguageSignal(line) {
 		return Classification{Route: RouteAgent, Reason: "natural language"}
 	}
-	if isKnownShellCommand(first) {
-		return Classification{Route: RouteShell, Reason: "known shell command"}
-	}
-	return Classification{Route: RouteAgent, Reason: "agent fallback: unknown command without NL signal"}
+	return Classification{Route: RouteShell, Reason: "shell fallback: ambiguous input"}
 }
 
 func isSlashControl(line string) bool {
@@ -101,17 +131,41 @@ func firstField(line string) string {
 	return fields[0]
 }
 
+func firstFieldWithRest(line string) (string, string) {
+	fields := strings.Fields(line)
+	if len(fields) == 0 {
+		return "", ""
+	}
+	if len(fields) == 1 {
+		return fields[0], ""
+	}
+	rest := strings.Join(fields[1:], " ")
+	return fields[0], rest
+}
+
+func stripShellEscapes(first string) string {
+	for strings.HasPrefix(first, "\\") {
+		first = first[1:]
+	}
+	if len(first) >= 2 {
+		q := first[0]
+		if (q == '"' || q == '\'') && first[len(first)-1] == q {
+			first = first[1 : len(first)-1]
+		}
+	}
+	return first
+}
+
 func isExplicitPath(first string) bool {
-	if !strings.HasPrefix(first, "/") {
-		return strings.HasPrefix(first, "./") ||
-			strings.HasPrefix(first, "../") ||
-			strings.HasPrefix(first, "~/") ||
-			strings.Contains(first, "/")
-	}
-	if strings.HasPrefix(first, "/") && !strings.Contains(first[1:], "/") {
-		return false
-	}
-	return true
+	return strings.HasPrefix(first, "/") ||
+		strings.HasPrefix(first, "./") ||
+		strings.HasPrefix(first, "../") ||
+		strings.HasPrefix(first, "~/") ||
+		strings.Contains(first, "/")
+}
+
+func isParameterCommand(first string) bool {
+	return parameterCommandPattern.MatchString(first)
 }
 
 func hasStrongShellSyntax(line string) bool {
@@ -120,6 +174,16 @@ func hasStrongShellSyntax(line string) bool {
 	}
 	for _, token := range []string{"|", ">", "<", ";", "&&", "||", "`", "$(", "${"} {
 		if strings.Contains(line, token) {
+			return true
+		}
+	}
+	return braceExpansionPattern.MatchString(line)
+}
+
+func hasNaturalLanguagePrefix(line string) bool {
+	lower := strings.ToLower(line)
+	for _, p := range nlPhrases {
+		if p.Prefix && strings.HasPrefix(lower, p.Pattern) {
 			return true
 		}
 	}
@@ -136,48 +200,65 @@ func hasNaturalLanguageSignal(line string) bool {
 		return true
 	}
 	lower := strings.ToLower(line)
-	for _, phrase := range []string{
-		"how do ", "how ", "what's ", "what ", "why ", "explain ",
-		"tell me ", "show me ", "please ", "help me ",
-		"can you ", "is there ",
-		"怎么看", "如何", "帮我", "请", "分析", "解释",
-		"排查", "总结", "检查", "看看", "为什么", "是什么", "能不能",
-	} {
-		if strings.Contains(lower, phrase) {
+	for _, p := range nlPhrases {
+		if p.Prefix && strings.HasPrefix(lower, p.Pattern) {
+			return true
+		}
+		if !p.Prefix && strings.Contains(lower, p.Pattern) {
 			return true
 		}
 	}
 	return false
 }
 
-func isShellKeyword(first string) bool {
-	switch first {
-	case "if", "then", "else", "elif", "fi", "for", "while", "until", "do", "done", "case", "esac", "function", "time", "coproc", "select", "in":
-		return true
-	default:
-		return false
+func hasCommandNaturalLanguageSignal(command, rest string) bool {
+	lower := strings.ToLower(strings.TrimSpace(rest))
+	for _, p := range commandNLPhrases {
+		if p.Command != "" && p.Command != command {
+			continue
+		}
+		if strings.HasPrefix(lower, p.Pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+func isGlobPattern(first string) bool {
+	return globPattern.MatchString(first)
+}
+
+func isArithmeticExpression(line string) bool {
+	compact := strings.Map(func(r rune) rune {
+		if r == ' ' || r == '\t' || r == '\r' || r == '\n' {
+			return -1
+		}
+		return r
+	}, strings.TrimSpace(line))
+	return arithmeticPattern.MatchString(compact)
+}
+
+func isCommandToken(first string) bool {
+	return commandTokenPattern.MatchString(first)
+}
+
+var keywordSet, commandSet map[string]bool
+
+func init() {
+	keywordSet = make(map[string]bool, len(shellKeywords))
+	for _, kw := range shellKeywords {
+		keywordSet[kw] = true
+	}
+	commandSet = make(map[string]bool, len(knownCommands))
+	for _, c := range knownCommands {
+		commandSet[c] = true
 	}
 }
 
+func isShellKeyword(first string) bool {
+	return keywordSet[first]
+}
+
 func isKnownShellCommand(first string) bool {
-	switch first {
-	case "command", "builtin", "alias", "unalias", "type", "hash", "help",
-		"cd", "pwd", "exit", "logout", "history", "jobs", "fg", "bg", "disown",
-		"export", "unset", "readonly", "local", "declare", "printf", "echo", "test",
-		"source", ".", "exec", "eval", "trap", "set", "shopt", "umask", "ulimit",
-		"dirs", "pushd", "popd", "ls", "cat", "grep", "egrep", "fgrep", "awk",
-		"sed", "find", "xargs", "sort", "uniq", "head", "tail", "cut", "tr", "wc",
-		"tee", "less", "more", "man", "which", "where", "whereis", "stat", "file", "touch",
-		"mkdir", "rmdir", "rm", "cp", "mv", "ln", "chmod", "chown", "tar", "gzip",
-		"gunzip", "zip", "unzip", "ssh", "scp", "rsync", "curl", "wget", "git", "go",
-		"make", "gcc", "dnf", "yum", "rpm", "systemctl", "journalctl", "service", "ps",
-		"top", "free", "df", "du", "ip", "ss", "ping", "sudo", "su", "env", "bash", "sh",
-		"python", "python3", "node", "npm", "docker", "podman", "kubectl",
-		"jq", "yq", "helm", "terraform", "cargo", "rustc", "brew",
-		"apt", "snap", "pip", "pip3", "conda", "mvn", "gradle", "cmake", "ninja",
-		"vim", "nano", "tmux", "screen", "code":
-		return true
-	default:
-		return false
-	}
+	return commandSet[first]
 }

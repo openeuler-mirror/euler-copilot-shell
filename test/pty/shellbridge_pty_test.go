@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -242,6 +243,51 @@ func TestShellbridge_ShellCommandNotRewritten(t *testing.T) {
 	_, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("shell_ok"))
 	if err != nil {
 		t.Fatalf("expected shell command output 'shell_ok': %v", err)
+	}
+}
+
+func TestShellbridge_BashClassifierRoutes(t *testing.T) {
+	mockDir := setupMockWitty(t)
+	initPath := writeWittyInitScript(t, mockDir)
+	tests := []struct {
+		name string
+		line string
+		want string
+	}{
+		{name: "Chinese prompt", line: "检查系统内存", want: "agent"},
+		{name: "known command question", line: "git 怎么只看最近一次提交", want: "agent"},
+		{name: "help prompt", line: "help me understand systemd", want: "agent"},
+		{name: "dynamic command with Chinese args", line: "deploy 生产环境", want: "shell"},
+		{name: "known command with trigger filename", line: "rm 检查报告.txt", want: "shell"},
+		{name: "known command with how argument", line: "grep how input.txt", want: "shell"},
+		{name: "question mark argument", line: "echo ?", want: "shell"},
+		{name: "arithmetic expression", line: "((counter++))", want: "shell"},
+		{name: "brace expansion", line: "foobar{,baz}", want: "shell"},
+		{name: "parameter command", line: "$cmd arg", want: "shell"},
+		{name: "unknown command fallback", line: "some_unknown_nonsense", want: "shell"},
+		{name: "invalid exit control", line: "/exit extra", want: "shell"},
+		{name: "invalid session control", line: "/session continue ses_1 extra", want: "shell"},
+		{name: "valid session control", line: "/session continue ses_1", want: "control"},
+	}
+
+	const classifyScript = `
+unset __WITTY_SHELL_INIT_LOADED
+source "$1"
+declare -A __WITTY_CMD_CACHE=()
+deploy() { :; }
+__witty_classify "$2"
+`
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := exec.Command("bash", "--noprofile", "--norc", "-c", classifyScript, "bash", initPath, tt.line)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("classify %q: %v: %s", tt.line, err, output)
+			}
+			if got := strings.TrimSpace(string(output)); got != tt.want {
+				t.Fatalf("classify %q = %q, want %q", tt.line, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -611,6 +657,11 @@ func startBashWithEnv(t *testing.T, c *expect.Console, mockDir string, extraEnv 
 	cmd.Stdin = c.Tty()
 	cmd.Stdout = c.Tty()
 	cmd.Stderr = c.Tty()
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setsid:  true,
+		Setctty: true,
+		Ctty:    0,
+	}
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start bash: %v", err)
 	}

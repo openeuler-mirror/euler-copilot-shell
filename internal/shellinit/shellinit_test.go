@@ -26,7 +26,7 @@ func TestBashTemplate(t *testing.T) {
 	for _, want := range []string{
 		"Witty Bash integration 1.2.3",
 		`__WITTY_BINARY="/usr/bin/witty"`,
-		"__WITTY_SHELL_INIT_LOADED",
+		"__WITTY_SHELL_INIT_LOADED=1",
 		"__witty_should_enable()",
 		"__witty_classify()",
 		"__witty_debug_hook()",
@@ -35,7 +35,11 @@ func TestBashTemplate(t *testing.T) {
 		"__witty_install_bindings()",
 		"__witty_uninstall_bindings()",
 		"__witty_command_not_found_handle()",
+		"__witty_is_control()",
 		"__witty_has_nl_signal()",
+		"__witty_has_nl_prefix()",
+		"__witty_has_command_nl_signal()",
+		"__witty_looks_like_shell_command()",
 		"__witty_command_exists()",
 		"shopt -s extdebug",
 		"trap '__witty_debug_hook' DEBUG",
@@ -49,6 +53,9 @@ func TestBashTemplate(t *testing.T) {
 		if !strings.Contains(script, want) {
 			t.Fatalf("rendered script missing %q", want)
 		}
+	}
+	if strings.Contains(script, "export __WITTY_SHELL_INIT_LOADED") {
+		t.Fatal("rendered script exports the shell-local initialization guard")
 	}
 	if !strings.HasSuffix(script, "\n") {
 		t.Fatal("rendered script does not end with newline")

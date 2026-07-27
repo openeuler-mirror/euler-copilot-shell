@@ -172,10 +172,14 @@ Adapter 采用**确定性优先级路由**，遵循"Shell 优先、Agent 兜底"
 2. **白名单 slash 命令** → `control` / `agent`
 3. **显式 `witty ...` 命令** → `shell`
 4. **强 shell 特征** → `shell`
-5. **自然语言高置信度** → `agent`
-6. **首个 token 为已知 shell 命令且无 NL 特征** → `shell`
-7. **首个 token 通过命令存在性检查** → `shell`
-8. **首个 token 未通过命令存在性检查且无强 shell 特征** → `agent`（兜底）
+5. **首个 token 为已知 shell 命令**：
+   - 后续内容以窄问题前缀开头 → `agent`
+   - 其它情况 → `shell`
+6. **首个 token 通过命令存在性检查** → `shell`
+7. **整行以高置信度自然语言前缀开头** → `agent`
+8. **首个 token 形似命令名** → `shell`
+9. **其它输入包含 CJK / 问号等 NL 特征** → `agent`
+10. **仍无法判断** → `shell`
 
 > **为什么默认 shell 而非 agent？** Shell Adapter 无法识别的输入，Shell 自身可能仍然可以执行（自定义脚本、新安装的工具、alias 等）。如果默认走 agent，这些合法命令会被误路由到 AI，导致命令无法执行。正确做法是：Adapter 无法识别时交给 Shell 尝试执行；Shell 也无法解析（`command not found`）时，再通过 `command_not_found_handle` 兜底转交 Agent（见 §6.6）。这样两层都无法处理的输入才最终走 Agent，既保证合法命令不被误拦截，又确保自然语言不会丢失。
 
@@ -210,18 +214,26 @@ Adapter 采用**确定性优先级路由**，遵循"Shell 优先、Agent 兜底"
 
 以下任一命中且不含强 shell 特征时，可优先走 Agent：
 
-- **中文 / CJK 字符**：输入中包含 CJK 字符（Unicode Han 范围）
-- **问号**：输入中包含半角 `?` 或全角 `？`
+- **中文 / CJK 字符**：首个 token 不像命令且输入中包含 CJK 字符
+- **问号**：首个 token 不像命令且输入中包含半角 `?` 或全角 `？`
 - **中文自然语言触发词**：`怎么`、`如何`、`帮我`、`请`、`分析`、`解释`、`排查`、`总结`、`检查`、`看看`、`为什么`、`是什么`、`能不能`
 - **英文自然语言触发词**：`how`、`how do`、`what`、`why`、`explain`、`tell me`、`show me`、`please`、`help me`、`can you`、`is there`、`what's`
 - 整句明显是请求或问题，而不是命令调用
-- 以真实命令开头，但后续 token 明显是问题句，如：
+- 以静态已知命令开头，且后续内容**立即**以窄问题前缀开头，如：
   - `systemctl 怎么看 nginx 日志`
   - `git 怎么只看最近一次提交`
-  - `explain how to check memory`
-  - `how do I restart nginx`
+  - `git how do I view the last commit`
 
-> **英文触发词的边界**：英文触发词必须以空格结尾或作为独立 token 匹配（如 `how` 而非 `how`），避免误匹配 `hower`、`whatever` 等正常命令参数。
+命令后的窄问题前缀仅包括 `怎么`、`如何`、`为什么`、`为何`、`能不能`、`是否`、`怎样`，以及 `how do I`、`how can I`、`how should I`、`what does`、`why does`、`why is`、`can you`。`help me` 仅对 Bash `help` 命令特殊处理。
+
+以下内容**不能单独作为已知命令转 Agent 的依据**：
+
+- 普通 CJK 参数或文件名，例如 `rm 检查报告.txt`
+- 宽泛动作词，例如 `检查`、`分析`、`解释`
+- 单个英文词组，例如 `how`、`show me`
+- 参数末尾的问号，例如 `echo ?`
+
+> **有意取舍**：`docker 镜像怎么删` 这类问题因为疑问词不紧跟命令，会优先作为 shell 命令执行。用户可使用 `/ask docker 镜像怎么删` 显式转 Agent。这样牺牲少量自动识别，避免中文文件名、分支名和搜索词被误送给 Agent。
 
 ### 6.5 命令存在性检查
 
@@ -232,7 +244,9 @@ Adapter 采用**确定性优先级路由**，遵循"Shell 优先、Agent 兜底"
 规则：
 
 - **存在命令 + 无 NL 特征** → `shell`
-- **不存在命令 + 无强 shell 特征** → `agent`
+- **不存在命令 + 首个 token 形似命令名** → `shell`
+- **不存在命令 + 明确 NL 特征** → `agent`
+- **其它情况** → `shell`
 
 > **性能考量**：命令存在性检查在每次 Enter 时执行，`type -t` 是 Bash 内建命令，开销极小（不 fork 子进程）。但为避免在极端场景下影响输入响应速度，建议将检查结果缓存到当前 session 的关联数组中（`__WITTY_CMD_CACHE`），首次查询后缓存，后续同一命令直接查表。
 >
@@ -530,9 +544,14 @@ Adapter 的责任只是**转发**，不是本地执行智能体生成的命令�
 | `explain how to check memory` | Agent | 英文触发词"explain" |
 | `how do I restart nginx` | Agent | 英文触发词"how do" |
 | `my_custom_script arg1 arg2` | Shell | 命令存在性检查通过 |
-| `some_unknown_nonsense` | Agent | 命令存在性检查失败 + 无强 shell 特征 |
+| `some_unknown_nonsense` | Shell（→ command_not_found_handle → Agent） | 不确定输入默认交给 Shell |
 | `/exit foo` | Shell（→ command_not_found_handle → Agent） | `/exit` 不接受参数，降级 |
 | `/ask` | Shell（→ command_not_found_handle → Agent） | `/ask` 必须带参数，裸 `/ask` 降级 |
+| `rm 检查报告.txt` | Shell | 已知命令优先，普通 CJK 参数不是问题句 |
+| `grep how input.txt` | Shell | 单个 `how` 不是命令后窄问题前缀 |
+| `echo ?` | Shell | 问号参数不覆盖已知命令 |
+| `((counter++))` | Shell | Bash 算术表达式 |
+| `$cmd arg` | Shell | 参数展开作为命令 |
 
 此外还应验证：
 
