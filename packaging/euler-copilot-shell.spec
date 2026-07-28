@@ -30,7 +30,7 @@
 %global witty_loader_source_dir %{_builddir}/witty-agent-loader-%{version}
 
 Name:           euler-copilot-shell
-Version:        3.1.0
+Version:        3.1.1
 Release:        1
 Summary:        openEuler terminal AI assistant
 
@@ -263,6 +263,16 @@ find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
 %systemd_postun_with_restart wittyd.service
 
 %changelog
+* Tue Jul 28 2026 Witty Team <intelligence@openeuler.org> - 3.1.1-1
+- feat: Prompt for provider API key interactively on TTY
+- fix: Make permission handling synchronous to prevent terminal desync
+- refactor: permission display with multi-line title support
+- fix: Change QuestionInfo.Custom from bool to *bool with helper method
+- fix: Refine shell command routing with precise NL detection and Bash generation
+- chore: Adjust builtin agent permissions for read, external directory, and bash
+- chore: Widen witty-builtin-agent permissions and refine prompt
+- chore: Allow witty dirs and experience-skill by default
+
 * Tue Jul 14 2026 Witty Team <intelligence@openeuler.org> - 3.1.0-1
 - Add witty-builtin-agent subpackage with built-in agent, skills, and MCP config
 - Ship Role Prompt and config.d fragment for Witty Assistant as default agent (mode=primary)
