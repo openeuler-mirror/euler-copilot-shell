@@ -275,14 +275,15 @@ Recommends:     witty-lite-rag
         "websearch": "allow",
         "skill": "allow",
         "task": "allow",
-        "experience-skill_*": "allow",
-        "manpage-skill_*": "allow",
-        "log-anomaly-detector_*": "allow",
-        "html-report-generator_*": "allow",
-        "brainstorm-beagle_*": "allow",
-        "plantuml-skill_*": "allow",
         "openeuler_portal_*": "allow",
-        "bash": "ask"
+        "external_directory": {
+          "*": "ask",
+          "/usr/share/witty/**": "allow"
+        },
+        "bash": {
+          "*": "ask",
+          "uv run experience-skill *": "allow"
+        }
       }
     }
   },
@@ -309,7 +310,9 @@ Recommends:     witty-lite-rag
 | `agent.witty-builtin-agent` | namespaced Agent 名称，避免与用户自定义 Agent 冲突 |
 | `mode: "primary"` | 主 Agent，opencode 启动时默认使用的 Agent |
 | `prompt: "{file:../agents/...}"` | 相对路径引用，由 `rebuild-managed-config.mjs` 解析为绝对路径 |
-| `permission` | Agent 级别的工具/技能权限矩阵，`*_*` 通配符精准控制 |
+| `permission` | Agent 级别的工具/技能权限矩阵，`*_*` 通配符精准控制；对象语法按模式匹配，最后命中规则生效 |
+| `permission.external_directory` | `/usr/share/witty/**` 放行 witty 托管目录（Skills/Agents/Plugins），避免访问 Skill 资源时反复询问 |
+| `permission.bash` | `uv run experience-skill *` 放行经验库 CLI（tree-sitter 解析后的子命令匹配），其余命令保持 `ask` |
 | `mcp.openeuler_portal` | MCP Server 定义，`type: "local"` 表示 stdio 模式 |
 | `command: ["npx", "-y", ...]` | Node.js npx 启动 MCP Server，`-y` 自动确认安装 |
 
@@ -667,14 +670,15 @@ sequenceDiagram
         "websearch": "allow",
         "skill": "allow",
         "task": "allow",
-        "experience-skill_*": "allow",
-        "manpage-skill_*": "allow",
-        "log-anomaly-detector_*": "allow",
-        "html-report-generator_*": "allow",
-        "brainstorm-beagle_*": "allow",
-        "plantuml-skill_*": "allow",
         "openeuler_portal_*": "allow",
-        "bash": "ask"
+        "external_directory": {
+          "*": "ask",
+          "/usr/share/witty/**": "allow"
+        },
+        "bash": {
+          "*": "ask",
+          "uv run experience-skill *": "allow"
+        }
       }
     }
   },
@@ -776,10 +780,13 @@ sequenceDiagram
 flowchart LR
     subgraph Agent[Agent 级权限]
         direction TB
-        P1["* : deny"] --> PBLOCK[拒绝执行]
-        P2["experience-skill_* : allow"] --> OK[允许调用]
-        P3["manpage-skill_* : allow"] --> OK
-        P4["Bash : ask"] --> PROMPT[询问用户]
+        P1["* : ask"] --> PROMPT[询问用户]
+        P2["skill / task : allow"] --> OK[允许调用]
+        P3["openeuler_portal_* : allow"] --> OK
+        P5["external_directory :<br/>/usr/share/witty/** = allow"] --> OK
+        P4["bash :<br/>uv run experience-skill * = allow<br/>其余 = ask"] --> MIX{按命令匹配}
+        MIX --> OK
+        MIX --> PROMPT
     end
 
     subgraph Skill[Skill 级权限<br/>allowed-tools]
