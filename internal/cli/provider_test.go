@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"io"
 	"strings"
 	"testing"
 
@@ -123,10 +124,14 @@ func TestProviderConnectCommand_AllowsEmptyKeyForEnvFallback(t *testing.T) {
 		version: version.New("dev", "none", "unknown"),
 		stdout:  &out,
 		stderr:  &errOut,
+		passwordReader: func(io.Reader, io.Writer, string) (string, error) {
+			return "", nil
+		},
 		loadAppFn: func(context.Context, *cobra.Command) (app.Container, error) {
 			return fake, nil
 		},
 	})
+	cmd.SetIn(strings.NewReader(""))
 	cmd.SetArgs([]string{"provider", "connect", "deepseek"})
 
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
@@ -134,5 +139,64 @@ func TestProviderConnectCommand_AllowsEmptyKeyForEnvFallback(t *testing.T) {
 	}
 	if fake.connectProviderKey != "" {
 		t.Fatalf("connect key = %q, want empty key for env fallback", fake.connectProviderKey)
+	}
+}
+
+func TestResolveProviderAPIKeyInput_FlagTakesPrecedence(t *testing.T) {
+	key, err := resolveProviderAPIKeyInput("sk-flag", strings.NewReader("sk-stdin"), io.Discard, nil, isTTYReader)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if key != "sk-flag" {
+		t.Fatalf("key = %q, want sk-flag", key)
+	}
+}
+
+func TestResolveProviderAPIKeyInput_PromptsOnTTY(t *testing.T) {
+	var out bytes.Buffer
+	called := false
+	mockReader := func(in io.Reader, w io.Writer, label string) (string, error) {
+		called = true
+		if label == "" {
+			t.Fatal("label should not be empty")
+		}
+		if w != &out {
+			t.Fatal("writer mismatch")
+		}
+		return "sk-prompted", nil
+	}
+	alwaysTTY := func(io.Reader) bool { return true }
+
+	key, err := resolveProviderAPIKeyInput("", strings.NewReader(""), &out, mockReader, alwaysTTY)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if !called {
+		t.Fatal("password reader was not called")
+	}
+	if key != "sk-prompted" {
+		t.Fatalf("key = %q, want sk-prompted", key)
+	}
+}
+
+func TestResolveProviderAPIKeyInput_NilPasswordReaderReturnsEmpty(t *testing.T) {
+	alwaysTTY := func(io.Reader) bool { return true }
+	key, err := resolveProviderAPIKeyInput("", strings.NewReader(""), io.Discard, nil, alwaysTTY)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if key != "" {
+		t.Fatalf("key = %q, want empty for env fallback", key)
+	}
+}
+
+func TestResolveProviderAPIKeyInput_ReadsFromNonTTYStdin(t *testing.T) {
+	neverTTY := func(io.Reader) bool { return false }
+	key, err := resolveProviderAPIKeyInput("", strings.NewReader("sk-piped\n"), io.Discard, nil, neverTTY)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if key != "sk-piped" {
+		t.Fatalf("key = %q, want sk-piped", key)
 	}
 }

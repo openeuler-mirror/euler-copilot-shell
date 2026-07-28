@@ -92,6 +92,9 @@ type SelectResult struct {
 // Prompter reads user input through line prompts and interactive selectors.
 type Prompter interface {
 	ReadLine(ctx context.Context, label string) (string, error)
+	// ReadPassword reads a line from the terminal without echoing input
+	// characters. It only works when the input is a terminal.
+	ReadPassword(ctx context.Context, label string) (string, error)
 	// Select presents an interactive arrow-key navigable list and returns the
 	// index of the chosen option, or -1 if cancelled. It only works when the
 	// input is a terminal; callers should check IsTerminal before using it.
@@ -154,6 +157,36 @@ func (p *linePrompter) ReadLine(ctx context.Context, label string) (string, erro
 		return "", fmt.Errorf("read prompt: %w", err)
 	}
 	return line, nil
+}
+
+// ReadPasswordFromTerminal reads a line from the terminal without echoing
+// input characters. It prints label to out before reading and a newline
+// afterward. The input must be a real terminal (*os.File).
+func ReadPasswordFromTerminal(in io.Reader, out io.Writer, label string) (string, error) {
+	if label != "" {
+		if _, err := fmt.Fprint(out, label); err != nil {
+			return "", fmt.Errorf("write password prompt: %w", err)
+		}
+	}
+	file, ok := in.(*os.File)
+	if !ok || file == nil {
+		return "", fmt.Errorf("password input requires a terminal")
+	}
+	raw, err := term.ReadPassword(int(file.Fd()))
+	if err != nil {
+		return "", fmt.Errorf("read password: %w", err)
+	}
+	fmt.Fprintln(out)
+	return string(raw), nil
+}
+
+func (p *linePrompter) ReadPassword(ctx context.Context, label string) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	default:
+	}
+	return ReadPasswordFromTerminal(p.in, p.out, label)
 }
 
 func readPromptLine(reader io.Reader) (string, error) {

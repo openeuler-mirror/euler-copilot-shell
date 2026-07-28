@@ -58,6 +58,36 @@ func TestPrompter_ReadLineContextCanceled(t *testing.T) {
 	}
 }
 
+func TestReadPasswordFromTerminal_NonFileReader(t *testing.T) {
+	var out bytes.Buffer
+	_, err := ReadPasswordFromTerminal(bytes.NewBufferString("secret"), &out, "prompt: ")
+	if err == nil {
+		t.Fatal("ReadPasswordFromTerminal() error = nil, want error for non-file reader")
+	}
+	if out.String() != "prompt: " {
+		t.Fatalf("output = %q, want prompt label written before error", out.String())
+	}
+}
+
+func TestPrompter_ReadPassword_NonFileReader(t *testing.T) {
+	var out bytes.Buffer
+	prompt := NewPrompter(bytes.NewBufferString("secret"), &out)
+	_, err := prompt.ReadPassword(context.Background(), "pwd: ")
+	if err == nil {
+		t.Fatal("ReadPassword() error = nil, want error for non-file reader")
+	}
+}
+
+func TestPrompter_ReadPasswordContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	prompt := NewPrompter(bytes.NewBufferString(""), io.Discard)
+	_, err := prompt.ReadPassword(ctx, "pwd: ")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("ReadPassword() error = %v, want context.Canceled", err)
+	}
+}
+
 func TestPrompter_ReadLineCancelsBlockedRead(t *testing.T) {
 	reader, writer, err := os.Pipe()
 	if err != nil {

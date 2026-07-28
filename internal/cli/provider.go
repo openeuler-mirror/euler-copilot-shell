@@ -7,6 +7,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+
+	"atomgit.com/openeuler/euler-copilot-shell/internal/terminal"
 )
 
 func newProviderCommand(opts *rootOptions) *cobra.Command {
@@ -68,7 +70,11 @@ func newProviderConnectCommand(opts *rootOptions) *cobra.Command {
 		Short: "Connect a provider using API key",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			key, err := resolveProviderAPIKeyInput(apiKey, cmd.InOrStdin())
+			readPwd := opts.passwordReader
+			if readPwd == nil {
+				readPwd = terminal.ReadPasswordFromTerminal
+			}
+			key, err := resolveProviderAPIKeyInput(apiKey, cmd.InOrStdin(), cmd.OutOrStdout(), readPwd, isTTYReader)
 			if err != nil {
 				return fmt.Errorf("provider connect: %w", err)
 			}
@@ -84,15 +90,30 @@ func newProviderConnectCommand(opts *rootOptions) *cobra.Command {
 			return err
 		},
 	}
-	cmd.Flags().StringVar(&apiKey, "key", "", "provider API key (if omitted, witty reads stdin or provider env vars)")
+	cmd.Flags().StringVar(&apiKey, "key", "", "provider API key (if omitted, witty prompts interactively, reads stdin, or uses provider env vars)")
 	return cmd
 }
 
-func resolveProviderAPIKeyInput(flagValue string, stdin io.Reader) (string, error) {
+// passwordReader reads a masked secret from the terminal.
+type passwordReader func(io.Reader, io.Writer, string) (string, error)
+
+func resolveProviderAPIKeyInput(
+	flagValue string,
+	stdin io.Reader,
+	stdout io.Writer,
+	readPwd passwordReader,
+	isTerminal func(io.Reader) bool,
+) (string, error) {
 	if key := strings.TrimSpace(flagValue); key != "" {
 		return key, nil
 	}
-	if stdin == nil || isTTYReader(stdin) {
+	if isTerminal(stdin) {
+		if readPwd == nil {
+			return "", nil
+		}
+		return readPwd(stdin, stdout, "Enter API key: ")
+	}
+	if stdin == nil {
 		return "", nil
 	}
 	data, err := io.ReadAll(stdin)

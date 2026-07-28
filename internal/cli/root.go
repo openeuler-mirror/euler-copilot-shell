@@ -24,6 +24,10 @@ type rootOptions struct {
 	stderr     io.Writer
 	loadAppFn  func(ctx context.Context, cmd *cobra.Command) (app.Container, error)
 
+	// passwordReader, when non-nil, overrides the default terminal password
+	// reader used by `provider connect`. Injected in tests.
+	passwordReader func(io.Reader, io.Writer, string) (string, error)
+
 	// skipServerEnsure prevents loadApp from calling serverMgr.Ensure(),
 	// avoiding the side effect of starting a server. Used by read-only
 	// commands like `server status` and `server stop`.

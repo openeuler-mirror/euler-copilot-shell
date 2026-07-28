@@ -56,9 +56,9 @@ func (a *App) ConnectProviderWithAPIKey(ctx context.Context, input, apiKey strin
 	if key == "" {
 		envNames := providerEnvNames(providerStatus)
 		if len(envNames) == 0 {
-			return ProviderStatus{}, fmt.Errorf("API key is required; pass --key or pipe it on stdin")
+			return ProviderStatus{}, fmt.Errorf("API key is required; pass --key, pipe it on stdin, or enter it interactively")
 		}
-		return ProviderStatus{}, fmt.Errorf("API key is required; pass --key, pipe it on stdin, or set one of: %s", strings.Join(envNames, ", "))
+		return ProviderStatus{}, fmt.Errorf("API key is required; pass --key, pipe it on stdin, enter it interactively, or set one of: %s", strings.Join(envNames, ", "))
 	}
 	if err := a.transport.SetProviderAPIKey(ctx, providerStatus.ID, key); err != nil {
 		return ProviderStatus{}, fmt.Errorf("connect provider %s: verify API key and provider availability: %w", providerStatus.ID, err)
