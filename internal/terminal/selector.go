@@ -125,11 +125,24 @@ func renderSelect(out io.Writer, title string, options []SelectOption, selected 
 		b.WriteString("\x1b[H\x1b[0J")
 	}
 
-	// Title.
+	// Title — supports multi-line titles where the first line is rendered
+	// bold (header) and subsequent lines are rendered as normal-indented
+	// body text. A blank separator is inserted between the title block
+	// and the options.
 	if title != "" {
-		b.WriteString("\x1b[1m") // bold
-		b.WriteString(title)
+		titleLines := strings.Split(title, "\n")
+		// Header (first line): bold.
+		b.WriteString("\x1b[1m")
+		b.WriteString(titleLines[0])
 		b.WriteString("\x1b[0m\r\n")
+		// Body (remaining lines): normal, indented 2 spaces.
+		for _, line := range titleLines[1:] {
+			b.WriteString("\x1b[2K  ")
+			b.WriteString(line)
+			b.WriteString("\r\n")
+		}
+		// Blank separator between title block and options.
+		b.WriteString("\x1b[2K\r\n")
 	}
 
 	// Options.

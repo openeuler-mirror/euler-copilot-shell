@@ -178,14 +178,49 @@ func (m *manager) selectPermission(ctx context.Context, payload event.Permission
 }
 
 func permissionSelectTitle(payload event.PermissionAskedPayload) string {
-	target := payload.Permission
-	if len(payload.Patterns) > 0 {
-		target = strings.TrimSpace(target + " [" + strings.Join(payload.Patterns, ", ") + "]")
+	permType := payload.Permission
+	if permType == "" {
+		permType = "requested action"
 	}
-	if target == "" {
-		target = "requested action"
+	header := "Permission Required: " + permType
+
+	if len(payload.Patterns) == 0 {
+		return header
 	}
-	return "Allow " + target + "?"
+
+	const maxPatterns = 8
+	const maxPatternWidth = 74
+
+	var b strings.Builder
+	b.WriteString(header)
+	b.WriteByte('\n')
+
+	shown := payload.Patterns
+	if len(shown) > maxPatterns {
+		shown = shown[:maxPatterns]
+	}
+	for _, pattern := range shown {
+		b.WriteString("  ")
+		b.WriteString(truncatePattern(pattern, maxPatternWidth))
+		b.WriteByte('\n')
+	}
+	if len(payload.Patterns) > maxPatterns {
+		b.WriteString(fmt.Sprintf("  +%d more", len(payload.Patterns)-maxPatterns))
+	} else {
+		// Remove trailing newline — renderSelect adds its own \r\n.
+		s := b.String()
+		return strings.TrimRight(s, "\n")
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
+// truncatePattern shortens a pattern to maxWidth characters, appending an
+// ellipsis if truncation occurs.
+func truncatePattern(pattern string, maxWidth int) string {
+	if len(pattern) <= maxWidth {
+		return pattern
+	}
+	return pattern[:maxWidth-1] + "…"
 }
 
 func (m *manager) HandleQuestion(ctx context.Context, payload event.QuestionAskedPayload) error {
@@ -365,11 +400,16 @@ func (m *manager) SetDirectory(dir string) {
 
 func permissionPrompt(payload event.PermissionAskedPayload) string {
 	target := payload.Permission
-	if len(payload.Patterns) > 0 {
-		target = strings.TrimSpace(target + " [" + strings.Join(payload.Patterns, ", ") + "]")
-	}
 	if target == "" {
 		target = "requested action"
+	}
+	suffix := ""
+	if len(payload.Patterns) > 0 {
+		first := truncatePattern(payload.Patterns[0], 60)
+		if len(payload.Patterns) > 1 {
+			suffix = fmt.Sprintf(" (+%d more)", len(payload.Patterns)-1)
+		}
+		target = fmt.Sprintf("%s [%s]%s", target, first, suffix)
 	}
 	return fmt.Sprintf("allow %s? [o]nce/[a]lways/[r]eject: ", target)
 }

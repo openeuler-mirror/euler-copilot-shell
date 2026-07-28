@@ -617,14 +617,31 @@ func (p *defaultPresenter) wrapLine(line string, maxWidth int) []string {
 }
 
 func (p *defaultPresenter) PresentPermission(ctx context.Context, payload event.PermissionAskedPayload) error {
-	messageParts := []string{payload.Permission}
-	if len(payload.Patterns) > 0 {
-		messageParts = append(messageParts, formatField("patterns", strings.Join(payload.Patterns, ",")))
+	if err := ctx.Err(); err != nil {
+		return err
 	}
-	if payload.RequestID != "" {
-		messageParts = append(messageParts, formatField("request", payload.RequestID))
+
+	// Header line: icon + permission type.
+	icon := "🔑"
+	label := "[permission]"
+	if !p.isTTY {
+		icon = label
 	}
-	return p.writeLabelLine(ctx, p.styles.permission, "[permission]", strings.Join(messageParts, " "))
+	header := icon + " " + payload.Permission
+	if p.colorEnabled {
+		header = p.styles.permission.Render(header)
+	}
+	if err := p.writeRawLine(header); err != nil {
+		return err
+	}
+
+	// Each pattern on its own indented line with border prefix.
+	for _, pattern := range payload.Patterns {
+		if err := p.writeIndentedLines(ctx, p.styles.unknown, "", []string{pattern}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (p *defaultPresenter) PresentQuestion(ctx context.Context, payload event.QuestionAskedPayload) error {
