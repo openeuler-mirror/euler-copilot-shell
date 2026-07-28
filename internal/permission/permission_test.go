@@ -117,7 +117,7 @@ func TestManager_HandleQuestion_ReplyMultipleAndCustom(t *testing.T) {
 			Question: "Which actions should run?",
 			Options:  []event.QuestionOption{{Label: "read"}, {Label: "write"}},
 			Multiple: true,
-			Custom:   true,
+			Custom:   boolPtr(true),
 		}},
 	})
 	if err != nil {
@@ -208,6 +208,8 @@ func mustManager(t *testing.T, opts Options) Manager {
 	}
 	return manager
 }
+
+func boolPtr(v bool) *bool { return &v }
 
 type fakeTransport struct {
 	permissionReplies []permissionReply

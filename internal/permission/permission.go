@@ -248,7 +248,7 @@ func (m *manager) HandleQuestion(ctx context.Context, payload event.QuestionAske
 		var err error
 
 		// Use interactive selector for questions with predefined options and no custom input.
-		if m.selectFn != nil && len(question.Options) > 0 && !question.Custom {
+		if m.selectFn != nil && len(question.Options) > 0 && !question.CustomEnabled() {
 			labels, reject, err = m.selectQuestion(ctx, index, len(payload.Questions), question)
 		} else {
 			if err := m.writeQuestion(ctx, index, len(payload.Questions), question); err != nil {
@@ -439,7 +439,7 @@ func questionHint(question event.QuestionInfo) string {
 	if question.Multiple {
 		instruction = "  enter one or more comma-separated option numbers or labels"
 	}
-	if question.Custom {
+	if question.CustomEnabled() {
 		instruction += "; custom answers allowed"
 	}
 	instruction += "; type 'reject' to refuse"
@@ -469,7 +469,7 @@ func parseQuestionAnswer(input string, question event.QuestionInfo) ([]string, b
 		}
 		label, ok := resolveQuestionOption(token, question.Options)
 		if !ok {
-			if !question.Custom {
+			if !question.CustomEnabled() {
 				return nil, false, fmt.Errorf("unknown option %q", token)
 			}
 			label = token

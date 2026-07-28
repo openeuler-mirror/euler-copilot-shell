@@ -84,7 +84,16 @@ type QuestionInfo struct {
 	Header   string           `json:"header"`
 	Options  []QuestionOption `json:"options"`
 	Multiple bool             `json:"multiple"`
-	Custom   bool             `json:"custom"`
+	Custom   *bool            `json:"custom"`
+}
+
+// CustomEnabled reports whether free-text answers are allowed.
+// opencode defaults custom to true when the field is absent.
+func (q QuestionInfo) CustomEnabled() bool {
+	if q.Custom == nil {
+		return true
+	}
+	return *q.Custom
 }
 
 type QuestionOption struct {

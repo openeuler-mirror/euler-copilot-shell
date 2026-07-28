@@ -863,7 +863,7 @@ func summarizeQuestions(questions []event.QuestionInfo) string {
 		if question.Multiple {
 			chunk = strings.TrimSpace(chunk + " multiple=true")
 		}
-		if question.Custom {
+		if question.CustomEnabled() {
 			chunk = strings.TrimSpace(chunk + " custom=true")
 		}
 		parts = append(parts, summarizeText(chunk))

@@ -18,6 +18,8 @@ import (
 
 var updatePresenterGolden = flag.Bool("update", false, "update presenter golden files")
 
+func boolPtr(v bool) *bool { return &v }
+
 func TestPresenter_Golden(t *testing.T) {
 	t.Parallel()
 
@@ -35,7 +37,7 @@ func TestPresenter_Golden(t *testing.T) {
 		{Kind: event.EventToolSucceeded, Payload: event.ToolResultPayload{CallID: "call_1", Output: "ok"}},
 		{Kind: event.EventToolFailed, Payload: event.ToolResultPayload{CallID: "call_2", Error: "permission denied"}},
 		{Kind: event.EventPermissionAsked, Payload: event.PermissionAskedPayload{RequestID: "per_1", Permission: "tool", Patterns: []string{"bash", "read"}}},
-		{Kind: event.EventQuestionAsked, Payload: event.QuestionAskedPayload{RequestID: "que_1", Questions: []event.QuestionInfo{{Question: "Continue?", Options: []event.QuestionOption{{Label: "yes", Description: "do it"}}, Multiple: false, Custom: true}}}},
+		{Kind: event.EventQuestionAsked, Payload: event.QuestionAskedPayload{RequestID: "que_1", Questions: []event.QuestionInfo{{Question: "Continue?", Options: []event.QuestionOption{{Label: "yes", Description: "do it"}}, Multiple: false, Custom: boolPtr(true)}}}},
 		{Kind: event.EventUnknown, Payload: event.UnknownPayload{Type: "custom.event", Summary: "something happened"}},
 		// SessionIdle outputs the accumulated summary.
 		{Kind: event.EventSessionIdle},
