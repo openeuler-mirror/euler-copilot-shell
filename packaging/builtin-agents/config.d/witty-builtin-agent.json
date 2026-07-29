@@ -23,6 +23,9 @@
         "skill": "allow",
         "task": "allow",
         "openeuler_portal_*": "allow",
+        "context7_*": "allow",
+        "websearch_*": "allow",
+        "grep_app_*": "allow",
         "external_directory": {
           "*": "ask",
           "/tmp/**": "allow",
