@@ -182,9 +182,6 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
     fi
 
     if __witty_is_control "$line"; then
-      if [ "${line,,}" = "/new" ]; then
-        __WITTY_FORCE_NEXT=1
-      fi
       printf 'control\n'
       return 0
     fi
@@ -297,6 +294,9 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
     fi
     local raw="$*"
     builtin history -s -- "$raw" 2>/dev/null || true
+    if [ "$route" = "control" ] && [ "${raw,,}" = "/new" ]; then
+      __WITTY_FORCE_NEXT=1
+    fi
     case "$route" in
     agent)
       if [ "${__WITTY_FORCE_NEXT:-0}" = "1" ]; then

@@ -58,6 +58,45 @@ func TestShellbridge_SlashNewRoute(t *testing.T) {
 	}
 }
 
+// TestShellbridge_SlashNewForceNext verifies that /new sets the force-next
+// flag so the subsequent agent-routed prompt is dispatched with --new.
+func TestShellbridge_SlashNewForceNext(t *testing.T) {
+	c := newConsole(t, 10*time.Second)
+	defer c.Close()
+
+	mockDir := setupMockWitty(t)
+	initPath := writeWittyInitScript(t, mockDir)
+	bashCmd, bashDone := startBash(t, c, mockDir)
+	defer cleanupBash(t, bashCmd, bashDone, c)
+
+	waitForPrompt(t, c)
+	sourceWittyScript(t, c, initPath)
+
+	// /new should dispatch as control.
+	c.SendLine("/new")
+	_, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("witty shell-control -- /new"))
+	if err != nil {
+		t.Fatalf("expected /new to dispatch as control: %v", err)
+	}
+
+	// Next natural-language prompt should include --new.
+	c.SendLine("检查系统内存")
+	_, err = c.Expect(expect.WithTimeout(10*time.Second), expect.String("witty ask --new"))
+	if err != nil {
+		t.Fatalf("expected 'witty ask --new' after /new: %v", err)
+	}
+
+	// Subsequent prompt should NOT include --new (flag is one-shot).
+	c.SendLine("检查磁盘空间")
+	output2, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("witty ask"))
+	if err != nil {
+		t.Fatalf("expected witty ask for second prompt: %v", err)
+	}
+	if strings.Contains(output2, "--new") {
+		t.Fatalf("expected --new to be one-shot, but got: %q", output2)
+	}
+}
+
 // TestShellbridge_SlashSessionListRoute verifies /session list dispatches as control.
 func TestShellbridge_SlashSessionListRoute(t *testing.T) {
 	c := newConsole(t, 10*time.Second)
