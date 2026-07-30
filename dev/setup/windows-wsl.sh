@@ -69,6 +69,9 @@ if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go1.2[6-9]"; then
 else
     echo "  Go 1.26 已安装，跳过"
 fi
+echo 'export PATH=/usr/local/go/bin:$PATH' > /etc/profile.d/go.sh
+chmod 644 /etc/profile.d/go.sh
+echo "  ✅ Go PATH 已写入 /etc/profile.d/go.sh"
 
 # ShellCheck
 echo "  安装 ShellCheck..."
