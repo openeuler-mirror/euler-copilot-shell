@@ -43,7 +43,8 @@ description: 搭建 Witty 开发与测试环境。引导开发者安装 OrbStack
    bash dev/setup/macos-orbstack.sh witty-openeuler-amd64 24.03 amd64
    ```
 
-   脚本自动安装: git、make、Go 1.26+、ShellCheck、shfmt。
+   脚本自动安装: git、make、Go 1.26+、ShellCheck、shfmt、OpenCode。
+   所有依赖安装逻辑统一由 `dev/setup/install-deps.sh` 提供；Go PATH 自动写入 `/etc/profile.d/go.sh`。
 
 ### Windows (x86_64) → WSL
 
@@ -54,7 +55,7 @@ description: 搭建 Witty 开发与测试环境。引导开发者安装 OrbStack
    bash dev/setup/windows-wsl.sh
    ```
 
-   脚本自动检测架构 (x86_64) 并安装: git、make、Go 1.26+、ShellCheck、shfmt。
+   依赖安装同 `install-deps.sh`；Go PATH 自动配置。
 
 ### Linux（x86_64 或 arm64）→ SSH / 本地
 
@@ -65,9 +66,10 @@ description: 搭建 Witty 开发与测试环境。引导开发者安装 OrbStack
    bash dev/setup/linux-native.sh
    ```
 
-   脚本自动检测架构 (x86_64 或 arm64) 并安装: git、make、Go 1.26+、ShellCheck、shfmt。
+   依赖安装同 `install-deps.sh`；Go PATH 自动配置。
 
-> **注意**：所有 setup 脚本内的架构检测均为动态（`uname -m`），绝不硬编码。Arch 映射: `aarch64→arm64`, `x86_64→amd64`。
+> **注意**：所有 setup 脚本的架构检测均为动态（`uname -m`），绝不硬编码。Arch 映射: `aarch64→arm64`, `x86_64→amd64`。
+> Go 安装到 `/usr/local/go/`，PATH 由 `/etc/profile.d/go.sh` 注入（login shell 自动生效）。
 
 ## 步骤 2：配置 .agents/config.yaml
 
@@ -138,8 +140,8 @@ build/<host-goos>-<host-goarch>/witty version
 
 ```bash
 # 以 OrbStack 为例（其他连接方式同理，替换命令前缀和 work_dir）
-orb -m <vm> -u <user> sh -lc 'export PATH=/usr/local/go/bin:$PATH && cd <work_dir> && go ver
-sion && bash scripts/build.sh && go test -count=1 ./... && build/linux-<arch>/witty version'
+# Go PATH 已由 /etc/profile.d/go.sh 注入，无需手动 export
+orb -m <vm> -u <user> sh -lc 'cd <work_dir> && go version && bash scripts/build.sh && go test -count=1 ./... && build/linux-<arch>/witty version'
 ```
 
 ## 步骤 4：环境重建
@@ -159,7 +161,7 @@ orb create openeuler:24.03 witty-openeuler
 bash dev/setup/macos-orbstack.sh witty-openeuler 24.03 arm64
 
 # 4d. 验证
-orb -m witty-openeuler -u root sh -lc 'export PATH=/usr/local/go/bin:$PATH && cd <work_dir> && bash scripts/build.sh && go test -count=1 ./... && build/linux-<arch>/witty version'
+orb -m witty-openeuler -u root sh -lc 'cd <work_dir> && bash scripts/build.sh && go test -count=1 ./... && build/linux-<arch>/witty version'
 ```
 
 ### Windows WSL
@@ -173,8 +175,8 @@ wsl --unregister <distro>
 # 4c. 进入 WSL 发行版，运行一键脚本
 bash dev/setup/windows-wsl.sh
 
-# 4d. 验证（从 WSL 内执行）
-export PATH=/usr/local/go/bin:$PATH && cd <work_dir> && bash scripts/build.sh && go test -count=1 ./... && build/linux-amd64/witty version
+# 4d. 验证（从 WSL 内执行，Go PATH 已自动配置）
+cd <work_dir> && bash scripts/build.sh && go test -count=1 ./... && build/linux-amd64/witty version
 ```
 
 ### Linux SSH（远程服务器）
@@ -188,8 +190,8 @@ ssh <user>@<host> "rm -rf <work_dir> /usr/local/go /usr/local/bin/shellcheck /us
 # 4c. 在服务器上运行一键脚本
 ssh <user>@<host> "cd <work_dir> && bash dev/setup/linux-native.sh"
 
-# 4d. 验证
-ssh <user>@<host> "export PATH=/usr/local/go/bin:\$PATH && cd <work_dir> && bash scripts/build.sh && go test -count=1 ./... && build/linux-\$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')/witty version"
+# 4d. 验证 (bash -lc 激活 login shell 以加载 /etc/profile.d/go.sh)
+ssh <user>@<host> "bash -lc 'cd <work_dir> && bash scripts/build.sh && go test -count=1 ./... && build/linux-\$(uname -m | sed s/x86_64/amd64/;s/aarch64/arm64/)/witty version'"
 ```
 
 ## 检查清单
