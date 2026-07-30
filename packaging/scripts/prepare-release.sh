@@ -43,6 +43,11 @@ OUTDIR="build/release"
 
 mkdir -p "${OUTDIR}"
 
+echo "==> [0/6] Cleaning old release artifacts"
+rm -f "${OUTDIR}"/euler-copilot-shell-*.tar.gz
+rm -f "${OUTDIR}"/witty-cli-vendor-*.tar.xz
+rm -f "${OUTDIR}"/witty-agent-loader-*.tar.gz
+
 SOURCE_TARBALL="${OUTDIR}/euler-copilot-shell-${VERSION}.tar.gz"
 GO_AMD64="${OUTDIR}/go${GO_VERSION}.linux-amd64.tar.gz"
 GO_ARM64="${OUTDIR}/go${GO_VERSION}.linux-arm64.tar.gz"
