@@ -30,7 +30,7 @@
 %global witty_loader_source_dir %{_builddir}/witty-agent-loader-%{version}
 
 Name:           euler-copilot-shell
-Version:        3.1.1
+Version:        3.1.2
 Release:        1
 Summary:        openEuler terminal AI assistant
 
@@ -263,6 +263,14 @@ find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
 %systemd_postun_with_restart wittyd.service
 
 %changelog
+* Thu Jul 30 2026 Witty Team <intelligence@openeuler.org> - 3.1.2-1
+- fix: Refactor doctor to treat not-running server as OK, remove agent-packages check
+- fix: Move /new force-next detection into dispatch
+- chore: Allow context, websearch, and grep MCPs in builtin agent
+- chore: Extract dev setup dependencies into a shared script
+- chore: Add Go PATH to profile for all setup scripts
+- chore: Clean old release artifacts before building
+
 * Tue Jul 28 2026 Witty Team <intelligence@openeuler.org> - 3.1.1-1
 - feat: Prompt for provider API key interactively on TTY
 - fix: Make permission handling synchronous to prevent terminal desync
