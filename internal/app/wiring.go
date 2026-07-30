@@ -88,12 +88,14 @@ func New(ctx context.Context, opts Options) (Container, error) {
 			return nil, fmt.Errorf("create server manager: %w", err)
 		}
 		// SkipServerEnsure avoids the side effect of starting a server for
-		// read-only commands like `server status`/`server stop`.
+		// read-only commands like `server status`/`server stop`/`doctor`.
 		if !opts.SkipServerEnsure {
 			conn, err = serverMgr.Ensure(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("ensure opencode server: %w", err)
 			}
+		} else if discovered, ok := serverMgr.Discover(ctx); ok {
+			conn = discovered
 		}
 	}
 	logger.Debug("server connection resolved", "url", conn.URL)
@@ -231,18 +233,19 @@ func New(ctx context.Context, opts Options) (Container, error) {
 		serverMgr:    serverMgr,
 		doctor: doctor.New(doctor.Options{
 			Config: doctor.ConfigSummary{
-				ServerURL:       conn.URL,
-				DefaultAgent:    cfg.DefaultAgent,
-				DefaultModel:    cfg.DefaultModel,
-				Theme:           cfg.Theme,
-				NoColor:         cfg.NoColor,
-				ShellEnabled:    cfg.Shell.Enabled,
-				RendererPhase:   cfg.RendererPhase,
-				TimeoutSeconds:  cfg.Doctor.TimeoutSeconds,
-				ServerAutoStart: cfg.Server.AutoStart,
-				ServerManaged:   serverManaged,
-				ServerPort:      serverPort,
-				ServerPID:       serverPID,
+				ServerURL:         conn.URL,
+				DefaultAgent:      cfg.DefaultAgent,
+				DefaultModel:      cfg.DefaultModel,
+				Theme:             cfg.Theme,
+				NoColor:           cfg.NoColor,
+				ShellEnabled:      cfg.Shell.Enabled,
+				RendererPhase:     cfg.RendererPhase,
+				TimeoutSeconds:    cfg.Doctor.TimeoutSeconds,
+				ServerAutoStart:   cfg.Server.AutoStart,
+				ServerManaged:     serverManaged,
+				ServerPort:        serverPort,
+				ServerPID:         serverPID,
+				ServerURLExplicit: opts.ServerURL != "",
 			},
 			Env: doctor.Environment{
 				ConfigSearchPaths: config.ConfigSearchPaths(opts.Config, os.LookupEnv),

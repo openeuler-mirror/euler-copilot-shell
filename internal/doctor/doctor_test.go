@@ -66,8 +66,8 @@ func TestRun_AllChecksPass(t *testing.T) {
 	})
 
 	checks := r.Run(context.Background())
-	if len(checks) != 9 {
-		t.Fatalf("Run() returned %d checks, want 9", len(checks))
+	if len(checks) != 7 {
+		t.Fatalf("Run() returned %d checks, want 7", len(checks))
 	}
 
 	for _, c := range checks {
@@ -76,12 +76,12 @@ func TestRun_AllChecksPass(t *testing.T) {
 		}
 	}
 
-	if len(probe.probeCalls) != 2 {
-		t.Errorf("probe calls = %v, want 2 endpoints probed", probe.probeCalls)
+	if len(probe.probeCalls) != 1 {
+		t.Errorf("probe calls = %v, want 1 endpoint probed", probe.probeCalls)
 	}
 }
 
-func TestRun_ServerUnreachable_SkipsEndpointChecks(t *testing.T) {
+func TestRun_ServerNotRunning_OK(t *testing.T) {
 	probe := &fakeServerProbe{
 		healthErr: errors.New("connection refused"),
 	}
@@ -94,47 +94,45 @@ func TestRun_ServerUnreachable_SkipsEndpointChecks(t *testing.T) {
 	checks := r.Run(context.Background())
 
 	serverCheck := findCheck(checks, "server reachable")
-	if serverCheck.Status != StatusFAIL {
-		t.Errorf("server reachable status = %s, want FAIL", serverCheck.Status)
+	if serverCheck.Status != StatusOK {
+		t.Errorf("server reachable status = %s, want OK (server not running is normal)", serverCheck.Status)
 	}
-	if !strings.Contains(serverCheck.Detail, "connection refused") {
-		t.Errorf("server reachable detail = %q, want connection refused", serverCheck.Detail)
+	if !strings.Contains(serverCheck.Detail, "not running") {
+		t.Errorf("server reachable detail = %q, want 'not running'", serverCheck.Detail)
 	}
 
 	docCheck := findCheck(checks, "/doc endpoint")
 	if docCheck.Status != StatusSKIP {
 		t.Errorf("/doc endpoint status = %s, want SKIP", docCheck.Status)
 	}
-	eventCheck := findCheck(checks, "/event endpoint")
-	if eventCheck.Status != StatusSKIP {
-		t.Errorf("/event endpoint status = %s, want SKIP", eventCheck.Status)
-	}
 
 	if len(probe.probeCalls) != 0 {
-		t.Errorf("probe calls = %v, want 0 when server is unreachable", probe.probeCalls)
+		t.Errorf("probe calls = %v, want 0 when server is not running", probe.probeCalls)
 	}
 }
 
-func TestRun_ServerUnreachable_PinpointsConnectionFailure(t *testing.T) {
+func TestRun_ServerNotRunning_AutoStartDisabled(t *testing.T) {
 	probe := &fakeServerProbe{
-		healthErr: errors.New("dial tcp 127.0.0.1:4096: connect: connection refused"),
+		healthErr: errors.New("connection refused"),
 	}
+	cfg := baseConfig()
+	cfg.ServerAutoStart = false
 	r := New(Options{
-		Config: baseConfig(),
+		Config: cfg,
 		Env:    baseEnv(),
 		Server: probe,
 	})
 
 	checks := r.Run(context.Background())
 	serverCheck := findCheck(checks, "server reachable")
-	if serverCheck.Status != StatusFAIL {
-		t.Fatalf("status = %s, want FAIL", serverCheck.Status)
+	if serverCheck.Status != StatusOK {
+		t.Errorf("server reachable status = %s, want OK", serverCheck.Status)
 	}
-	if !strings.Contains(serverCheck.Detail, "connection refused") {
-		t.Errorf("detail = %q, want to contain 'connection refused'", serverCheck.Detail)
+	if !strings.Contains(serverCheck.Detail, "not running") {
+		t.Errorf("server reachable detail = %q, want 'not running'", serverCheck.Detail)
 	}
-	if !strings.Contains(serverCheck.Hint, "opencode serve") {
-		t.Errorf("hint = %q, want to contain 'opencode serve'", serverCheck.Hint)
+	if !strings.Contains(serverCheck.Detail, "opencode serve") {
+		t.Errorf("server reachable detail = %q, want hint about 'opencode serve'", serverCheck.Detail)
 	}
 }
 

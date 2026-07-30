@@ -17,6 +17,11 @@ type Manager interface {
 	// Ensure lazily cleans up the idle server before starting a new one.
 	Ensure(ctx context.Context) (Connection, error)
 
+	// Discover returns the connection info for a running server without
+	// starting one. If no server is reachable, it returns Connection{} and
+	// false. It has no side effects (never starts or stops a server).
+	Discover(ctx context.Context) (Connection, bool)
+
 	// Stop stops the server pointed to by the state file. It prefers the
 	// POST /global/dispose API for graceful shutdown; when HTTP is unreachable
 	// it falls back to SIGTERM against the PID recorded in the state file. Any

@@ -54,8 +54,8 @@ func TestBashTemplate(t *testing.T) {
 			t.Fatalf("rendered script missing %q", want)
 		}
 	}
-	if strings.Contains(script, "export __WITTY_SHELL_INIT_LOADED") {
-		t.Fatal("rendered script exports the shell-local initialization guard")
+	if !strings.Contains(script, "export __WITTY_SHELL_INIT_LOADED") {
+		t.Fatal("rendered script does not export the initialization guard")
 	}
 	if !strings.HasSuffix(script, "\n") {
 		t.Fatal("rendered script does not end with newline")

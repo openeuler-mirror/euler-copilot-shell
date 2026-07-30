@@ -12,6 +12,8 @@ func newDoctorCommand(opts *rootOptions) *cobra.Command {
 		Short: "Run environment diagnostics",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			// Avoid the side effect of starting a server just to diagnose it.
+			opts.skipServerEnsure = true
 			container, err := opts.loadApp(cmd.Context(), cmd)
 			if err != nil {
 				return err

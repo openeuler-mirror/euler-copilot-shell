@@ -54,18 +54,19 @@ type Environment struct {
 
 // ConfigSummary is the subset of config values shown by the doctor.
 type ConfigSummary struct {
-	ServerURL       string
-	DefaultAgent    string
-	DefaultModel    string
-	Theme           string
-	NoColor         bool
-	ShellEnabled    bool
-	RendererPhase   int
-	TimeoutSeconds  int
-	ServerAutoStart bool
-	ServerManaged   bool
-	ServerPort      int
-	ServerPID       int
+	ServerURL         string
+	DefaultAgent      string
+	DefaultModel      string
+	Theme             string
+	NoColor           bool
+	ShellEnabled      bool
+	RendererPhase     int
+	TimeoutSeconds    int
+	ServerAutoStart   bool
+	ServerManaged     bool
+	ServerPort        int
+	ServerPID         int
+	ServerURLExplicit bool
 }
 
 // ServerProbe checks opencode server endpoints.
@@ -118,15 +119,12 @@ func (r *runner) Run(ctx context.Context) []Check {
 
 	if serverOK {
 		checks = append(checks, r.checkDocEndpoint(ctx))
-		checks = append(checks, r.checkEventEndpoint(ctx))
 	} else {
 		checks = append(checks, Check{Name: "/doc endpoint", Status: StatusSKIP, Detail: "server unreachable"})
-		checks = append(checks, Check{Name: "/event endpoint", Status: StatusSKIP, Detail: "server unreachable"})
 	}
 
 	checks = append(checks, r.checkServerManagement())
 	checks = append(checks, r.checkShellIntegration())
-	checks = append(checks, r.checkAgentPackages())
 	checks = append(checks, r.checkBashEnvironment())
 	checks = append(checks, r.checkTerminal())
 	return checks
@@ -176,11 +174,27 @@ func (r *runner) checkServerReachable(ctx context.Context) (bool, Check) {
 
 	health, err := r.server.Health(probeCtx)
 	if err != nil {
+		// Server not running is a normal state — the server is on-demand
+		// (started when needed, stopped after idle timeout). Report as OK
+		// so the user doesn't see a failure for expected behavior.
+		if r.cfg.ServerURLExplicit {
+			return false, Check{
+				Name:   name,
+				Status: StatusOK,
+				Detail: fmt.Sprintf("not running at %s", r.cfg.ServerURL),
+			}
+		}
+		if r.cfg.ServerAutoStart {
+			return false, Check{
+				Name:   name,
+				Status: StatusOK,
+				Detail: "not running; will auto-start on next use",
+			}
+		}
 		return false, Check{
 			Name:   name,
-			Status: StatusFAIL,
-			Detail: sanitizeErr(err),
-			Hint:   "ensure opencode is running (try: opencode serve --port 4096)",
+			Status: StatusOK,
+			Detail: "not running; start with 'opencode serve' or enable server.auto_start",
 		}
 	}
 	if !health.Healthy {
@@ -200,11 +214,6 @@ func (r *runner) checkServerReachable(ctx context.Context) (bool, Check) {
 func (r *runner) checkDocEndpoint(ctx context.Context) Check {
 	const name = "/doc endpoint"
 	return r.probeEndpoint(ctx, name, "/doc")
-}
-
-func (r *runner) checkEventEndpoint(ctx context.Context) Check {
-	const name = "/event endpoint"
-	return r.probeEndpoint(ctx, name, "/event")
 }
 
 func (r *runner) probeEndpoint(ctx context.Context, name, endpoint string) Check {
@@ -247,38 +256,6 @@ func (r *runner) checkShellIntegration() Check {
 		Detail: "not loaded in current shell",
 		Hint:   `run: eval "$(witty init bash)"`,
 	}
-}
-
-// agentPackages lists the optional RPM packages that enable server-ops and
-// RAG-based agents. They live in EPOL update, which is enabled by
-// witty-release. When any is missing the doctor reports a WARN with the
-// install command.
-var agentPackages = []string{"witty-log-detection", "witty-lite-rag"}
-
-func (r *runner) checkAgentPackages() Check {
-	const name = "agent packages"
-	var missing []string
-	for _, pkg := range agentPackages {
-		if !rpmInstalled(pkg) {
-			missing = append(missing, pkg)
-		}
-	}
-	if len(missing) == 0 {
-		return Check{Name: name, Status: StatusOK, Detail: "all agent packages installed"}
-	}
-	return Check{
-		Name:   name,
-		Status: StatusWARN,
-		Detail: fmt.Sprintf("missing: %s", strings.Join(missing, ", ")),
-		Hint:   fmt.Sprintf("run: dnf install %s", strings.Join(missing, " ")),
-	}
-}
-
-// rpmInstalled reports whether the named RPM package is installed.
-func rpmInstalled(pkg string) bool {
-	cmd := exec.Command("rpm", "-q", pkg)
-	// rpm -q exits 0 when installed, non-zero otherwise.
-	return cmd.Run() == nil
 }
 
 func (r *runner) checkBashEnvironment() Check {
@@ -328,19 +305,32 @@ func (r *runner) checkBashEnvironment() Check {
 
 func (r *runner) checkServerManagement() Check {
 	const name = "server management"
+	if r.cfg.ServerURLExplicit {
+		return Check{
+			Name:   name,
+			Status: StatusOK,
+			Detail: "using explicit --server-url; lifecycle not managed",
+		}
+	}
 	if !r.cfg.ServerAutoStart {
 		return Check{
 			Name:   name,
-			Status: StatusSKIP,
-			Detail: "auto_start is disabled; server lifecycle is not managed",
-			Hint:   "set server.auto_start = true in config to enable automatic server management",
+			Status: StatusOK,
+			Detail: "auto_start is disabled; server lifecycle managed manually",
+		}
+	}
+	if r.cfg.ServerPort == 0 {
+		return Check{
+			Name:   name,
+			Status: StatusOK,
+			Detail: "auto_start enabled; server not running, will start on next use",
 		}
 	}
 	if !r.cfg.ServerManaged {
 		return Check{
 			Name:   name,
-			Status: StatusWARN,
-			Detail: "server was discovered (not started by this process); limited lifecycle control",
+			Status: StatusOK,
+			Detail: fmt.Sprintf("running (discovered), port=%d, pid=%d", r.cfg.ServerPort, r.cfg.ServerPID),
 		}
 	}
 	detail := fmt.Sprintf("managed by this process, port=%d, pid=%d", r.cfg.ServerPort, r.cfg.ServerPID)

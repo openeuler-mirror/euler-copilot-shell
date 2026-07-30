@@ -216,7 +216,7 @@ func (f *fakeAskRunner) Run(_ context.Context, req core.AskRequest) error {
 	return f.err
 }
 
-func TestDoctor_PinpointsConnectionFailure(t *testing.T) {
+func TestDoctor_ServerNotRunning_ExplicitURL(t *testing.T) {
 	var stdout bytes.Buffer
 	container, err := New(context.Background(), Options{
 		Config: config.LoadOptions{
@@ -234,14 +234,15 @@ func TestDoctor_PinpointsConnectionFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Doctor() error = %v", err)
 	}
-	if !hasFailStatus(report) {
-		t.Errorf("report should contain FAIL status; report:\n%s", report)
+	// Server not running is a normal state — should not be FAIL.
+	if hasFailStatus(report) {
+		t.Errorf("report should not contain FAIL for a not-running server; report:\n%s", report)
 	}
 	if !strings.Contains(report, "server reachable") {
 		t.Errorf("report does not mention server reachable; report:\n%s", report)
 	}
-	if !strings.Contains(report, "connection refused") {
-		t.Errorf("report does not pinpoint connection failure; report:\n%s", report)
+	if !strings.Contains(report, "not running") {
+		t.Errorf("report should say 'not running'; report:\n%s", report)
 	}
 	if !strings.Contains(report, "SKIP") {
 		t.Errorf("report should contain SKIP for endpoint checks; report:\n%s", report)
@@ -286,9 +287,6 @@ func TestDoctor_HealthyServer_AllChecksPass(t *testing.T) {
 	}
 	if !strings.Contains(report, "/doc endpoint") {
 		t.Errorf("report should mention /doc endpoint; report:\n%s", report)
-	}
-	if !strings.Contains(report, "/event endpoint") {
-		t.Errorf("report should mention /event endpoint; report:\n%s", report)
 	}
 }
 

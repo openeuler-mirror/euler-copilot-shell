@@ -23,6 +23,10 @@ func (f *fakeServerManager) Ensure(context.Context) (server.Connection, error) {
 	return server.Connection{}, nil
 }
 
+func (f *fakeServerManager) Discover(context.Context) (server.Connection, bool) {
+	return server.Connection{}, false
+}
+
 func (f *fakeServerManager) Stop(context.Context) error {
 	if f.stopFn != nil {
 		return f.stopFn()

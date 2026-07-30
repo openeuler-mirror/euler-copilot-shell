@@ -518,6 +518,28 @@ func (m *manager) Status(ctx context.Context) Status {
 	}
 }
 
+// Discover implements Manager. It loads the state file and checks whether the
+// recorded server is still alive. If so, it returns the connection info.
+// It never starts or stops a server and has no side effects.
+func (m *manager) Discover(ctx context.Context) (Connection, bool) {
+	state, err := m.stateStore.load()
+	if err != nil || state.Port == 0 {
+		return Connection{}, false
+	}
+	host := m.hostname()
+	baseURL := fmt.Sprintf("http://%s:%d", host, state.Port)
+	if state.Password != "" {
+		if healthCheckWithAuth(ctx, baseURL, state.Password) == http.StatusOK {
+			return Connection{URL: baseURL, Password: state.Password}, true
+		}
+	} else {
+		if findOpenCodeOnPort(ctx, host, state.Port) {
+			return Connection{URL: baseURL}, true
+		}
+	}
+	return Connection{}, false
+}
+
 // TouchLastUsed implements Manager. It refreshes the state file's last_used
 // timestamp so the idle timeout does not fire during active use. Errors are
 // ignored (best-effort); a missing state file is a no-op.
