@@ -1,5 +1,9 @@
 # 文档目录
 
+## 使用文档
+
+- [`usage.md`](usage.md)：Witty 完整使用文档，涵盖安装、命令参考、Shell 集成、配置、Provider 管理、Server 管理与环境诊断。
+
 ## 设计文档
 
 - [`design/witty-overview.md`](design/witty-overview.md)：`witty` 产品定位、核心需求、会话/渲染/权限模型，以及与 `opencode serve` 的总体关系。
