@@ -176,7 +176,7 @@ func ReadPasswordFromTerminal(in io.Reader, out io.Writer, label string) (string
 	if err != nil {
 		return "", fmt.Errorf("read password: %w", err)
 	}
-	fmt.Fprintln(out)
+	fmt.Fprintln(out) //nolint:errcheck // best-effort newline after password input
 	return string(raw), nil
 }
 

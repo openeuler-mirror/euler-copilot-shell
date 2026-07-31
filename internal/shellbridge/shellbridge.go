@@ -123,14 +123,6 @@ func isWittyCommand(first string) bool {
 	return first == "witty"
 }
 
-func firstField(line string) string {
-	fields := strings.Fields(line)
-	if len(fields) == 0 {
-		return ""
-	}
-	return fields[0]
-}
-
 func firstFieldWithRest(line string) (string, string) {
 	fields := strings.Fields(line)
 	if len(fields) == 0 {

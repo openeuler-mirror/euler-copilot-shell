@@ -205,7 +205,7 @@ func permissionSelectTitle(payload event.PermissionAskedPayload) string {
 		b.WriteByte('\n')
 	}
 	if len(payload.Patterns) > maxPatterns {
-		b.WriteString(fmt.Sprintf("  +%d more", len(payload.Patterns)-maxPatterns))
+		fmt.Fprintf(&b, "  +%d more", len(payload.Patterns)-maxPatterns)
 	} else {
 		// Remove trailing newline — renderSelect adds its own \r\n.
 		s := b.String()
