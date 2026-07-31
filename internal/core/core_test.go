@@ -80,10 +80,10 @@ func TestAskRunner_Run_CompletesAndBuildsPromptRequest(t *testing.T) {
 	if !reflect.DeepEqual(renderer.deltas, []string{"hello\n\n"}) {
 		t.Fatalf("renderer deltas = %#v", renderer.deltas)
 	}
-	// SessionIdle now flushes before presenting summary, so flush happens
-	// both in handleEvent and in the Run cleanup for done==true.
-	if renderer.flushCount != 2 {
-		t.Fatalf("renderer flush count = %d, want 2", renderer.flushCount)
+	// Flush is called before each non-text event (StepStarted, ToolFailed,
+	// SessionIdle) and once more in the Run cleanup for done==true.
+	if renderer.flushCount != 4 {
+		t.Fatalf("renderer flush count = %d, want 4", renderer.flushCount)
 	}
 	// EventStepStarted is dispatched (internally no-ops for display),
 	// EventToolFailed, and EventSessionIdle (now dispatched for summary line).
@@ -278,8 +278,8 @@ func TestAskRunner_Run_FlushesBeforePermissionAndQuestion(t *testing.T) {
 	if !reflect.DeepEqual(presenter.events, []event.AppEventKind{event.EventPermissionAsked, event.EventQuestionAsked, event.EventSessionIdle}) {
 		t.Fatalf("presented events = %#v, want permission/question/idle", presenter.events)
 	}
-	// Flush is called before each permission/question event, and once more
-	// in the SessionIdle handler before the summary.
+	// Flush is called before each non-text event (PermissionAsked,
+	// QuestionAsked, SessionIdle) and once more in the Run cleanup for done==true.
 	if renderer.flushCount != 4 {
 		t.Fatalf("renderer flush count = %d, want 4", renderer.flushCount)
 	}

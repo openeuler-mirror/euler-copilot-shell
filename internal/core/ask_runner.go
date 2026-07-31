@@ -143,6 +143,17 @@ func (r *askRunner) resolveSession(ctx context.Context, req AskRequest) (session
 }
 
 func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, error) {
+	// Flush any pending text/reasoning before non-text events so that
+	// echoed text is committed to the terminal (erase + render) before
+	// other output (tool calls, step boundaries, etc.). Without this,
+	// raw echo from an incomplete block remains on screen and the
+	// following event output appears on the same line.
+	if evt.Kind != event.EventTextDelta && evt.Kind != event.EventReasoningDelta {
+		if err := r.flushRenderer(ctx); err != nil {
+			return false, err
+		}
+	}
+
 	switch evt.Kind {
 	case event.EventTextDelta:
 		payload, ok := evt.Payload.(event.TextDeltaPayload)
@@ -189,9 +200,6 @@ func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, 
 		}
 		return false, r.presenter.PresentEvent(ctx, evt)
 	case event.EventPermissionAsked, event.EventQuestionAsked:
-		if err := r.flushRenderer(ctx); err != nil {
-			return false, err
-		}
 		if r.presenter != nil {
 			if err := r.presenter.PresentEvent(ctx, evt); err != nil {
 				return false, err
@@ -223,11 +231,6 @@ func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, 
 		}
 		return false, nil
 	case event.EventSessionIdle:
-		// Flush any buffered text/reasoning before the summary line
-		// so text always appears before the "answered in" line.
-		if err := r.flushRenderer(ctx); err != nil {
-			return false, err
-		}
 		if r.presenter != nil {
 			if err := r.presenter.PresentEvent(ctx, evt); err != nil {
 				return false, err
