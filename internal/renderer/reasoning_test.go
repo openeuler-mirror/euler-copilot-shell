@@ -349,3 +349,142 @@ func TestMarkdownRenderer_ReasoningModeString(t *testing.T) {
 		t.Fatalf("minimal mode should output '▶ Thinking:' prefix: %q", got)
 	}
 }
+
+func TestReasoningWriter_EchoEchoesThenReplaces(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	w := NewReasoningWriter(ReasoningConfig{
+		Writer:      &out,
+		IsTTY:       true,
+		Mode:        ReasoningShow,
+		EchoEnabled: true,
+		Width:       120,
+	})
+
+	// A complete paragraph: echoed verbatim, then erased and replaced with
+	// the styled block.
+	if err := w.WriteDelta(context.Background(), "Hello thinking.\n\n"); err != nil {
+		t.Fatalf("WriteDelta() error = %v", err)
+	}
+
+	got := out.String()
+	// Raw echo of the delta appears first.
+	if !strings.HasPrefix(got, "Hello thinking.\n\n") {
+		t.Fatalf("echo mode should write raw delta first, got %q", got)
+	}
+	// Erase sequences replace the echoed rows. "Hello thinking.\n\n" occupies
+	// 3 terminal rows: the text line, the blank line, and the cursor line.
+	eraseCount := strings.Count(got, "\x1b[2K")
+	if eraseCount != 3 {
+		t.Fatalf("expected 3 erase sequences for 3 terminal rows, got %d in %q", eraseCount, got)
+	}
+	cursorUpCount := strings.Count(got, "\x1b[1A")
+	if cursorUpCount != 2 {
+		t.Fatalf("expected 2 cursor-up sequences, got %d in %q", cursorUpCount, got)
+	}
+	// The rendered paragraph with the left-border + Thinking: prefix.
+	if !strings.Contains(got, "│ Thinking: Hello thinking.") {
+		t.Fatalf("rendered paragraph missing left-border + Thinking: prefix: %q", got)
+	}
+}
+
+func TestReasoningWriter_EchoIncrementalDelta(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	w := NewReasoningWriter(ReasoningConfig{
+		Writer:      &out,
+		IsTTY:       true,
+		Mode:        ReasoningShow,
+		EchoEnabled: true,
+		Width:       120,
+	})
+
+	// First delta: no paragraph boundary yet, so only echo — no erase.
+	if err := w.WriteDelta(context.Background(), "Hello"); err != nil {
+		t.Fatalf("WriteDelta(first) error = %v", err)
+	}
+	if got := out.String(); got != "Hello" {
+		t.Fatalf("first delta should only echo, got %q", got)
+	}
+
+	// Second delta completes the paragraph: echo + erase + render.
+	if err := w.WriteDelta(context.Background(), " thinking.\n\n"); err != nil {
+		t.Fatalf("WriteDelta(second) error = %v", err)
+	}
+	got := out.String()
+	if !strings.Contains(got, "Hello thinking.\n\n") {
+		t.Fatalf("should contain echoed raw text, got %q", got)
+	}
+	if !strings.Contains(got, "\x1b[2K") {
+		t.Fatalf("should erase echoed rows on paragraph completion, got %q", got)
+	}
+	if !strings.Contains(got, "│ Thinking: Hello thinking.") {
+		t.Fatalf("should render the completed paragraph, got %q", got)
+	}
+}
+
+func TestReasoningWriter_EchoDisabledByDefault(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	// EchoEnabled omitted (default false): behaves like the original
+	// paragraph-level flush with no verbatim echo.
+	w := NewReasoningWriter(ReasoningConfig{Writer: &out, IsTTY: true, Mode: ReasoningShow})
+
+	if err := w.WriteDelta(context.Background(), "Hello thinking.\n\n"); err != nil {
+		t.Fatalf("WriteDelta() error = %v", err)
+	}
+	got := out.String()
+	if strings.HasPrefix(got, "Hello thinking.\n\n") {
+		t.Fatalf("echo should be disabled by default, got %q", got)
+	}
+	if strings.Contains(got, "\x1b[2K") {
+		t.Fatalf("no erase sequences expected when echo disabled, got %q", got)
+	}
+	if !strings.Contains(got, "│ Thinking: Hello thinking.") {
+		t.Fatalf("rendered paragraph should still be present, got %q", got)
+	}
+}
+
+func TestEchoRenderer_ReasoningEchoesThenReplaces(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	r, err := NewEchoRenderer(EchoOptions{
+		Writer:        &out,
+		IsTTY:         true,
+		Width:         120,
+		Theme:         "dark",
+		Enabled:       true,
+		ReasoningMode: "show",
+	})
+	if err != nil {
+		t.Fatalf("NewEchoRenderer() error = %v", err)
+	}
+
+	if err := r.WriteReasoning(context.Background(), "Analyzing the problem.\n\n"); err != nil {
+		t.Fatalf("WriteReasoning() error = %v", err)
+	}
+
+	got := out.String()
+	// Raw echo of the reasoning delta appears first.
+	if !strings.HasPrefix(got, "Analyzing the problem.\n\n") {
+		t.Fatalf("EchoRenderer reasoning should echo raw delta first, got %q", got)
+	}
+	// Erase sequences replace the echoed rows.
+	if !strings.Contains(got, "\x1b[2K") {
+		t.Fatalf("EchoRenderer reasoning should erase echo rows, got %q", got)
+	}
+	// Rendered paragraph with Thinking: prefix. Glamour wraps/styles the
+	// text (and places "Thinking:" and the body on separate lines), so
+	// check the ANSI-stripped form for each piece.
+	stripped := StripANSI(got)
+	if !strings.Contains(stripped, "Thinking:") {
+		t.Fatalf("EchoRenderer reasoning should render Thinking: prefix, stripped=%q", stripped)
+	}
+	if !strings.Contains(stripped, "Analyzing the problem.") {
+		t.Fatalf("EchoRenderer reasoning should render the body text, stripped=%q", stripped)
+	}
+}

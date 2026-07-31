@@ -15,6 +15,34 @@ const eraseLine = "\x1b[2K"
 const cursorUp = "\x1b[1A"
 const carriageReturn = "\r"
 
+// eraseRows erases `rows` terminal rows ending at the current cursor
+// position: a carriage return, then per-row clear (\x1b[2K) with cursor-up
+// (\x1b[1A) between rows, finishing with a carriage return. This is the
+// erase cycle used to replace echoed text with rendered output. A no-op
+// when rows <= 0.
+func eraseRows(out io.Writer, rows int) error {
+	if rows <= 0 {
+		return nil
+	}
+	if _, err := io.WriteString(out, carriageReturn); err != nil {
+		return fmt.Errorf("write carriage return: %w", err)
+	}
+	for i := 0; i < rows; i++ {
+		if _, err := io.WriteString(out, eraseLine); err != nil {
+			return fmt.Errorf("erase line: %w", err)
+		}
+		if i < rows-1 {
+			if _, err := io.WriteString(out, cursorUp); err != nil {
+				return fmt.Errorf("cursor up: %w", err)
+			}
+		}
+	}
+	if _, err := io.WriteString(out, carriageReturn); err != nil {
+		return fmt.Errorf("write carriage return after erase: %w", err)
+	}
+	return nil
+}
+
 // EchoRenderer streams text deltas by echoing raw input immediately, then
 // replacing each completed Markdown block with glamour-rendered output.
 type EchoRenderer struct {
@@ -71,10 +99,12 @@ func NewEchoRenderer(opts EchoOptions) (TextRenderer, error) {
 		inputFile:  opts.InputFile,
 		outputFile: opts.OutputFile,
 		reasoning: NewReasoningWriter(ReasoningConfig{
-			Writer:     out,
-			IsTTY:      opts.IsTTY,
-			Downsample: opts.OutputFile != nil,
-			Mode:       resolveReasoningMode(Options{ShowReasoning: opts.ShowReasoning, ReasoningMode: opts.ReasoningMode}),
+			Writer:      out,
+			IsTTY:       opts.IsTTY,
+			Downsample:  opts.OutputFile != nil,
+			Mode:        resolveReasoningMode(Options{ShowReasoning: opts.ShowReasoning, ReasoningMode: opts.ReasoningMode}),
+			EchoEnabled: opts.Enabled && opts.IsTTY,
+			Width:       width,
 		}),
 	}
 
@@ -135,6 +165,9 @@ func (r *EchoRenderer) Resize(width int) {
 	}
 	r.width = width
 	r.tracker.SetWidth(width)
+	if r.reasoning != nil && r.reasoning.echoTracker != nil {
+		r.reasoning.echoTracker.SetWidth(width)
+	}
 }
 
 // WriteReasoning writes reasoning text with dim styling via the embedded ReasoningWriter.
@@ -181,23 +214,8 @@ func (r *EchoRenderer) renderBlockEcho(ctx context.Context, block string) error 
 	}
 
 	echoRows := r.tracker.TerminalRows()
-	if echoRows > 0 {
-		if _, err := io.WriteString(r.out, carriageReturn); err != nil {
-			return fmt.Errorf("write carriage return: %w", err)
-		}
-		for i := 0; i < echoRows; i++ {
-			if _, err := io.WriteString(r.out, eraseLine); err != nil {
-				return fmt.Errorf("erase echo line: %w", err)
-			}
-			if i < echoRows-1 {
-				if _, err := io.WriteString(r.out, cursorUp); err != nil {
-					return fmt.Errorf("cursor up: %w", err)
-				}
-			}
-		}
-		if _, err := io.WriteString(r.out, carriageReturn); err != nil {
-			return fmt.Errorf("write carriage return after erase: %w", err)
-		}
+	if err := eraseRows(r.out, echoRows); err != nil {
+		return err
 	}
 	r.tracker.Reset()
 

@@ -38,6 +38,15 @@ type ReasoningConfig struct {
 	// Markdown is the glamour engine used to render reasoning content as
 	// Markdown. When nil on TTY, reasoning falls back to plain text output.
 	Markdown markdownEngine
+	// EchoEnabled enables Phase 2 immediate echo of raw reasoning deltas.
+	// When true (and on a TTY), each delta is written verbatim to the Writer
+	// and tracked via echoTracker; before a rendered paragraph is flushed the
+	// echoed rows are erased and replaced — mirroring EchoRenderer's body
+	// echo path. Defaults to false (paragraph-level flush only).
+	EchoEnabled bool
+	// Width is the terminal width used for echo row tracking. Required when
+	// EchoEnabled is true; ignored otherwise.
+	Width int
 }
 
 // ReasoningWriter renders reasoning (thinking) deltas with a visual style
@@ -57,6 +66,14 @@ type ReasoningWriter struct {
 	downsample bool
 	mode       ReasoningMode
 	markdown   markdownEngine
+
+	// ---- echo mode (Phase 2) ----
+	// echoEnabled mirrors EchoRenderer's body echo path: raw deltas are
+	// echoed immediately and tracked; before flushing a rendered paragraph
+	// the echoed rows are erased and replaced. Only active in show mode on a
+	// TTY. echoTracker is nil when echo is disabled.
+	echoEnabled bool
+	echoTracker *RowTracker
 
 	// buffer accumulates in-flight reasoning delta text that hasn't yet
 	// reached a paragraph boundary.
@@ -79,7 +96,7 @@ func NewReasoningWriter(cfg ReasoningConfig) *ReasoningWriter {
 	if cfg.Mode == "" {
 		cfg.Mode = ReasoningShow
 	}
-	return &ReasoningWriter{
+	w := &ReasoningWriter{
 		out:        cfg.Writer,
 		isTTY:      cfg.IsTTY,
 		downsample: cfg.Downsample,
@@ -87,6 +104,11 @@ func NewReasoningWriter(cfg ReasoningConfig) *ReasoningWriter {
 		markdown:   cfg.Markdown,
 		firstPara:  true,
 	}
+	if cfg.EchoEnabled && cfg.IsTTY && cfg.Mode == ReasoningShow {
+		w.echoEnabled = true
+		w.echoTracker = NewRowTracker(cfg.Width)
+	}
+	return w
 }
 
 // WriteDelta accumulates reasoning text. In show mode, complete paragraphs
@@ -107,6 +129,15 @@ func (w *ReasoningWriter) WriteDelta(ctx context.Context, delta string) error {
 		}
 		w.collected.WriteString(delta)
 		return nil
+	}
+
+	// Show mode: echo raw delta immediately (Phase 2) before accumulating,
+	// so reasoning streams character-by-character like the body text.
+	if w.echoEnabled {
+		if _, err := io.WriteString(w.out, delta); err != nil {
+			return fmt.Errorf("write reasoning echo: %w", err)
+		}
+		w.echoTracker.Track(delta)
 	}
 
 	// Show mode: accumulate and flush complete paragraphs.
@@ -143,6 +174,16 @@ func (w *ReasoningWriter) Flush(ctx context.Context) error {
 		remaining := strings.TrimRight(w.buffer.String(), "\n")
 		if remaining == "" {
 			w.buffer.Reset()
+			// Even with no renderable content, erase any echoed rows
+			// (e.g. deltas that were only whitespace/newlines) so the
+			// terminal is left clean.
+			if w.echoEnabled && w.echoTracker != nil {
+				rows := w.echoTracker.TerminalRows()
+				if err := eraseRows(w.out, rows); err != nil {
+					return err
+				}
+				w.echoTracker.Reset()
+			}
 			return nil
 		}
 		w.buffer.Reset()
@@ -184,6 +225,16 @@ func (w *ReasoningWriter) flushParagraph(ctx context.Context, paragraph string) 
 	}
 	if paragraph == "" {
 		return nil
+	}
+
+	// Erase echoed rows before writing the rendered paragraph (Phase 2),
+	// replacing the verbatim echo with the styled, glamour-rendered block.
+	if w.echoEnabled && w.echoTracker != nil {
+		rows := w.echoTracker.TerminalRows()
+		if err := eraseRows(w.out, rows); err != nil {
+			return err
+		}
+		w.echoTracker.Reset()
 	}
 
 	rendered, err := w.renderMarkdown(paragraph)
