@@ -79,7 +79,7 @@ date: 2026-07-30T07:48:22Z
 ### 2.3 依赖
 
 - **opencode**：Witty CLI 需要系统中安装 `opencode` CLI。如果未安装，`witty doctor` 会提示。
-- **Bash 5.x**：Shell 直输功能需要 Bash 5.x 交互式终端。
+- **Bash ≥ 4.0**：Shell 直输功能需要 Bash 4.0 及以上交互式终端。
 
 ---
 
@@ -274,7 +274,8 @@ RPM 安装后已通过 `/etc/profile.d/witty.sh` 自动完成集成，一般无�
 witty session list
 ```
 
-输出当前目录范围内的会话列表，格式为制表符分隔：`ID  Title  Directory  Updated`。
+输出**全部**会话列表（不按目录过滤），格式为制表符分隔：`ID  Title  Directory  Updated`。
+其中 `Updated` 为 Unix 毫秒时间戳。
 
 #### 继续会话
 
@@ -332,10 +333,10 @@ Shell 集成通过 Bash 的 `DEBUG` trap（配合 `extdebug` 选项）实现。�
 | `grep error /var/log/messages` | Shell | 已知命令 + 无 NL 特征 |
 | `cat /etc/os-release \| grep NAME` | Shell | 管道 |
 | `/session list` | Control | 白名单 slash 命令 |
-| `/ask systemctl 怎么看 nginx 日志` | Agent | `/ask` 逃生口 |
+| `/ask systemctl 怎么看 nginx 日志` | Control | 白名单 slash 命令，内部强制走 Agent 提问 |
 | `/usr/bin/ls` | Shell | 显式路径 |
 | `FOO=bar env` | Shell | 变量赋值 |
-| `for i in 1; do` | Shell | Shell 关键字 |
+| `for i in 1; do` | Shell | Shell 语法（含 `;` 等强语法特征） |
 | `how do I restart nginx` | Agent | 英文触发词 |
 | `explain how to check memory` | Agent | 英文触发词 |
 
@@ -367,7 +368,7 @@ eval "$(witty init bash)"
 export WITTY_SHELL_DEBUG=1
 ```
 
-开启后在 stderr 输出分类结果、命令改写信息等调试信息。
+开启后在 stderr 输出分类结果等调试信息（如 `witty shell: classify agent: ...`）。
 
 ### 5.5 强制走 Agent
 
@@ -406,7 +407,7 @@ Shell 集成仅在以下条件满足时安装：
 
 ### 6.1 `/agent` — 切换 Agent
 
-不带参数时，如果当前是 TTY 终端，会显示交互式 agent 选择器（列出所有非隐藏 agent）。
+不带参数时，如果当前是 TTY 终端，会显示交互式 agent 选择器（列出所有非隐藏、非 subagent 型 agent）。
 带参数时直接切换：
 
 ```text
@@ -507,7 +508,10 @@ Select variant for deepseek/deepseek-v4-flash:
 | `/help` | 无参数 |
 | `/exit`、`/quit`、`/q` | 无参数 |
 
-参数格式不合法的 slash 命令不会被识别为控制命令，而是按默认规则路由（通常走 shell）。
+参数格式不合法的 slash 命令不会被识别为控制命令，行为因入口而异：
+
+- **Shell 直输**：按默认规则路由，通常走 shell 执行
+- **REPL**：未识别的 `/xxx` 会被当作普通提问发送给 AI；`/exit`、`/quit`、`/q` 即使带参数也会直接退出 REPL
 
 ---
 
@@ -700,8 +704,14 @@ Managed:    no
 StartedAt:  2026-07-30T10:30:00+08:00
 ```
 
-- `Managed: yes` 表示由当前 witty 进程启动
-- `Managed: no` 表示从之前会话恢复
+- `Running`：server 是否正在运行——判断 server 状态以此字段为准
+- `Managed: yes`：server 由当前 witty **进程**启动
+- `Managed: no`：server 由之前的 witty 进程启动（从状态文件恢复），或由只读命令查询
+
+> `Managed` 表示"是否由当前进程启动"，**不是**"是否受 witty 管理"。
+> witty 的自动启动、端口复用与闲置超时停止等管理动作对 `Managed: no` 的 server 同样生效。
+> 由于 CLI 每次调用都是独立进程，且 `witty server status` 是只读命令（自身不启动 server），
+> 该命令下的 `Managed` 恒为 `no`，属预期行为；如需确认 server 是否在运行，请查看 `Running`。
 
 ### 9.3 停止 Server
 
@@ -781,19 +791,20 @@ witty doctor
 ```text
 witty doctor — environment diagnostics
 
-  [OK]   config: loaded: /etc/witty/config.toml; server=http://127.0.0.1:4096 agent=witty-builtin-agent model=(none) shell=enabled
+  [OK]   config: loaded: /etc/witty/config.toml, /root/.config/witty/config.toml; server=http://127.0.0.1:4096 agent=witty-builtin-agent model=(none) shell=enabled
   [OK]   server reachable: connected to http://127.0.0.1:4096 (opencode 1.17.13)
   [OK]   /doc endpoint: HTTP 200
   [OK]   server management: running (discovered), port=4096, pid=12345
   [OK]   shell integration: witty bash integration is loaded
-  [OK]   bash environment: bash 5.2.15(1)-release, TERM=xterm-256color
-  [OK]   terminal: tty, width=200, color=enabled
+  [OK]   bash environment: TERM=xterm-256color; bash 5.2.15(1)-release
+  [OK]   terminal: stdout is a terminal; width=200; color enabled
 
 Summary: 7 OK, 0 WARN, 0 FAIL, 0 SKIP
 ```
 
 > 实际输出会因环境而异（如 server 地址、端口、TERM 设置等）。
-> 非交互式环境（如管道）中 `bash environment` 和 `terminal` 项可能显示 WARN。
+> 非交互式环境（如管道）中 `bash environment` 和 `terminal` 项可能显示 WARN，
+> 例如 `terminal: stdout is piped (non-TTY); width=80; no color (non-TTY)`。
 >
 > `witty doctor` 不会启动 server（无副作用），适合用于排查问题。
 
@@ -824,16 +835,20 @@ Summary: 7 OK, 0 WARN, 0 FAIL, 0 SKIP
 /ask docker 镜像怎么删
 ```
 
-### 11.3 提示 "opencode serve is not reachable"
+### 11.3 提示 server 不可达或 "no opencode server found"
 
 **如果开启了自动启动**（默认）：
 
 - 检查 `opencode` 是否已安装：`which opencode`
+- 若未安装，报错形如：
+  `ensure opencode server: auto-start opencode server: opencode binary not found (install opencode or set server.auto_start=false and start it manually)`
 - 运行 `witty doctor` 查看详细诊断
 - 尝试 `witty server restart`
 
 **如果关闭了自动启动**：
 
+- 报错形如：
+  `ensure opencode server: no opencode server found on 127.0.0.1:4096 and auto_start is disabled; start one with 'opencode serve --port 4096' or enable auto_start in config`
 - 需手动启动：`opencode serve --port 4096`
 - 或通过 `--server-url` 指定已有 server 地址
 
