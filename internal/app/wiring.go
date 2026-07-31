@@ -126,7 +126,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 	width := terminal.Width(stdoutFile)
 
 	var rendererService renderer.TextRenderer
-	if cfg.RendererPhase >= 2 {
+	if cfg.StreamMode >= 2 {
 		rendererService, err = renderer.NewEchoRenderer(renderer.EchoOptions{
 			Writer:        stdout,
 			IsTTY:         isTTY,
@@ -239,7 +239,7 @@ func New(ctx context.Context, opts Options) (Container, error) {
 				Theme:             cfg.Theme,
 				NoColor:           cfg.NoColor,
 				ShellEnabled:      cfg.Shell.Enabled,
-				RendererPhase:     cfg.RendererPhase,
+				StreamMode:        cfg.StreamMode,
 				TimeoutSeconds:    cfg.Doctor.TimeoutSeconds,
 				ServerAutoStart:   cfg.Server.AutoStart,
 				ServerManaged:     serverManaged,

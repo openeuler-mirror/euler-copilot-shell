@@ -60,7 +60,7 @@ type ConfigSummary struct {
 	Theme             string
 	NoColor           bool
 	ShellEnabled      bool
-	RendererPhase     int
+	StreamMode        int
 	TimeoutSeconds    int
 	ServerAutoStart   bool
 	ServerManaged     bool

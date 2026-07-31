@@ -14,7 +14,7 @@ type Config struct {
 	Debug          bool
 	Theme          string
 	NoColor        bool
-	RendererPhase  int
+	StreamMode     int
 	Server         ServerConfig
 	REPL           REPLConfig
 	Shell          ShellConfig
@@ -70,7 +70,7 @@ func Default() Config {
 		Debug:          false,
 		Theme:          DefaultTheme,
 		NoColor:        false,
-		RendererPhase:  1,
+		StreamMode:     1,
 		Server: ServerConfig{
 			AutoStart:             true,
 			Port:                  0,

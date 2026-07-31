@@ -5,9 +5,6 @@
 # User overrides can be placed in ~/.config/witty/config.toml
 # Command-line flags take highest priority.
 
-# OpenCode MCP Server address (default: http://127.0.0.1:4096)
-# server_url = "http://127.0.0.1:4096"
-
 # Default agent name to use when connecting to opencode
 default_agent = "witty-builtin-agent"
 # default_model = ""
@@ -22,8 +19,8 @@ default_agent = "witty-builtin-agent"
 # Terminal theme: "auto" follows terminal dark/light mode, "dark", "light", or "ascii"
 # theme = "auto"
 
-# Renderer mode: 1 = block boundary (stable), 2 = instant echo
-# renderer_phase = 1
+# Streaming output mode: 1 = block boundary (stable), 2 = instant echo
+# stream_mode = 1
 
 # --- REPL settings ---
 # [repl]

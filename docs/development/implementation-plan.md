@@ -822,7 +822,7 @@ flowchart TD
 
 - `WriteDelta` / `Flush` 应是同步操作，不启动内部 goroutine。
 - Phase 1 不做逐字符重绘，也不做 raw echo。
-- Phase 2 通过实验开关（如 `WITTY_RENDERER_PHASE=2`）启用，默认保留 Phase 1 降级路径。
+- Phase 2 通过配置项 `stream_mode = 2` 启用，默认保留 Phase 1 降级路径。
 - 所有入口复用同一渲染器实例（`ask`、REPL、Shell 快捷模式）。
 - 详细实现代码见 [`streaming-renderer.md`](./streaming-renderer.md)。
 

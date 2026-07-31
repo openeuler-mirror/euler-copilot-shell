@@ -45,7 +45,7 @@ func baseConfig() ConfigSummary {
 		DefaultAgent:    "build",
 		DefaultModel:    "opencode/gpt-5",
 		ShellEnabled:    true,
-		RendererPhase:   1,
+		StreamMode:      1,
 		TimeoutSeconds:  5,
 		ServerAutoStart: true,
 		ServerManaged:   true,

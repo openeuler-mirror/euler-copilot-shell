@@ -117,7 +117,7 @@ func defaultMap() map[string]any {
 		"debug":                          cfg.Debug,
 		"theme":                          cfg.Theme,
 		"no_color":                       cfg.NoColor,
-		"renderer_phase":                 cfg.RendererPhase,
+		"stream_mode":                    cfg.StreamMode,
 		"server.auto_start":              cfg.Server.AutoStart,
 		"server.port":                    cfg.Server.Port,
 		"server.hostname":                cfg.Server.Hostname,
@@ -209,7 +209,7 @@ func readConfig(k *koanf.Koanf) Config {
 		Debug:          k.Bool("debug"),
 		Theme:          k.String("theme"),
 		NoColor:        k.Bool("no_color"),
-		RendererPhase:  k.Int("renderer_phase"),
+		StreamMode:     k.Int("stream_mode"),
 		Server: ServerConfig{
 			AutoStart:             k.Bool("server.auto_start"),
 			Port:                  k.Int("server.port"),
