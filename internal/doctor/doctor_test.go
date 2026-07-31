@@ -191,7 +191,7 @@ func TestCheckShellIntegration_NotLoadedNonInteractive(t *testing.T) {
 func TestCheckConfig_FileExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := tmpDir + "/config.toml"
-	if err := writeFile(configPath, "server_url = \"http://localhost:4096\"\n"); err != nil {
+	if err := writeFile(configPath, "default_agent = \"test-agent\"\n"); err != nil {
 		t.Fatalf("write file: %v", err)
 	}
 

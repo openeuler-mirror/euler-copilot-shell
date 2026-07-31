@@ -28,7 +28,7 @@ func TestListProviders_FiltersToAPIKeyProviders(t *testing.T) {
 	defer server.Close()
 
 	container, err := New(context.Background(), Options{
-		Config:    config.LoadOptions{ConfigFiles: []string{}, Overrides: config.Overrides{ServerURL: server.URL}},
+		Config:    config.LoadOptions{ConfigFiles: []string{}},
 		Stdout:    &bytes.Buffer{},
 		Stderr:    &bytes.Buffer{},
 		ServerURL: server.URL,
@@ -89,7 +89,7 @@ func TestConnectProviderWithAPIKey_UsesEnvFallback(t *testing.T) {
 	defer server.Close()
 
 	container, err := New(context.Background(), Options{
-		Config:    config.LoadOptions{ConfigFiles: []string{}, Overrides: config.Overrides{ServerURL: server.URL}},
+		Config:    config.LoadOptions{ConfigFiles: []string{}},
 		Stdout:    &bytes.Buffer{},
 		Stderr:    &bytes.Buffer{},
 		ServerURL: server.URL,
@@ -125,7 +125,7 @@ func TestConnectProviderWithAPIKey_RejectsUnknownProvider(t *testing.T) {
 	defer server.Close()
 
 	container, err := New(context.Background(), Options{
-		Config:    config.LoadOptions{ConfigFiles: []string{}, Overrides: config.Overrides{ServerURL: server.URL}},
+		Config:    config.LoadOptions{ConfigFiles: []string{}},
 		Stdout:    &bytes.Buffer{},
 		Stderr:    &bytes.Buffer{},
 		ServerURL: server.URL,
@@ -162,7 +162,7 @@ func TestConnectProviderWithAPIKey_RejectsUnsupportedAuth(t *testing.T) {
 	defer server.Close()
 
 	container, err := New(context.Background(), Options{
-		Config:    config.LoadOptions{ConfigFiles: []string{}, Overrides: config.Overrides{ServerURL: server.URL}},
+		Config:    config.LoadOptions{ConfigFiles: []string{}},
 		Stdout:    &bytes.Buffer{},
 		Stderr:    &bytes.Buffer{},
 		ServerURL: server.URL,

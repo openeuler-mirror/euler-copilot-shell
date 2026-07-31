@@ -111,7 +111,6 @@ func loadConfigFile(k *koanf.Koanf, path string, explicit bool) error {
 func defaultMap() map[string]any {
 	cfg := Default()
 	return map[string]any{
-		"server_url":                     cfg.ServerURL,
 		"default_agent":                  cfg.DefaultAgent,
 		"default_model":                  cfg.DefaultModel,
 		"default_variant":                cfg.DefaultVariant,
@@ -137,7 +136,6 @@ func defaultMap() map[string]any {
 
 func envMap(lookupEnv func(string) (string, bool)) (map[string]any, error) {
 	values := make(map[string]any)
-	copyStringEnv(values, lookupEnv, "WITTY_SERVER_URL", "server_url")
 	copyStringEnv(values, lookupEnv, "WITTY_AGENT", "default_agent")
 	copyStringEnv(values, lookupEnv, "WITTY_MODEL", "default_model")
 	copyStringEnv(values, lookupEnv, "WITTY_VARIANT", "default_variant")
@@ -185,9 +183,6 @@ func copyBoolEnv(values map[string]any, lookupEnv func(string) (string, bool), e
 
 func overrideMap(overrides Overrides) map[string]any {
 	values := make(map[string]any)
-	if overrides.ServerURL != "" {
-		values["server_url"] = overrides.ServerURL
-	}
 	if overrides.DefaultAgent != "" {
 		values["default_agent"] = overrides.DefaultAgent
 	}
@@ -208,7 +203,6 @@ func overrideMap(overrides Overrides) map[string]any {
 
 func readConfig(k *koanf.Koanf) Config {
 	return Config{
-		ServerURL:      k.String("server_url"),
 		DefaultAgent:   k.String("default_agent"),
 		DefaultModel:   k.String("default_model"),
 		DefaultVariant: k.String("default_variant"),

@@ -25,9 +25,6 @@ func TestNew_LoadsConfigAndVersion(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 
-	if container.Config().ServerURL != config.DefaultServerURL {
-		t.Fatalf("ServerURL = %q, want default", container.Config().ServerURL)
-	}
 	if container.Version().Version != "1.0.0" {
 		t.Fatalf("Version = %q, want 1.0.0", container.Version().Version)
 	}
@@ -93,7 +90,6 @@ func TestSessionServices_UseWiredTransport(t *testing.T) {
 	container, err := New(context.Background(), Options{
 		Config: config.LoadOptions{
 			ConfigFiles: []string{},
-			Overrides:   config.Overrides{ServerURL: server.URL},
 		},
 		Stdout:           &stdout,
 		SessionStatePath: filepath.Join(t.TempDir(), "state.json"),
@@ -221,7 +217,6 @@ func TestDoctor_ServerNotRunning_ExplicitURL(t *testing.T) {
 	container, err := New(context.Background(), Options{
 		Config: config.LoadOptions{
 			ConfigFiles: []string{},
-			Overrides:   config.Overrides{ServerURL: "http://127.0.0.1:59999"},
 		},
 		Stdout:    &stdout,
 		ServerURL: "http://127.0.0.1:59999",
@@ -267,9 +262,9 @@ func TestDoctor_HealthyServer_AllChecksPass(t *testing.T) {
 	container, err := New(context.Background(), Options{
 		Config: config.LoadOptions{
 			ConfigFiles: []string{},
-			Overrides:   config.Overrides{ServerURL: server.URL},
 		},
-		Stdout: &stdout,
+		Stdout:    &stdout,
+		ServerURL: server.URL,
 	})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -321,9 +316,9 @@ func TestDoctor_DoesNotLeakSensitiveData(t *testing.T) {
 	container, err := New(context.Background(), Options{
 		Config: config.LoadOptions{
 			ConfigFiles: []string{},
-			Overrides:   config.Overrides{ServerURL: "http://127.0.0.1:59999"},
 		},
-		Stdout: &stdout,
+		Stdout:    &stdout,
+		ServerURL: "http://127.0.0.1:59999",
 	})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)

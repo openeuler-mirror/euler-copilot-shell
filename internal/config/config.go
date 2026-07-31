@@ -1,7 +1,6 @@
 package config
 
 const (
-	DefaultServerURL            = "http://127.0.0.1:4096"
 	DefaultAgent                = "witty-builtin-agent"
 	DefaultTheme                = "auto"
 	DefaultDoctorTimeoutSeconds = 5
@@ -9,7 +8,6 @@ const (
 
 // Config is the process-wide Witty runtime configuration.
 type Config struct {
-	ServerURL      string
 	DefaultAgent   string
 	DefaultModel   string
 	DefaultVariant string
@@ -57,7 +55,6 @@ type DisplayConfig struct {
 
 // Overrides are CLI-provided values that should win over defaults, files, and env.
 type Overrides struct {
-	ServerURL      string
 	DefaultAgent   string
 	DefaultModel   string
 	DefaultVariant string
@@ -67,7 +64,6 @@ type Overrides struct {
 
 func Default() Config {
 	return Config{
-		ServerURL:      DefaultServerURL,
 		DefaultAgent:   DefaultAgent,
 		DefaultModel:   "",
 		DefaultVariant: "",

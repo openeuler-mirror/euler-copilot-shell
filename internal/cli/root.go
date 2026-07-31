@@ -93,9 +93,6 @@ func (o *rootOptions) loadApp(ctx context.Context, cmd *cobra.Command) (app.Cont
 	}
 	flags := cmd.Root().PersistentFlags()
 	overrides := config.Overrides{}
-	if flags.Changed("server-url") {
-		overrides.ServerURL = o.serverURL
-	}
 	if flags.Changed("agent") {
 		overrides.DefaultAgent = o.agent
 	}
@@ -120,7 +117,7 @@ func (o *rootOptions) loadApp(ctx context.Context, cmd *cobra.Command) (app.Cont
 		Version:          o.version,
 		Stdout:           o.stdout,
 		Stderr:           o.stderr,
-		ServerURL:        overrides.ServerURL,
+		ServerURL:        o.serverURL,
 		SkipServerEnsure: o.skipServerEnsure,
 	})
 }

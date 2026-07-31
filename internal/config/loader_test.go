@@ -13,9 +13,6 @@ func TestLoad_DefaultsWhenConfigFilesMissing(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	if cfg.ServerURL != DefaultServerURL {
-		t.Fatalf("ServerURL = %q, want %q", cfg.ServerURL, DefaultServerURL)
-	}
 	if !cfg.REPL.AutoResume {
 		t.Fatal("REPL.AutoResume = false, want true")
 	}
@@ -29,8 +26,7 @@ func TestLoad_DefaultsWhenConfigFilesMissing(t *testing.T) {
 
 func TestLoad_FileEnvAndCLIOverridePrecedence(t *testing.T) {
 	configFile := filepath.Join(t.TempDir(), "config.toml")
-	content := `server_url = "http://file:4096"
-default_agent = "file-agent"
+	content := `default_agent = "file-agent"
 default_model = "file-model"
 default_variant = "file-variant"
 debug = false
@@ -50,7 +46,6 @@ enabled = false
 	cfg, err := Load(LoadOptions{
 		ConfigFiles: []string{configFile},
 		LookupEnv: mapLookup(map[string]string{
-			"WITTY_SERVER_URL":   "http://env:4096",
 			"WITTY_AGENT":        "env-agent",
 			"WITTY_DEBUG":        "true",
 			"WITTY_SHELL_ENABLE": "true",
@@ -65,9 +60,6 @@ enabled = false
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	if cfg.ServerURL != "http://env:4096" {
-		t.Fatalf("ServerURL = %q, want env value", cfg.ServerURL)
-	}
 	if cfg.DefaultAgent != "cli-agent" {
 		t.Fatalf("DefaultAgent = %q, want cli-agent", cfg.DefaultAgent)
 	}
@@ -103,7 +95,7 @@ func TestLoad_ConfigPathMissingReturnsContext(t *testing.T) {
 
 func TestLoad_InvalidConfigReturnsContext(t *testing.T) {
 	configFile := filepath.Join(t.TempDir(), "config.toml")
-	if err := os.WriteFile(configFile, []byte("server_url = ["), 0o600); err != nil {
+	if err := os.WriteFile(configFile, []byte("default_agent = ["), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 
