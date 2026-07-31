@@ -485,6 +485,23 @@ func TestRun_SlashAsk(t *testing.T) {
 	}
 }
 
+func TestRun_SlashSessionHelp(t *testing.T) {
+	var out strings.Builder
+	opts := defaultOptions(config.Default())
+	opts.Stdin = strings.NewReader("/session\n/exit\n")
+	opts.Stdout = &out
+	loop, err := New(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := loop.Run(context.Background()); err != nil {
+		t.Fatalf("Run() error: %v", err)
+	}
+	if !strings.Contains(out.String(), "/session continue <id>") {
+		t.Fatalf("/session should show session usage: %q", out.String())
+	}
+}
+
 func TestRun_SlashSessionList(t *testing.T) {
 	var out strings.Builder
 	sessions := &fakeSessions{

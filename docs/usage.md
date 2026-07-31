@@ -332,6 +332,7 @@ Shell 集成通过 Bash 的 `DEBUG` trap（配合 `extdebug` 选项）实现。�
 | `systemctl status nginx` | Shell | 已知命令 + 无 NL 特征 |
 | `grep error /var/log/messages` | Shell | 已知命令 + 无 NL 特征 |
 | `cat /etc/os-release \| grep NAME` | Shell | 管道 |
+| `/session` | Control | 白名单 slash 命令，显示 `/session` 详细用法 |
 | `/session list` | Control | 白名单 slash 命令 |
 | `/ask systemctl 怎么看 nginx 日志` | Control | 白名单 slash 命令，内部强制走 Agent 提问 |
 | `/usr/bin/ls` | Shell | 显式路径 |
@@ -402,6 +403,7 @@ Shell 集成仅在以下条件满足时安装：
 | `/agent [name]` | 显示或切换默认 agent |
 | `/model [provider/model]` | 显示或切换默认模型 |
 | `/new` | 下一次提问时新建会话 |
+| `/session` | 显示 `/session` 详细用法 |
 | `/session list` | 列出会话 |
 | `/session continue <id>` | 继续指定会话 |
 
@@ -495,13 +497,29 @@ Select variant for deepseek/deepseek-v4-flash:
 [model] set to "opencode/big-pickle" (saved to ~/.config/witty/config.toml)
 ```
 
-### 6.3 参数校验规则
+### 6.3 `/session` — 会话管理
+
+输入裸 `/session` 显示会话命令详细用法：
+
+```text
+$ /session
+Witty session commands:
+  /session                   Show this help
+  /session list              List opencode sessions
+  /session continue <id>     Continue a session by id
+```
+
+- `/session list` — 列出全部会话（不按目录过滤）
+- `/session continue <id>` — 切换到指定会话，后续提问继续该会话
+
+### 6.4 参数校验规则
 
 | 命令 | 参数要求 |
 | ---- | -------- |
 | `/ask` | **必须**带 prompt |
 | `/agent` | 可选参数 |
 | `/model` | 可选参数 |
+| `/session` | 无参数，显示 `/session` 详细用法 |
 | `/session list` | 无参数 |
 | `/session continue` | **必须**带 session id |
 | `/new` | 无参数 |

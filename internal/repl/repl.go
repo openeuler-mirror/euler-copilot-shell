@@ -256,6 +256,10 @@ func (r *repl) handleSlashCommand(ctx context.Context, line string) (bool, error
 		_, err := fmt.Fprintln(r.stdout, "\n"+shellbridge.HelpText())
 		return true, err
 
+	case shellbridge.ControlSessionHelp:
+		_, err := fmt.Fprintln(r.stdout, "\n"+shellbridge.SessionHelpText())
+		return true, err
+
 	case shellbridge.ControlExit:
 		return true, nil
 
