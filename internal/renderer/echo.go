@@ -180,7 +180,7 @@ func (r *EchoRenderer) renderBlockEcho(ctx context.Context, block string) error 
 		return r.renderBlockFallback(ctx, block)
 	}
 
-	echoRows := r.tracker.Rows()
+	echoRows := r.tracker.TerminalRows()
 	if echoRows > 0 {
 		if _, err := io.WriteString(r.out, carriageReturn); err != nil {
 			return fmt.Errorf("write carriage return: %w", err)

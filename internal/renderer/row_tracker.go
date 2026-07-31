@@ -37,6 +37,20 @@ func (t *RowTracker) Rows() int {
 	return t.rows
 }
 
+// TerminalRows returns the total number of terminal rows occupied by the
+// tracked text, including the current cursor line. This is rows+1 when any
+// content has been tracked (rows > 0 or cursorCol > 0), and 0 otherwise.
+// The +1 accounts for the cursor's current line: if the text ends with a
+// newline, the cursor sits on a new (empty) line that is still part of the
+// echoed footprint; if the text has no trailing newline, the cursor is on a
+// line with content. In both cases that line must be erased.
+func (t *RowTracker) TerminalRows() int {
+	if t.rows == 0 && t.cursorCol == 0 {
+		return 0
+	}
+	return t.rows + 1
+}
+
 func (t *RowTracker) Track(text string) {
 	for _, r := range text {
 		switch r {

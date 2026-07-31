@@ -145,3 +145,34 @@ func TestRowTracker_LongCJKWrapping(t *testing.T) {
 		t.Fatalf("rows = %d, want 1 (10 CJK chars at width 10 wraps once)", tracker.Rows())
 	}
 }
+
+func TestRowTracker_TerminalRows(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		text  string
+		width int
+		want  int
+	}{
+		{"empty", "", 80, 0},
+		{"no newline", "hello", 80, 1},
+		{"trailing newline", "hello\n", 80, 2},
+		{"double newline", "hello\n\n", 80, 3},
+		{"multi line trailing newline", "a\nb\nc\n", 80, 4},
+		{"multi line no trailing newline", "a\nb\nc", 80, 3},
+		{"wrap no newline", "abcdefghij", 5, 2},
+		{"wrap trailing newline", "abcdefghij\n", 5, 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tracker := NewRowTracker(tt.width)
+			tracker.Track(tt.text)
+			got := tracker.TerminalRows()
+			if got != tt.want {
+				t.Errorf("TerminalRows() = %d, want %d (rows=%d, cursorCol=%d)",
+					got, tt.want, tracker.Rows(), tracker.cursorCol)
+			}
+		})
+	}
+}
