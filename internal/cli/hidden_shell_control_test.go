@@ -64,6 +64,28 @@ func TestShellControlCommand_HelpDoesNotLoadApp(t *testing.T) {
 	}
 }
 
+func TestShellControlCommand_SessionHelpDoesNotLoadApp(t *testing.T) {
+	var out, errOut bytes.Buffer
+	loaded := false
+	opts := &rootOptions{version: version.New("dev", "none", "unknown"), stdout: &out, stderr: &errOut}
+	opts.loadAppFn = func(context.Context, *cobra.Command) (app.Container, error) {
+		loaded = true
+		return &fakeContainer{}, nil
+	}
+	cmd := newRootCommandWithOptions(opts)
+	cmd.SetArgs([]string{"shell-control", "--", "/session"})
+
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("Execute(shell-control /session) error = %v", err)
+	}
+	if loaded {
+		t.Fatal("/session loaded app, want static session usage")
+	}
+	if !strings.Contains(out.String(), "/session continue <id>") {
+		t.Fatalf("session usage output = %q, want /session subcommand list", out.String())
+	}
+}
+
 func TestShellControlCommand_SessionControls(t *testing.T) {
 	fake := &fakeContainer{
 		sessions:         []session.Summary{{ID: "ses_1", Title: "One", Directory: "/work", Updated: 1718000000}},

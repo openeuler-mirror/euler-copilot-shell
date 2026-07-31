@@ -190,6 +190,7 @@ Adapter 采用**确定性优先级路由**，遵循"Shell 优先、Agent 兜底"
 - `/ask <prompt>`
 - `/agent <name>`
 - `/model <id>`
+- `/session`（显示 `/session` 详细用法）
 - `/session list`
 - `/session continue <id>`
 - `/new`
@@ -285,6 +286,7 @@ command_not_found_handle() { __witty_command_not_found_handle "$@"; }
 | `/ask` | **必须**带 prompt | 仅匹配 `/ask 〈非空〉`；裸 `/ask` 不匹配为 control |
 | `/agent` | 可选参数 | `/agent` 和 `/agent 〈name〉` 均匹配 |
 | `/model` | 可选参数 | `/model` 和 `/model 〈id〉` 均匹配 |
+| `/session` | 无参数 | 仅匹配裸 `/session`，显示 `/session` 详细用法；`/session 〈extra 非子命令或参数非法〉` 不匹配 |
 | `/session list` | 无参数 | 仅匹配 `/session list`；`/session list 〈extra〉` 不匹配 |
 | `/session continue` | **必须**带 session id | 仅匹配 `/session continue 〈id〉` |
 | `/new` | 无参数 | 仅匹配 `/new`；`/new 〈extra〉` 不匹配 |
@@ -537,6 +539,7 @@ Adapter 的责任只是**转发**，不是本地执行智能体生成的命令�
 | `grep error /var/log/messages` | Shell | 已知命令 + 无 NL 特征 |
 | `cat /etc/os-release \| grep NAME` | Shell | 管道 |
 | `/session list` | Control | 白名单 slash 命令 |
+| `/session` | Control | 白名单 slash 命令，显示 `/session` 详细用法 |
 | `/ask systemctl 怎么看 nginx 日志` | Agent | `/ask` 逃生口 |
 | `/usr/bin/ls` | Shell | 显式路径 |
 | `FOO=bar env` | Shell | 变量赋值 |

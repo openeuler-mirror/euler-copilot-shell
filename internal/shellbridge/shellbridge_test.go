@@ -1,6 +1,9 @@
 package shellbridge
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestClassify_CheckpointCases(t *testing.T) {
 	tests := []struct {
@@ -49,6 +52,7 @@ func TestClassify_RoutingRules(t *testing.T) {
 		{line: "/quit", want: RouteControl},
 		{line: "/q", want: RouteControl},
 		{line: "/ask explain rpm macros", want: RouteControl},
+		{line: "/session", want: RouteControl},
 		{line: "/session list", want: RouteControl},
 		{line: "/session continue ses_1", want: RouteControl},
 		{line: "/usr/bin/ls", want: RouteShell},
@@ -106,6 +110,7 @@ func TestParseControl(t *testing.T) {
 		{name: "model", raw: "/model opencode/gpt", want: ControlAction{Kind: ControlModel, Raw: "/model opencode/gpt", Value: "opencode/gpt"}},
 		{name: "new", raw: "/new", want: ControlAction{Kind: ControlNew, Raw: "/new"}},
 		{name: "help", raw: "/help", want: ControlAction{Kind: ControlHelp, Raw: "/help"}},
+		{name: "session help", raw: "/session", want: ControlAction{Kind: ControlSessionHelp, Raw: "/session"}},
 		{name: "session list", raw: "/session list", want: ControlAction{Kind: ControlSessionList, Raw: "/session list"}},
 		{name: "session continue", raw: "/session continue ses_1", want: ControlAction{Kind: ControlSessionContinue, Raw: "/session continue ses_1", SessionID: "ses_1"}},
 		{name: "exit", raw: "/exit", want: ControlAction{Kind: ControlExit, Raw: "/exit"}},
@@ -132,6 +137,14 @@ func TestParseControl_RejectsUnsupported(t *testing.T) {
 				t.Fatalf("ParseControl(%q) error = nil, want error", raw)
 			}
 		})
+	}
+}
+
+func TestSessionHelpText(t *testing.T) {
+	for _, want := range []string{"/session list", "/session continue <id>"} {
+		if !strings.Contains(SessionHelpText(), want) {
+			t.Fatalf("SessionHelpText() missing %q", want)
+		}
 	}
 }
 

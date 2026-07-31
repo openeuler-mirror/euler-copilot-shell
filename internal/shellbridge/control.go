@@ -12,6 +12,7 @@ const (
 	ControlAsk             ControlKind = "ask"
 	ControlAgent           ControlKind = "agent"
 	ControlModel           ControlKind = "model"
+	ControlSessionHelp     ControlKind = "session_help"
 	ControlSessionList     ControlKind = "session_list"
 	ControlSessionContinue ControlKind = "session_continue"
 	ControlNew             ControlKind = "new"
@@ -88,8 +89,8 @@ func ParseControl(raw string) (ControlAction, error) {
 }
 
 func parseSessionControl(line string, fields []string) (ControlAction, error) {
-	if len(fields) < 2 {
-		return ControlAction{}, fmt.Errorf("/session requires a subcommand")
+	if len(fields) == 1 {
+		return ControlAction{Kind: ControlSessionHelp, Raw: line}, nil
 	}
 	switch fields[1] {
 	case "list":
@@ -189,6 +190,15 @@ func HelpText() string {
   /agent [name]              Show or set the default agent
   /model [provider/model]    Show or set the default model
   /new                       Start a fresh session on the next prompt
+  /session                   Show session command usage
+  /session list              List opencode sessions
+  /session continue <id>     Continue a session by id`)
+}
+
+// SessionHelpText returns the detailed usage of the /session command.
+func SessionHelpText() string {
+	return strings.TrimSpace(`Witty session commands:
+  /session                   Show this help
   /session list              List opencode sessions
   /session continue <id>     Continue a session by id`)
 }

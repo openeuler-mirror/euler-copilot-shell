@@ -36,6 +36,9 @@ func runShellControl(cmd *cobra.Command, opts *rootOptions, action shellbridge.C
 	case shellbridge.ControlHelp:
 		_, err := fmt.Fprintln(cmd.OutOrStdout(), shellbridge.HelpText())
 		return err
+	case shellbridge.ControlSessionHelp:
+		_, err := fmt.Fprintln(cmd.OutOrStdout(), shellbridge.SessionHelpText())
+		return err
 	case shellbridge.ControlExit:
 		return nil
 	case shellbridge.ControlNew:

@@ -117,6 +117,26 @@ func TestShellbridge_SlashSessionListRoute(t *testing.T) {
 	}
 }
 
+// TestShellbridge_SlashSessionRoute verifies bare /session dispatches as control.
+func TestShellbridge_SlashSessionRoute(t *testing.T) {
+	c := newConsole(t, 10*time.Second)
+	defer c.Close()
+
+	mockDir := setupMockWitty(t)
+	initPath := writeWittyInitScript(t, mockDir)
+	bashCmd, bashDone := startBash(t, c, mockDir)
+	defer cleanupBash(t, bashCmd, bashDone, c)
+
+	waitForPrompt(t, c)
+	sourceWittyScript(t, c, initPath)
+
+	c.SendLine("/session")
+	_, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("witty shell-control -- /session"))
+	if err != nil {
+		t.Fatalf("expected /session to dispatch as control: %v", err)
+	}
+}
+
 // TestShellbridge_SlashSessionContinueRoute verifies /session continue dispatches as control.
 func TestShellbridge_SlashSessionContinueRoute(t *testing.T) {
 	c := newConsole(t, 10*time.Second)
@@ -306,6 +326,7 @@ func TestShellbridge_BashClassifierRoutes(t *testing.T) {
 		{name: "unknown command fallback", line: "some_unknown_nonsense", want: "shell"},
 		{name: "invalid exit control", line: "/exit extra", want: "shell"},
 		{name: "invalid session control", line: "/session continue ses_1 extra", want: "shell"},
+		{name: "bare session control", line: "/session", want: "control"},
 		{name: "valid session control", line: "/session continue ses_1", want: "control"},
 	}
 

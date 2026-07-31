@@ -103,8 +103,8 @@ func isSlashControl(line string) bool {
 	case "/agent", "/model":
 		return true
 	case "/session":
-		if len(fields) < 2 {
-			return false
+		if len(fields) == 1 {
+			return true
 		}
 		switch fields[1] {
 		case "list":

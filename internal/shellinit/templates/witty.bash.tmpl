@@ -81,7 +81,7 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
       return 0
       ;;
     /session)
-      [ "${#words[@]}" -ge 2 ] || return 1
+      [ "${#words[@]}" -eq 1 ] && return 0
       subcommand="${words[1],,}"
       case "$subcommand" in
       list)
