@@ -516,8 +516,8 @@ rpmbuild -ba packaging/euler-copilot-shell.spec
 ```text
 build/release/
 ├── euler-copilot-shell-3.1.0.tar.gz       # Source0（Git archive）
-├── go1.26.4.linux-amd64.tar.gz            # Source1
-├── go1.26.4.linux-arm64.tar.gz            # Source2
+├── go1.26.5.linux-amd64.tar.gz            # Source1
+├── go1.26.5.linux-arm64.tar.gz            # Source2
 ├── witty-cli-vendor-3.1.0.tar.xz           # Source3
 ├── witty-agent-loader-3.1.0.tar.gz         # Source4
 ├── manpage-skill-1.0.0.zip                 # Source5（SkillHub）

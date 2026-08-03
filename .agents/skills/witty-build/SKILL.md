@@ -84,7 +84,7 @@ VERSION=$(grep "^Version:" packaging/euler-copilot-shell.spec | awk '{print $2}'
 bash packaging/scripts/prepare-release.sh ${VERSION}
 ```
 
-产物落在 `build/release/`，其中 `prepare-vendor.sh`（由 prepare-release.sh 内部调用）会自动清理 `vendor/`。Go 工具链 tarball 首次下载后会缓存，后续构建跳过下载。
+产物落在 `build/release/`：除 Source0~Source4 外，还会从 SkillHub 下载 5 个 Skill zip（Source5~Source9，版本由 `packaging/builtin-agents/skill-versions.sh` 定义），并生成 `build-info`（commit / date，spec 的 `%{lua}` 段读取）。其中 `prepare-vendor.sh`（由 prepare-release.sh 内部调用）会自动清理 `vendor/`。Go 工具链 tarball 首次下载后会缓存，后续构建跳过下载。
 
 #### 4b. 构建 RPM
 

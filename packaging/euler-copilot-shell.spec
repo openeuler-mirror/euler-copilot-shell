@@ -1,4 +1,4 @@
-%global go_version  1.26.4
+%global go_version  1.26.5
 %global import_path atomgit.com/openeuler/euler-copilot-shell
 
 %global skill_manpage_slug        manpage-skill

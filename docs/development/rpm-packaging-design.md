@@ -172,7 +172,7 @@ witty/
 
 ```spec
 # witty.spec — Witty CLI for openEuler
-%global go_version  1.26.4
+%global go_version  1.26.5
 %global import_path atomgit.com/openeuler/euler-copilot-shell
 
 # 禁用 debuginfo（静态链接 Go 二进制不需要）
@@ -398,12 +398,12 @@ archives:
 3. 生成 vendor tarball:
    bash packaging/scripts/prepare-vendor.sh 3.0.0
 4. 下载 Go 工具链:
-   curl -LO https://go.dev/dl/go1.26.4.linux-amd64.tar.gz
-   curl -LO https://go.dev/dl/go1.26.4.linux-arm64.tar.gz
+   curl -LO https://go.dev/dl/go1.26.5.linux-amd64.tar.gz
+   curl -LO https://go.dev/dl/go1.26.5.linux-arm64.tar.gz
 5. 上传至 openEuler 构建系统:
    - witty-3.0.0.tar.gz → Source0
-   - go1.26.4.linux-amd64.tar.gz → Source1
-   - go1.26.4.linux-arm64.tar.gz → Source2
+   - go1.26.5.linux-amd64.tar.gz → Source1
+   - go1.26.5.linux-arm64.tar.gz → Source2
    - witty-cli-vendor-3.0.0.tar.xz → Source3
 6. CI 执行: rpmbuild -ba witty.spec
 7. 产物:

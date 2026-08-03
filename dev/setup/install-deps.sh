@@ -40,15 +40,33 @@ case "$HOST_ARCH" in
 esac
 echo "  检测到架构: ${HOST_ARCH}"
 
-# Go 1.26+
-echo "  安装 Go 1.26+..."
-if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go1.2[6-9]"; then
-    download "https://go.dev/dl/go1.26.0.linux-${GO_ARCH}.tar.gz" /tmp/go.tar.gz
+# Go 1.26 分支：运行时动态发现最新 patch（官方 API: https://go.dev/dl/?mode=json）
+GO_MINOR_VERSION="1.26"
+GO_VERSION=""
+echo "  动态获取 Go ${GO_MINOR_VERSION} 分支最新版本..."
+for _ in 1 2 3; do
+    GO_VERSION=$(curl -fsS "https://go.dev/dl/?mode=json" 2>/dev/null \
+        | grep -oE "\"version\": \"go${GO_MINOR_VERSION//./\\.}\.[0-9]+\"" \
+        | head -n1 \
+        | grep -oE "go[0-9]+\.[0-9]+\.[0-9]+" || true)
+    [ -n "$GO_VERSION" ] && break
+    echo "    ⚠️  获取失败，重试..."
+    sleep 3
+done
+if [ -z "$GO_VERSION" ]; then
+    GO_VERSION="go1.26.5"
+    echo "  ⚠️  动态获取失败，回退到默认版本 ${GO_VERSION}"
+fi
+echo "  目标版本: ${GO_VERSION}"
+
+CURRENT_GO=$(/usr/local/go/bin/go version 2>/dev/null | grep -oE "go[0-9]+\.[0-9]+\.[0-9]+" || true)
+if [ -n "$CURRENT_GO" ] && [ "$CURRENT_GO" = "$GO_VERSION" ]; then
+    echo "  ${GO_VERSION} 已安装，跳过"
+else
+    download "https://go.dev/dl/${GO_VERSION}.linux-${GO_ARCH}.tar.gz" /tmp/go.tar.gz
     rm -rf /usr/local/go
     tar -C /usr/local -xzf /tmp/go.tar.gz
-    echo "  ✅ Go 1.26 安装完成"
-else
-    echo "  Go 1.26 已安装，跳过"
+    echo "  ✅ ${GO_VERSION} 安装完成"
 fi
 echo 'export PATH=/usr/local/go/bin:$PATH' > /etc/profile.d/go.sh
 chmod 644 /etc/profile.d/go.sh

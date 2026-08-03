@@ -6,7 +6,7 @@
 #   bash packaging/scripts/prepare-release.sh <version> [<go_version>]
 #
 # Defaults:
-#   go_version = 1.26.4
+#   go_version = 1.26.5
 #
 # Outputs (under build/release/):
 #   euler-copilot-shell-<version>.tar.gz → Source0 (source code)
@@ -29,12 +29,12 @@ if [ "$(uname -s)" != "Linux" ]; then
 fi
 
 VERSION="${1:-}"
-GO_VERSION="${2:-1.26.4}"
+GO_VERSION="${2:-1.26.5}"
 
 if [ -z "$VERSION" ]; then
   echo "Usage: $0 <version> [go_version]" >&2
   echo "Example: $0 3.0.0" >&2
-  echo "Example: $0 3.0.0 1.26.4" >&2
+  echo "Example: $0 3.0.0 1.26.5" >&2
   exit 1
 fi
 
