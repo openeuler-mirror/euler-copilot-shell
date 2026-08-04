@@ -30,7 +30,7 @@
 %global witty_loader_source_dir %{_builddir}/witty-agent-loader-%{version}
 
 Name:           euler-copilot-shell
-Version:        3.1.2
+Version:        3.1.3
 Release:        1
 Summary:        openEuler terminal AI assistant
 
@@ -263,6 +263,13 @@ find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
 %systemd_postun_with_restart wittyd.service
 
 %changelog
+* Fri Jul 31 2026 Witty Team <intelligence@openeuler.org> - 3.1.3-1
+- fix: add bare /session command help in REPL
+- feat(shellbridge): route bare /session to session usage help
+- docs: clarify shell routing, session list, and server status behavior
+- docs: Add comprehensive usage documentation for Witty CLI
+- feat: Stream reasoning echo in EchoRenderer
+
 * Thu Jul 30 2026 Witty Team <intelligence@openeuler.org> - 3.1.2-1
 - fix: Refactor doctor to treat not-running server as OK, remove agent-packages check
 - fix: Move /new force-next detection into dispatch
