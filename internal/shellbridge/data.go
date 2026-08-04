@@ -13,22 +13,23 @@ type CommandNLPhrase struct {
 	Pattern string
 }
 
-// ClassificationData is the canonical classification data, shared between
-// the Go Classify() implementation and the generated Bash template.
-type ClassificationData struct {
+// BashClassifierData is the canonical data used to generate the Bash classifier.
+type BashClassifierData struct {
 	ShellKeywords    []string
 	KnownCommands    []string
 	NLPhrases        []NLPhrase
 	CommandNLPhrases []CommandNLPhrase
+	ControlRules     []ControlRule
 }
 
-// DefaultClassificationData returns the canonical classification rules.
-func DefaultClassificationData() ClassificationData {
-	return ClassificationData{
+// DefaultBashClassifierData returns the canonical Bash classification rules.
+func DefaultBashClassifierData() BashClassifierData {
+	return BashClassifierData{
 		ShellKeywords:    shellKeywords,
 		KnownCommands:    knownCommands,
 		NLPhrases:        nlPhrases,
 		CommandNLPhrases: commandNLPhrases,
+		ControlRules:     controlRules,
 	}
 }
 

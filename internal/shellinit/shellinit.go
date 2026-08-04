@@ -41,6 +41,7 @@ type bashTemplateData struct {
 	ShellCommandCase string
 	NLPhraseCase     string
 	CommandNLCase    string
+	ControlCase      string
 }
 
 func (r *renderer) RenderBash(ctx context.Context, opts BashOptions) (string, error) {
@@ -48,7 +49,7 @@ func (r *renderer) RenderBash(ctx context.Context, opts BashOptions) (string, er
 		return "", err
 	}
 
-	rules := shellbridge.DefaultClassificationData()
+	rules := shellbridge.DefaultBashClassifierData()
 	data := bashTemplateData{
 		BinaryPath:       opts.BinaryPath,
 		Version:          opts.Version,
@@ -58,6 +59,7 @@ func (r *renderer) RenderBash(ctx context.Context, opts BashOptions) (string, er
 		ShellCommandCase: shellbridge.BashCommandCase(rules.KnownCommands),
 		NLPhraseCase:     shellbridge.BashNLPhraseCase(rules.NLPhrases),
 		CommandNLCase:    shellbridge.BashCommandNLPhraseCase(rules.CommandNLPhrases),
+		ControlCase:      shellbridge.BashControlCase(rules.ControlRules),
 	}
 	if strings.TrimSpace(data.BinaryPath) == "" {
 		data.BinaryPath = "witty"

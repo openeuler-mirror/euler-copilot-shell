@@ -107,7 +107,10 @@ Shell Adapter 拆成 5 个小模块：
    - 保存并恢复已有 DEBUG trap
 
 3. **Classifier**
-   - 基于 `READLINE_LINE` 的规则分类
+   - 运行时实现只存在于 `witty.bash.tmpl`
+   - Go 仅声明命令、短语和控制命令规格，并生成 Bash `case` 模式，不维护第二份分类算法
+   - 基于 `BASH_COMMAND` 分类当前简单命令
+   - 对管道、重定向和复合命令，从当前 history 条目补取完整输入行
    - 输出 `empty` / `shell` / `agent` / `control`
 
 4. **Dispatcher**
@@ -127,8 +130,9 @@ Shell Adapter 拆成 5 个小模块：
 
 1. `shopt -s extdebug` 启用扩展调试模式
 2. `trap '__witty_debug_hook' DEBUG` 注册 trap
-3. trap 函数通过 `BASH_COMMAND` 获取即将执行的命令
-4. 分类器判断路由：shell/empty 返回 0（正常执行），agent/control 返回 1（跳过执行并转交 dispatch）
+3. trap 函数通过 `BASH_COMMAND` 获取即将执行的简单命令
+4. 若当前 history 条目包含强 Shell 语法，使用该完整输入行分类；这是因为 Bash 会对管道中的每个简单命令分别触发 DEBUG trap
+5. 分类器判断路由：shell/empty 返回 0（正常执行），agent/control 返回 1（跳过执行并转交 dispatch）
 
 `extdebug` 的关键语义：当 DEBUG trap 函数返回非零值时，**当前命令被跳过不执行**。这让我们可以在 trap 中安全地拦截 agent/control 路由的命令，转而执行 `__witty_shell_dispatch`。
 
@@ -138,14 +142,28 @@ DEBUG trap 函数遵循以下逻辑：
 __witty_debug_hook() {
     local cmd="${BASH_COMMAND:-}"
     [ -z "$cmd" ] && return 0
+    local line="$cmd"
     local route=""
     route="$(__witty_classify "$cmd")"
+    if [ "$route" = agent ] || [ "$route" = control ]; then
+        local history_line=""
+        # 实现中临时关闭 extdebug，避免 history 查询继承 DEBUG trap。
+        history_line="$(__witty_last_history_line)"
+        case "$history_line" in
+        *"$cmd"*)
+            if __witty_has_strong_shell_syntax "$history_line"; then
+                line="$history_line"
+                route=shell
+            fi
+            ;;
+        esac
+    fi
     case "$route" in
         empty|shell)
             return 0
             ;;
         agent|control)
-            __witty_shell_dispatch "$route" -- "$cmd"
+            __witty_shell_dispatch "$route" -- "$line"
             return 1
             ;;
     esac
@@ -279,7 +297,7 @@ command_not_found_handle() { __witty_command_not_found_handle "$@"; }
 
 ### 6.7 Slash 命令参数校验
 
-白名单 slash 命令的参数规则必须在 Bash 侧和 Go 侧保持一致。Bash 侧应在分类阶段就拒绝不合法的参数格式，避免无效输入传到 Go 侧才报错：
+白名单 slash 命令及参数个数由 Go 的 `ControlRule` 统一声明，并生成 Bash 分类模式；Go 解析器读取同一份规则，避免两侧手工同步。Bash 在分类阶段拒绝不合法的参数格式，避免无效输入传到 Go 侧才报错：
 
 | 命令 | 参数要求 | Bash 侧匹配规则 |
 | ---- | -------- | --------------- |
@@ -564,6 +582,8 @@ Adapter 的责任只是**转发**，不是本地执行智能体生成的命令�
 4. **退出 `witty` 后能回到干净 prompt**
 5. **禁用开关生效**
 
+完整路由矩阵由 `internal/shellinit` 对渲染后的 Bash 分类器验证；PTY 只覆盖 history、dispatch、引用路径和复合命令等交互边界，不再维护第二份分类用例表。
+
 ---
 
 ## 12. 已知风险
@@ -572,9 +592,9 @@ Adapter 的责任只是**转发**，不是本地执行智能体生成的命令�
 | ---- | ---- |
 | DEBUG trap 冲突（用户或其他插件已设置 DEBUG trap） | 安装时保存已有 trap，卸载时恢复；可禁用能力 |
 | 多行输入的自然语言体验不是主目标 | 长段 prompt 仍推荐使用 `witty` REPL |
-| `extdebug` 对子 shell 和命令替换的影响 | `extdebug` 仅影响当前 shell 的 DEBUG trap 返回值语义，不影响子 shell |
+| `extdebug` 会让 DEBUG trap 被函数、子 shell 和命令替换继承 | 查询 history 前临时关闭 `extdebug`，完成后立即恢复，避免 trap 递归 |
 | history 细节差异（不同 Bash 版本与 `HISTCONTROL` / `HISTIGNORE` 组合） | 以真实终端行为验证为准 |
-| `BASH_COMMAND` 在复杂命令中的展开 | `BASH_COMMAND` 包含完整命令行，包括管道、重定向等；分类器需正确处理 |
+| `BASH_COMMAND` 只包含复杂命令中的当前简单命令 | 当前命令已进入 history 时，用 `history 1` 读取完整输入并仅补足强 Shell 语法判断；history 不可用时回退到简单命令分类 |
 | 英文自然语言触发词误匹配（如 `hower`、`whatever`） | 触发词以空格结尾或作为独立 token 匹配；`explain` 而非 `explain` |
 | 命令存在性检查缓存过期（新安装的命令未命中缓存） | 缓存仅限当前 session，新 session 重新查询；可手动清除 `__WITTY_CMD_CACHE` |
 | `command_not_found_handle` 与发行版已有 handler 冲突 | 保存已有 handler 并链式调用 |

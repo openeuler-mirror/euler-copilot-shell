@@ -1,40 +1,24 @@
 package shellbridge
 
-import "strings"
-
-var bashReserved = map[string]bool{
-	"if": true, "then": true, "else": true, "elif": true, "fi": true,
-	"for": true, "while": true, "until": true, "do": true, "done": true,
-	"case": true, "esac": true, "in": true, "function": true,
-	"time": true, "coproc": true, "select": true,
-}
-
-func needsBashQuote(word string) bool {
-	return bashReserved[word] || word == "."
-}
+import (
+	"strconv"
+	"strings"
+)
 
 // BashKeywordCase generates the case pattern for __witty_is_shell_keyword.
 func BashKeywordCase(keywords []string) string {
-	parts := make([]string, len(keywords))
-	for i, kw := range keywords {
-		if needsBashQuote(kw) {
-			parts[i] = `"` + kw + `"`
-		} else {
-			parts[i] = kw
-		}
-	}
-	return strings.Join(parts, " | ")
+	return bashLiteralCase(keywords)
 }
 
 // BashCommandCase generates the case pattern for __witty_is_shell_command.
 func BashCommandCase(commands []string) string {
-	parts := make([]string, len(commands))
-	for i, c := range commands {
-		if needsBashQuote(c) {
-			parts[i] = `"` + c + `"`
-		} else {
-			parts[i] = c
-		}
+	return bashLiteralCase(commands)
+}
+
+func bashLiteralCase(values []string) string {
+	parts := make([]string, len(values))
+	for i, value := range values {
+		parts[i] = `"` + value + `"`
 	}
 	return strings.Join(parts, " | ")
 }
@@ -62,6 +46,28 @@ func BashCommandNLPhraseCase(phrases []CommandNLPhrase) string {
 			command = `"` + p.Command + `:`
 		}
 		parts[i] = command + p.Pattern + `"*`
+	}
+	return strings.Join(parts, " | ")
+}
+
+// BashControlCase generates accepted command, subcommand, and word-count
+// patterns for __witty_is_control.
+func BashControlCase(rules []ControlRule) string {
+	parts := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		prefix := `"` + rule.Command + `:`
+		switch {
+		case rule.Subcommand != "":
+			parts = append(parts, prefix+rule.Subcommand+`:`+strconv.Itoa(rule.MinWords)+`"`)
+		case rule.MinWords == 1 && rule.MaxWords == 1:
+			parts = append(parts, prefix+`:`+strconv.Itoa(rule.MinWords)+`"`)
+		case rule.MinWords == 1 && rule.MaxWords == 0:
+			parts = append(parts, prefix+`"*`)
+		case rule.MinWords == 2 && rule.MaxWords == 0:
+			parts = append(parts, prefix+`"?*":"*`)
+		default:
+			parts = append(parts, prefix+`?*:`+strconv.Itoa(rule.MinWords)+`"`)
+		}
 	}
 	return strings.Join(parts, " | ")
 }

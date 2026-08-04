@@ -68,31 +68,12 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
     read -r -a words <<<"$line"
     [ "${#words[@]}" -gt 0 ] || return 1
     first="${words[0],,}"
-    case "$first" in
-    /exit | /quit | /q | /new | /help)
-      [ "${#words[@]}" -eq 1 ]
-      return
-      ;;
-    /ask)
-      [ "${#words[@]}" -ge 2 ]
-      return
-      ;;
-    /agent | /model)
-      return 0
-      ;;
-    /session)
-      [ "${#words[@]}" -eq 1 ] && return 0
+    if [ "${#words[@]}" -gt 1 ]; then
       subcommand="${words[1],,}"
-      case "$subcommand" in
-      list)
-        [ "${#words[@]}" -eq 2 ]
-        return
-        ;;
-      continue)
-        [ "${#words[@]}" -eq 3 ]
-        return
-        ;;
-      esac
+    fi
+    case "$first:$subcommand:${#words[@]}" in
+    [[ .ControlCase ]])
+      return 0
       ;;
     esac
     return 1
@@ -153,6 +134,170 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
     return 1
   }
 
+  __witty_split_first_word() {
+    local line="${1:-}"
+    local word=""
+    local quote=""
+    local char=""
+    local i=0
+    local length=0
+
+    while [ -n "$line" ]; do
+      case "${line:0:1}" in
+      \  | $'\t' | $'\r' | $'\n') line="${line:1}" ;;
+      *) break ;;
+      esac
+    done
+
+    __WITTY_FIRST_QUOTED=0
+    length="${#line}"
+    while [ "$i" -lt "$length" ]; do
+      char="${line:i:1}"
+      if [ -z "$quote" ]; then
+        case "$char" in
+        \  | $'\t' | $'\r' | $'\n')
+          __WITTY_FIRST="$word"
+          __WITTY_REST="${line:i+1}"
+          while [ -n "$__WITTY_REST" ]; do
+            case "${__WITTY_REST:0:1}" in
+            \  | $'\t' | $'\r' | $'\n') __WITTY_REST="${__WITTY_REST:1}" ;;
+            *) break ;;
+            esac
+          done
+          return 0
+          ;;
+        \' | \")
+          quote="$char"
+          __WITTY_FIRST_QUOTED=1
+          ;;
+        \\)
+          if [ $((i + 1)) -lt "$length" ]; then
+            i=$((i + 1))
+            word+="${line:i:1}"
+          else
+            word+="$char"
+          fi
+          ;;
+        *)
+          word+="$char"
+          ;;
+        esac
+      elif [ "$char" = "$quote" ]; then
+        quote=""
+      elif [ "$quote" = '"' ] && [ "$char" = "\\" ] && [ $((i + 1)) -lt "$length" ]; then
+        i=$((i + 1))
+        word+="${line:i:1}"
+      else
+        word+="$char"
+      fi
+      i=$((i + 1))
+    done
+
+    __WITTY_FIRST="$word"
+    __WITTY_REST=""
+  }
+
+  __witty_path_has_nl_rest() {
+    local first="${1:-}"
+    local rest="${2:-}"
+    [ -n "$rest" ] || return 1
+    if [ "${first: -1}" = "/" ] && __witty_has_nl_signal "$rest"; then
+      return 0
+    fi
+    if __witty_has_nl_prefix "$rest"; then
+      return 0
+    fi
+    case "$rest" in
+    下* | 里* | 中*)
+      __witty_has_nl_signal "$rest"
+      return
+      ;;
+    esac
+    return 1
+  }
+
+  __witty_is_path_like() {
+    case "${1:-}" in
+    /* | ./* | ../* | "~"/* | */*) return 0 ;;
+    *) return 1 ;;
+    esac
+  }
+
+  __witty_is_explicit_path() {
+    local first="${1:-}"
+    local rest="${2:-}"
+    local quoted="${3:-0}"
+    local base=""
+
+    __witty_is_path_like "$first" || return 1
+    __witty_path_has_nl_rest "$first" "$rest" && return 1
+
+    case "$first" in
+    *[![:ascii:]]*) ;;
+    *) return 0 ;;
+    esac
+    case "$first" in
+    ./* | ../* | "~"/*) return 0 ;;
+    esac
+    [ "$quoted" = "1" ] && return 0
+    [ "${first: -1}" = "/" ] && return 0
+    base="${first##*/}"
+    case "$base" in
+    *.*)
+      base="${base##*.}"
+      [ -n "$base" ] || return 1
+      case "$base" in
+      *[!A-Za-z0-9_+@%-]*) return 1 ;;
+      *) return 0 ;;
+      esac
+      ;;
+    esac
+    return 1
+  }
+
+  __witty_has_strong_shell_syntax() {
+    local line="${1:-}"
+    local backtick=$'\140'
+    local dollar_paren="\$("
+    local dollar_brace="\${"
+
+    # shellcheck disable=SC2221,SC2222
+    case "$line" in
+    *$'\n'* | *"|"* | *">"* | *"<"* | *";"* | *"&&"* | *"||"* | *"$backtick"* | *"$dollar_paren"* | *"$dollar_brace"* | *"{"*","*"}"* | *"{"*".."*"}"* | *\\)
+      return 0
+      ;;
+    esac
+    return 1
+  }
+
+  __witty_last_history_line() {
+    local line=""
+    line="$(HISTTIMEFORMAT='' builtin history 1 2>/dev/null)" || return 1
+    while [ -n "$line" ]; do
+      case "${line:0:1}" in
+      \  | $'\t') line="${line:1}" ;;
+      *) break ;;
+      esac
+    done
+    while [ -n "$line" ]; do
+      case "${line:0:1}" in
+      [0-9]) line="${line:1}" ;;
+      *) break ;;
+      esac
+    done
+    case "${line:0:1}" in
+    \*) line="${line:1}" ;;
+    esac
+    while [ -n "$line" ]; do
+      case "${line:0:1}" in
+      \  | $'\t') line="${line:1}" ;;
+      *) break ;;
+      esac
+    done
+    [ -n "$line" ] || return 1
+    printf '%s\n' "$line"
+  }
+
   __witty_command_exists() {
     local cmd="${1:-}"
     if [ -z "$cmd" ]; then
@@ -172,6 +317,7 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
     local line="${1:-}"
     local first=""
     local rest=""
+    local first_quoted=0
     local compact="${line// /}"
     compact="${compact//$'\t'/}"
     compact="${compact//$'\r'/}"
@@ -186,46 +332,36 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
       return 0
     fi
 
-    read -r first rest <<<"$line"
-
-    case "$first" in
-    \\*) first="${first#\\}" ;;
-    esac
-    case "$first" in
-    \"*\" | \'*\') first="${first:1:-1}" ;;
-    esac
+    __witty_split_first_word "$line"
+    first="$__WITTY_FIRST"
+    rest="$__WITTY_REST"
+    first_quoted="$__WITTY_FIRST_QUOTED"
 
     case "$first" in
     witty)
       printf 'shell\n'
       return 0
       ;;
-    /* | ./* | ../* | ~/* | */*)
+    esac
+    if __witty_is_explicit_path "$first" "$rest" "$first_quoted"; then
       printf 'shell\n'
       return 0
-      ;;
+    fi
+    if __witty_is_path_like "$first" && __witty_has_nl_signal "$line"; then
+      printf 'agent\n'
+      return 0
+    fi
+    case "$first" in
     \$[A-Za-z_]* | \$[0-9]* | \$@ | \$\* | \$# | \$\? | \$\$ | \$! | \$_)
       printf 'shell\n'
       return 0
       ;;
     esac
 
-    local backtick=$'\140'
-    local dollar_paren="\$("
-    local dollar_brace="\${"
-    # shellcheck disable=SC2221,SC2222
-    case "$line" in
-    *"|"* | *">"* | *"<"* | *";"* | *"&&"* | *"||"* | *"$backtick"* | *"$dollar_paren"* | *"$dollar_brace"* | *"{"*","*"}"* | *"{"*".."*"}"*)
+    if __witty_has_strong_shell_syntax "$line"; then
       printf 'shell\n'
       return 0
-      ;;
-    esac
-    case "$line" in
-    *\\)
-      printf 'shell\n'
-      return 0
-      ;;
-    esac
+    fi
     case "$first" in
     [A-Za-z_]*=*)
       printf 'shell\n'
@@ -328,15 +464,38 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
       return 0
       ;;
     esac
+    local line="$cmd"
     local route=""
     route="$(__witty_classify "$cmd")"
-    __witty_debug "classify ${route}: ${cmd}"
+    if [ "$route" = "agent" ] || [ "$route" = "control" ]; then
+      local history_line=""
+      local restore_extdebug=0
+      if shopt -q extdebug; then
+        restore_extdebug=1
+        shopt -u extdebug
+      fi
+      history_line="$(__witty_last_history_line)" || history_line=""
+      if [ "$restore_extdebug" = "1" ]; then
+        shopt -s extdebug
+      fi
+      if [ -n "$history_line" ]; then
+        case "$history_line" in
+        *"$cmd"*)
+          if __witty_has_strong_shell_syntax "$history_line"; then
+            line="$history_line"
+            route="shell"
+          fi
+          ;;
+        esac
+      fi
+    fi
+    __witty_debug "classify ${route}: ${line}"
     case "$route" in
     empty | shell)
       return 0
       ;;
     agent | control)
-      __witty_shell_dispatch "$route" -- "$cmd"
+      __witty_shell_dispatch "$route" -- "$line"
       return 1
       ;;
     esac

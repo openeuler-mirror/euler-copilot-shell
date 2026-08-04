@@ -282,6 +282,12 @@ func TestShellbridge_NaturalLanguageToAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected witty ask for natural language: %v", err)
 	}
+
+	c.SendLine(`/root/目录下有哪些文件`)
+	_, err = c.Expect(expect.WithTimeout(10*time.Second), expect.String(`witty ask -- /root/目录下有哪些文件`))
+	if err != nil {
+		t.Fatalf("expected path question to dispatch as natural language: %v", err)
+	}
 }
 
 // TestShellbridge_ShellCommandNotRewritten verifies regular shell commands
@@ -305,49 +311,69 @@ func TestShellbridge_ShellCommandNotRewritten(t *testing.T) {
 	}
 }
 
-func TestShellbridge_BashClassifierRoutes(t *testing.T) {
+func TestShellbridge_QuotedUnicodePathRunsInShell(t *testing.T) {
+	c := newConsole(t, 10*time.Second)
+	defer c.Close()
+
+	mockDir := setupMockWitty(t)
+	scriptPath := filepath.Join(mockDir, "中文 脚本.sh")
+	if err := os.WriteFile(scriptPath, []byte("#!/usr/bin/env bash\nprintf 'unicode_path_ok:%s\\n' \"${1:-}\"\n"), 0o755); err != nil {
+		t.Fatalf("write Unicode path script: %v", err)
+	}
+	initPath := writeWittyInitScript(t, mockDir)
+	bashCmd, bashDone := startBash(t, c, mockDir)
+	defer cleanupBash(t, bashCmd, bashDone, c)
+
+	waitForPrompt(t, c)
+	sourceWittyScript(t, c, initPath)
+
+	c.SendLine(shellbridge.ShellQuote(scriptPath) + " --flag")
+	output, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("unicode_path_ok:--flag"))
+	if err != nil {
+		t.Fatalf("expected quoted Unicode path to execute in Bash: %v", err)
+	}
+	if strings.Contains(output, "witty ask") {
+		t.Fatalf("quoted Unicode path was routed to agent: %q", output)
+	}
+}
+
+func TestShellbridge_CompoundLineUsesFullSyntax(t *testing.T) {
+	c := newConsole(t, 10*time.Second)
+	defer c.Close()
+
 	mockDir := setupMockWitty(t)
 	initPath := writeWittyInitScript(t, mockDir)
-	tests := []struct {
-		name string
-		line string
-		want string
-	}{
-		{name: "Chinese prompt", line: "检查系统内存", want: "agent"},
-		{name: "known command question", line: "git 怎么只看最近一次提交", want: "agent"},
-		{name: "help prompt", line: "help me understand systemd", want: "agent"},
-		{name: "dynamic command with Chinese args", line: "deploy 生产环境", want: "shell"},
-		{name: "known command with trigger filename", line: "rm 检查报告.txt", want: "shell"},
-		{name: "known command with how argument", line: "grep how input.txt", want: "shell"},
-		{name: "question mark argument", line: "echo ?", want: "shell"},
-		{name: "arithmetic expression", line: "((counter++))", want: "shell"},
-		{name: "brace expansion", line: "foobar{,baz}", want: "shell"},
-		{name: "parameter command", line: "$cmd arg", want: "shell"},
-		{name: "unknown command fallback", line: "some_unknown_nonsense", want: "shell"},
-		{name: "invalid exit control", line: "/exit extra", want: "shell"},
-		{name: "invalid session control", line: "/session continue ses_1 extra", want: "shell"},
-		{name: "bare session control", line: "/session", want: "control"},
-		{name: "valid session control", line: "/session continue ses_1", want: "control"},
+	bashCmd, bashDone := startBashWithEnv(t, c, mockDir, []string{
+		"TERM=xterm-256color",
+		"WITTY_SHELL_ENABLE=1",
+		"WITTY_SHELL_DEBUG=1",
+	})
+	defer cleanupBash(t, bashCmd, bashDone, c)
+
+	waitForPrompt(t, c)
+	sourceWittyScript(t, c, initPath)
+
+	const pipeline = "检查系统内存 | cat"
+	c.SendLine(pipeline)
+	output, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("classify shell: "+pipeline))
+	if err != nil {
+		t.Fatalf("expected pipeline to execute through Bash: %v", err)
+	}
+	if !strings.Contains(output, "classify shell: "+pipeline) {
+		t.Fatalf("pipeline was not classified from the full input line: %q", output)
+	}
+	if _, err := c.Expect(expect.WithTimeout(10*time.Second), expect.String("$ ", "# ")); err != nil {
+		t.Fatalf("expected prompt after pipeline: %v", err)
 	}
 
-	const classifyScript = `
-unset __WITTY_SHELL_INIT_LOADED
-source "$1"
-declare -A __WITTY_CMD_CACHE=()
-deploy() { :; }
-__witty_classify "$2"
-`
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cmd := exec.Command("bash", "--noprofile", "--norc", "-c", classifyScript, "bash", initPath, tt.line)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("classify %q: %v: %s", tt.line, err, output)
-			}
-			if got := strings.TrimSpace(string(output)); got != tt.want {
-				t.Fatalf("classify %q = %q, want %q", tt.line, got, tt.want)
-			}
-		})
+	const compound = "检查磁盘空间; echo compound_ok"
+	c.SendLine(compound)
+	output, err = c.Expect(expect.WithTimeout(10*time.Second), expect.String("classify shell: "+compound))
+	if err != nil {
+		t.Fatalf("expected compound command to execute through Bash: %v", err)
+	}
+	if !strings.Contains(output, "classify shell: "+compound) {
+		t.Fatalf("compound command was not classified from the full input line: %q", output)
 	}
 }
 

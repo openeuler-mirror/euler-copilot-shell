@@ -540,7 +540,7 @@
 - [x] `extdebug` 安装与卸载（`shopt -s extdebug` / `shopt -u extdebug`）。
 - [x] 全局集成：创建 `packaging/profile.d/witty.sh` 入口脚本（见 P1-11B）。
 - [x] `set -o vi` 模式下自然语言直输能触发 Agent（DEBUG trap 不绑定 keymap，自动兼容；已验证 `set -o vi` + `extdebug` + DEBUG trap 正常工作）。
-- [x] 多条命令（`cmd1; cmd2`）和管道（`cmd1 | cmd2`）场景下 DEBUG trap 行为验证：`BASH_COMMAND` 逐条触发（非整行），但分类器中 `*";"*` / `*"|"*` 等强 shell 特征匹配在用户输入时即拦截整行，不会出现管道中某条命令被误分类为 agent 的情况。
+- [x] 多条命令（`cmd1; cmd2`）和管道（`cmd1 | cmd2`）场景下 DEBUG trap 行为验证：`BASH_COMMAND` 逐条触发（非整行），hook 从当前 history 条目读取完整输入后判断强 Shell 语法，避免把其中某个简单命令误分类为 Agent。
 - [x] `witty init bash` 输出脚本中 `WITTY_SHELL_ENABLE` 和 `WITTY_SHELL_DEBUG` 的默认值与 `witty.yaml` 配置联动（`app.go` 中 `a.cfg.Shell.Enabled` / `a.cfg.Shell.Debug` 传入 `BashOptions`）。
 - [x] DEBUG trap 递归安全：Bash 的 DEBUG trap 在 trap handler 内部不会递归触发，`__witty_shell_dispatch` 中的 `command` 调用不会再次触发 `__witty_debug_hook`。
 

@@ -7,9 +7,10 @@ description: 开发 Shell Adapter 的 Bash 模板和 Go 桥接层。包括 witty
 
 ## 关键文件
 
-- `internal/shellinit/bash.go` — Go 侧模板渲染入口
+- `internal/shellinit/shellinit.go` — Go 侧模板渲染入口
 - `internal/shellinit/templates/witty.bash.tmpl` — Bash 模板（分隔符 `[[ ]]`）
-- `internal/shellbridge/control.go` — Shell 路由分类逻辑
+- `internal/shellbridge/data.go` / `bashgen.go` — Bash 分类规则数据与代码生成
+- `internal/shellbridge/control.go` — Slash control 规格与 Go 解析
 - `internal/shellbridge/history.go` — History 命令管理
 
 ## 开发流程

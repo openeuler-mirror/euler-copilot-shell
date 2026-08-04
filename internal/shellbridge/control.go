@@ -29,18 +29,42 @@ type ControlAction struct {
 	SessionID string
 }
 
+// ControlRule defines one slash command form accepted by both Go and Bash.
+type ControlRule struct {
+	Command    string
+	Subcommand string
+	Kind       ControlKind
+	MinWords   int
+	MaxWords   int // zero means unbounded
+}
+
+var controlRules = []ControlRule{
+	{Command: "/exit", Kind: ControlExit, MinWords: 1, MaxWords: 1},
+	{Command: "/quit", Kind: ControlExit, MinWords: 1, MaxWords: 1},
+	{Command: "/q", Kind: ControlExit, MinWords: 1, MaxWords: 1},
+	{Command: "/ask", Kind: ControlAsk, MinWords: 2},
+	{Command: "/agent", Kind: ControlAgent, MinWords: 1},
+	{Command: "/model", Kind: ControlModel, MinWords: 1},
+	{Command: "/new", Kind: ControlNew, MinWords: 1, MaxWords: 1},
+	{Command: "/help", Kind: ControlHelp, MinWords: 1, MaxWords: 1},
+	{Command: "/session", Kind: ControlSessionHelp, MinWords: 1, MaxWords: 1},
+	{Command: "/session", Subcommand: "list", Kind: ControlSessionList, MinWords: 2, MaxWords: 2},
+	{Command: "/session", Subcommand: "continue", Kind: ControlSessionContinue, MinWords: 3, MaxWords: 3},
+}
+
 // IsExitSlash returns true when the raw input is an exit slash command.
 func IsExitSlash(raw string) bool {
 	fields := strings.Fields(strings.TrimSpace(raw))
 	if len(fields) == 0 {
 		return false
 	}
-	switch strings.ToLower(fields[0]) {
-	case "/exit", "/quit", "/q":
-		return true
-	default:
-		return false
+	command := strings.ToLower(fields[0])
+	for _, rule := range controlRules {
+		if rule.Command == command && rule.Kind == ControlExit {
+			return true
+		}
 	}
+	return false
 }
 
 // ParseControl parses slash commands that the shell adapter is allowed to dispatch.
@@ -54,63 +78,56 @@ func ParseControl(raw string) (ControlAction, error) {
 		return ControlAction{}, fmt.Errorf("shell control command is required")
 	}
 
-	lower := strings.ToLower(fields[0])
-	switch lower {
-	case "/exit", "/quit", "/q":
-		if len(fields) != 1 {
-			return ControlAction{}, fmt.Errorf("%s does not accept arguments", fields[0])
-		}
-		return ControlAction{Kind: ControlExit, Raw: line}, nil
-	case "/ask":
-		prompt := strings.TrimSpace(strings.TrimPrefix(line, "/ask"))
-		if prompt == "" {
-			return ControlAction{}, fmt.Errorf("/ask requires a prompt")
-		}
-		return ControlAction{Kind: ControlAsk, Raw: line, Prompt: prompt}, nil
-	case "/agent":
-		return ControlAction{Kind: ControlAgent, Raw: line, Value: strings.TrimSpace(strings.TrimPrefix(line, "/agent"))}, nil
-	case "/model":
-		return ControlAction{Kind: ControlModel, Raw: line, Value: strings.TrimSpace(strings.TrimPrefix(line, "/model"))}, nil
-	case "/new":
-		if len(fields) != 1 {
-			return ControlAction{}, fmt.Errorf("/new does not accept arguments")
-		}
-		return ControlAction{Kind: ControlNew, Raw: line}, nil
-	case "/help":
-		if len(fields) != 1 {
-			return ControlAction{}, fmt.Errorf("/help does not accept arguments")
-		}
-		return ControlAction{Kind: ControlHelp, Raw: line}, nil
-	case "/session":
-		return parseSessionControl(line, fields)
-	default:
+	rule, ok := matchControlRule(fields)
+	if !ok {
 		return ControlAction{}, fmt.Errorf("unsupported shell control command %q; %s", fields[0], SuggestSlash(fields[0]))
 	}
+
+	action := ControlAction{Kind: rule.Kind, Raw: line}
+	switch rule.Kind {
+	case ControlAsk:
+		action.Prompt = controlRemainder(line, fields[0])
+	case ControlAgent, ControlModel:
+		action.Value = controlRemainder(line, fields[0])
+	case ControlSessionContinue:
+		action.SessionID = fields[2]
+	}
+	return action, nil
 }
 
-func parseSessionControl(line string, fields []string) (ControlAction, error) {
-	if len(fields) == 1 {
-		return ControlAction{Kind: ControlSessionHelp, Raw: line}, nil
+func matchControlRule(fields []string) (ControlRule, bool) {
+	command := strings.ToLower(fields[0])
+	subcommand := ""
+	if len(fields) > 1 {
+		subcommand = strings.ToLower(fields[1])
 	}
-	switch fields[1] {
-	case "list":
-		if len(fields) != 2 {
-			return ControlAction{}, fmt.Errorf("/session list does not accept arguments")
+	for _, rule := range controlRules {
+		if rule.Command != command || (rule.Subcommand != "" && rule.Subcommand != subcommand) {
+			continue
 		}
-		return ControlAction{Kind: ControlSessionList, Raw: line}, nil
-	case "continue":
-		if len(fields) != 3 {
-			return ControlAction{}, fmt.Errorf("/session continue requires exactly one session id")
+		if len(fields) < rule.MinWords || (rule.MaxWords > 0 && len(fields) > rule.MaxWords) {
+			continue
 		}
-		return ControlAction{Kind: ControlSessionContinue, Raw: line, SessionID: fields[2]}, nil
-	default:
-		return ControlAction{}, fmt.Errorf("unsupported /session subcommand %q", fields[1])
+		return rule, true
 	}
+	return ControlRule{}, false
 }
 
-var knownSlashCommands = []string{
-	"/ask", "/agent", "/model", "/new", "/help", "/exit", "/quit", "/q", "/session",
+func controlRemainder(line, command string) string {
+	return strings.TrimSpace(line[len(command):])
 }
+
+var knownSlashCommands = func() []string {
+	seen := make(map[string]bool, len(controlRules))
+	commands := make([]string, 0, len(controlRules))
+	for _, rule := range controlRules {
+		if !seen[rule.Command] {
+			seen[rule.Command] = true
+			commands = append(commands, rule.Command)
+		}
+	}
+	return commands
+}()
 
 // SuggestSlash returns a suggestion for a mistyped slash command, or empty string.
 func SuggestSlash(input string) string {

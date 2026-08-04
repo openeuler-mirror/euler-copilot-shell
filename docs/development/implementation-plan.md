@@ -502,7 +502,7 @@ sequenceDiagram
     participant CORE as Go Core
 
     B->>A: 用户按 Enter，DEBUG trap 触发
-    A->>A: 读取 BASH_COMMAND
+    A->>A: 读取 BASH_COMMAND；复杂命令从当前 history 条目补取完整输入
     A->>A: classify
     alt shell
         A-->>B: 返回 0，Bash 正常执行
