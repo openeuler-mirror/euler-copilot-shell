@@ -17,6 +17,7 @@ const (
 	EventPermissionAsked AppEventKind = "permission.asked"
 	EventQuestionAsked   AppEventKind = "question.asked"
 	EventSessionIdle     AppEventKind = "session.idle"
+	EventSessionError    AppEventKind = "session.error"
 	EventUnknown         AppEventKind = "unknown"
 )
 
@@ -99,6 +100,11 @@ func (q QuestionInfo) CustomEnabled() bool {
 type QuestionOption struct {
 	Label       string `json:"label"`
 	Description string `json:"description"`
+}
+
+type SessionErrorPayload struct {
+	Name    string
+	Message string
 }
 
 type UnknownPayload struct {

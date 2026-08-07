@@ -174,6 +174,42 @@ func TestRouter_NormalizePermissionQuestionIdleUnknown(t *testing.T) {
 	}
 }
 
+func TestRouter_NormalizeSessionError(t *testing.T) {
+	router := NewRouter(nil)
+
+	evt, ok := router.Normalize(rawEvent("session.error", map[string]any{
+		"sessionID": "ses_1",
+		"error": map[string]any{
+			"name": "UnknownError",
+			"data": map[string]any{"message": "certificate is not yet valid"},
+		},
+	}))
+	if !ok || evt.Kind != EventSessionError || evt.SessionID != "ses_1" {
+		t.Fatalf("session error = %+v, %v; want session error event", evt, ok)
+	}
+	payload := evt.Payload.(SessionErrorPayload)
+	if payload.Name != "UnknownError" || payload.Message != "certificate is not yet valid" {
+		t.Fatalf("session error payload = %+v", payload)
+	}
+
+	// Errors without a data.message fall back to the error name, matching
+	// opencode's run output formatting.
+	evt, ok = router.Normalize(rawEvent("session.error", map[string]any{
+		"sessionID": "ses_1",
+		"error": map[string]any{
+			"name": "MessageOutputLengthError",
+			"data": map[string]any{},
+		},
+	}))
+	if !ok || evt.Kind != EventSessionError {
+		t.Fatalf("session error without message = %+v, %v", evt, ok)
+	}
+	payload = evt.Payload.(SessionErrorPayload)
+	if payload.Name != "MessageOutputLengthError" || payload.Message != "MessageOutputLengthError" {
+		t.Fatalf("session error fallback payload = %+v", payload)
+	}
+}
+
 func TestRouter_NormalizeSessionNextCompatibility(t *testing.T) {
 	router := NewRouter(nil)
 	evt, ok := router.Normalize(rawEvent("session.next.text.delta", map[string]any{

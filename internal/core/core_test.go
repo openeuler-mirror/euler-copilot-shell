@@ -246,6 +246,41 @@ func TestAskRunner_Run_EOFBeforeIdleFlushesAndReturnsError(t *testing.T) {
 	}
 }
 
+func TestAskRunner_Run_SessionErrorReturnsError(t *testing.T) {
+	runner := mustRunner(t, Options{
+		Transport: &fakeTransport{},
+		Events: &fakeRouter{events: []event.AppEvent{{
+			Kind:      event.EventSessionError,
+			SessionID: "ses_1",
+			Payload:   event.SessionErrorPayload{Name: "UnknownError", Message: "certificate is not yet valid"},
+		}}},
+		Sessions: &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
+	})
+
+	err := runner.Run(context.Background(), AskRequest{Prompt: "hello", CWD: "/work"})
+	if err == nil {
+		t.Fatal("Run() error = nil, want session error")
+	}
+	if !strings.Contains(err.Error(), "certificate is not yet valid") {
+		t.Fatalf("Run() error = %q, want certificate message", err)
+	}
+}
+
+func TestAskRunner_Run_IgnoresSessionErrorWithoutSessionID(t *testing.T) {
+	runner := mustRunner(t, Options{
+		Transport: &fakeTransport{},
+		Events: &fakeRouter{events: []event.AppEvent{
+			{Kind: event.EventSessionError, Payload: event.SessionErrorPayload{Name: "UnknownError", Message: "global plugin error"}},
+			{Kind: event.EventSessionIdle},
+		}},
+		Sessions: &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
+	})
+
+	if err := runner.Run(context.Background(), AskRequest{Prompt: "hello", CWD: "/work"}); err != nil {
+		t.Fatalf("Run() error = %v, want global session error ignored", err)
+	}
+}
+
 func TestAskRunner_Run_FlushesBeforePermissionAndQuestion(t *testing.T) {
 	renderer := &fakeTextRenderer{}
 	presenter := &fakePresenter{}

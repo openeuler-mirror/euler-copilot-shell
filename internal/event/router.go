@@ -74,6 +74,8 @@ func (r *router) Normalize(raw transport.RawEvent) (AppEvent, bool) {
 		return normalizeQuestionAsked(env)
 	case "session.idle":
 		return normalizeSessionIdle(env)
+	case "session.error":
+		return normalizeSessionError(env)
 	case "session.next.text.delta":
 		return normalizeSessionNextTextDelta(env, EventTextDelta)
 	case "session.next.reasoning.delta":
@@ -360,6 +362,36 @@ func normalizeSessionIdle(env rawEnvelope) (AppEvent, bool) {
 		return unknownFromEnvelope(env, "decode session.idle properties: "+err.Error()), true
 	}
 	return AppEvent{Kind: EventSessionIdle, SessionID: props.SessionID}, true
+}
+
+func normalizeSessionError(env rawEnvelope) (AppEvent, bool) {
+	var props struct {
+		SessionID string `json:"sessionID"`
+		Error     struct {
+			Name string `json:"name"`
+			Data struct {
+				Message string `json:"message"`
+			} `json:"data"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(env.Properties, &props); err != nil {
+		return unknownFromEnvelope(env, "decode session.error properties: "+err.Error()), true
+	}
+	message := strings.TrimSpace(props.Error.Data.Message)
+	if message == "" {
+		message = strings.TrimSpace(props.Error.Name)
+	}
+	if message == "" {
+		message = "unknown error"
+	}
+	return AppEvent{
+		Kind:      EventSessionError,
+		SessionID: props.SessionID,
+		Payload: SessionErrorPayload{
+			Name:    props.Error.Name,
+			Message: message,
+		},
+	}, true
 }
 
 func normalizeSessionNextTextDelta(env rawEnvelope, kind AppEventKind) (AppEvent, bool) {

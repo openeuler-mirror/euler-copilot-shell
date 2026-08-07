@@ -263,7 +263,8 @@ find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
 %systemd_postun_with_restart wittyd.service
 
 %changelog
-* Fri Jul 31 2026 Witty Team <intelligence@openeuler.org> - 3.1.3-1
+* Fri Aug 07 2026 Witty Team <intelligence@openeuler.org> - 3.1.3-1
+- feat: Handle session.error events from opencode
 - fix: add bare /session command help in REPL
 - feat(shellbridge): route bare /session to session usage help
 - docs: clarify shell routing, session list, and server status behavior

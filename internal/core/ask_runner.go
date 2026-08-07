@@ -199,6 +199,17 @@ func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, 
 			return false, nil
 		}
 		return false, r.presenter.PresentEvent(ctx, evt)
+	case event.EventSessionError:
+		// Global plugin/skill errors can be published without a sessionID.
+		// Only a session-scoped error should fail the current ask.
+		if evt.SessionID == "" {
+			return false, nil
+		}
+		payload, ok := evt.Payload.(event.SessionErrorPayload)
+		if !ok {
+			return false, &presenter.SchemaError{Op: "handle session error", Err: fmt.Errorf("unexpected payload %T", evt.Payload)}
+		}
+		return true, fmt.Errorf("session error: %s", payload.Message)
 	case event.EventPermissionAsked, event.EventQuestionAsked:
 		if r.presenter != nil {
 			if err := r.presenter.PresentEvent(ctx, evt); err != nil {
