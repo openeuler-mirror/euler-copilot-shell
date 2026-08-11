@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"atomgit.com/openeuler/euler-copilot-shell/internal/event"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/presenter"
@@ -11,18 +12,25 @@ import (
 	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 )
 
+const defaultNoEventTimeout = 90 * time.Second
+
 type askRunner struct {
-	transport  Transport
-	events     EventRouter
-	sessions   SessionResolver
-	renderer   TextRenderer
-	presenter  EventPresenter
-	permission InteractionManager
-	serverURL  string
+	transport      Transport
+	events         EventRouter
+	sessions       SessionResolver
+	renderer       TextRenderer
+	presenter      EventPresenter
+	permission     InteractionManager
+	serverURL      string
+	noEventTimeout time.Duration
 }
 
 // NewAskRunner creates the shared ask execution pipeline.
 func NewAskRunner(opts Options) (Runner, error) {
+	return newAskRunner(opts, defaultNoEventTimeout)
+}
+
+func newAskRunner(opts Options, noEventTimeout time.Duration) (Runner, error) {
 	if opts.Transport == nil {
 		return nil, fmt.Errorf("ask transport is required")
 	}
@@ -33,13 +41,14 @@ func NewAskRunner(opts Options) (Runner, error) {
 		return nil, fmt.Errorf("ask session resolver is required")
 	}
 	return &askRunner{
-		transport:  opts.Transport,
-		events:     opts.Events,
-		sessions:   opts.Sessions,
-		renderer:   opts.Renderer,
-		presenter:  opts.Presenter,
-		permission: opts.Permission,
-		serverURL:  opts.ServerURL,
+		transport:      opts.Transport,
+		events:         opts.Events,
+		sessions:       opts.Sessions,
+		renderer:       opts.Renderer,
+		presenter:      opts.Presenter,
+		permission:     opts.Permission,
+		serverURL:      opts.ServerURL,
+		noEventTimeout: noEventTimeout,
 	}, nil
 }
 
@@ -100,11 +109,21 @@ func (r *askRunner) Run(ctx context.Context, req AskRequest) error {
 		return decorateServerError(r.serverURL, fmt.Errorf("send prompt: %w", err))
 	}
 
+	noEventTimer := time.NewTimer(r.noEventTimeout)
+	defer noEventTimer.Stop()
+	firstEventSeen := false
+
 	for events != nil || errs != nil {
 		select {
 		case <-runCtx.Done():
 			_ = r.flushRenderer(context.WithoutCancel(runCtx))
 			return runCtx.Err()
+		case <-noEventTimer.C:
+			return fmt.Errorf(
+				"opencode server %s: prompt accepted but no events received within %s for session %s; "+
+					"the session may be busy or the event stream directory does not match (try 'witty ask --new')",
+				r.serverURL, r.noEventTimeout, sessionCtx.ID,
+			)
 		case err, ok := <-errs:
 			if !ok {
 				errs = nil
@@ -118,6 +137,15 @@ func (r *askRunner) Run(ctx context.Context, req AskRequest) error {
 			if !ok {
 				events = nil
 				continue
+			}
+			if !firstEventSeen {
+				firstEventSeen = true
+				if !noEventTimer.Stop() {
+					select {
+					case <-noEventTimer.C:
+					default:
+					}
+				}
 			}
 			done, err := r.handleEvent(runCtx, evt)
 			if err != nil {

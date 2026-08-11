@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"atomgit.com/openeuler/euler-copilot-shell/internal/event"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/presenter"
@@ -266,6 +267,28 @@ func TestAskRunner_Run_SessionErrorReturnsError(t *testing.T) {
 	}
 }
 
+func TestAskRunner_Run_TimesOutWhenNoEventsArrive(t *testing.T) {
+	runner, err := newAskRunner(Options{
+		Transport: &fakeTransport{},
+		Events:    &fakeRouter{holdOpen: true},
+		Sessions:  &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
+	}, 50*time.Millisecond)
+	if err != nil {
+		t.Fatalf("newAskRunner() error = %v", err)
+	}
+
+	err = runner.Run(context.Background(), AskRequest{Prompt: "hello", CWD: "/work"})
+	if err == nil {
+		t.Fatal("Run() error = nil, want no-event timeout")
+	}
+	if !strings.Contains(err.Error(), "no events received") {
+		t.Fatalf("Run() error = %q, want no-event timeout message", err)
+	}
+	if !strings.Contains(err.Error(), "witty ask --new") {
+		t.Fatalf("Run() error = %q, want --new hint", err)
+	}
+}
+
 func TestAskRunner_Run_IgnoresSessionErrorWithoutSessionID(t *testing.T) {
 	runner := mustRunner(t, Options{
 		Transport: &fakeTransport{},
@@ -459,6 +482,7 @@ type fakeRouter struct {
 	events          []event.AppEvent
 	err             error
 	waitForCancel   bool
+	holdOpen        bool
 	targetSessionID string
 	filter          transport.EventFilter
 }
@@ -472,6 +496,10 @@ func (f *fakeRouter) Subscribe(ctx context.Context, targetSessionID string, filt
 		defer close(events)
 		defer close(errs)
 		if f.waitForCancel {
+			<-ctx.Done()
+			return
+		}
+		if f.holdOpen {
 			<-ctx.Done()
 			return
 		}
