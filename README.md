@@ -1,4 +1,5 @@
 # Witty Assistant 命令行助手
+[English](./README_EN.md) | 简体中文
 
 Witty Assistant 是 openEuler Intelligence 的命令行客户端，提供 AI 驱动的命令行交互体验。支持多种 LLM 后端，集成 MCP 协议，提供现代化的 TUI 界面。
 
