@@ -71,7 +71,7 @@ witty version
 输出示例：
 
 ```text
-version: 3.1.3
+version: 3.1.4
 commit: 4e4b8a9
 date: 2026-07-30T07:48:22Z
 ```

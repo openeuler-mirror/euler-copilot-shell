@@ -30,7 +30,7 @@
 %global witty_loader_source_dir %{_builddir}/witty-agent-loader-%{version}
 
 Name:           euler-copilot-shell
-Version:        3.1.3
+Version:        3.1.4
 Release:        1
 Summary:        openEuler terminal AI assistant
 
@@ -263,6 +263,9 @@ find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
 %systemd_postun_with_restart wittyd.service
 
 %changelog
+* Tue Aug 11 2026 Witty Team <intelligence@openeuler.org> - 3.1.4-1
+- fix: timeout when ask receives no events from server
+
 * Fri Aug 07 2026 Witty Team <intelligence@openeuler.org> - 3.1.3-1
 - feat: Handle session.error events from opencode
 - fix: add bare /session command help in REPL
