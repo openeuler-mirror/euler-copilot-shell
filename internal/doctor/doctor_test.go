@@ -261,7 +261,7 @@ func TestCheckServerReachable_Unhealthy(t *testing.T) {
 	}
 }
 
-func TestCheckServerReachable_ConnectionError(t *testing.T) {
+func TestCheckServerReachable_NotRunningReportsOK(t *testing.T) {
 	probe := &fakeServerProbe{
 		healthErr: errors.New("dial tcp 127.0.0.1:4096: connect: connection refused"),
 	}
@@ -274,8 +274,11 @@ func TestCheckServerReachable_ConnectionError(t *testing.T) {
 	if ok {
 		t.Error("ok = true, want false")
 	}
-	if c.Status != StatusFAIL {
-		t.Errorf("status = %s, want FAIL", c.Status)
+	if c.Status != StatusOK {
+		t.Errorf("status = %s, want OK (server is on-demand and not running is expected)", c.Status)
+	}
+	if !strings.Contains(c.Detail, "not running") {
+		t.Errorf("detail = %q, want not running hint", c.Detail)
 	}
 }
 
