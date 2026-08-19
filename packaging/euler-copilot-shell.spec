@@ -30,7 +30,7 @@
 %global witty_loader_source_dir %{_builddir}/witty-agent-loader-%{version}
 
 Name:           euler-copilot-shell
-Version:        3.1.4
+Version:        3.1.5
 Release:        1
 Summary:        openEuler terminal AI assistant
 
@@ -273,6 +273,10 @@ fi
 %systemd_postun_with_restart wittyd.service
 
 %changelog
+* Wed Aug 19 2026 Witty Team <intelligence@openeuler.org> - 3.1.5-1
+- fix(wittyd): read /etc/witty/daemon.toml for socket path, idle timeout and config watch paths
+- fix(wittyd): create /run/wittyd and /var/lib/witty via RuntimeDirectory/StateDirectory to fix systemd startup on clean systems
+
 * Tue Aug 11 2026 Witty Team <intelligence@openeuler.org> - 3.1.4-1
 - fix: timeout when ask receives no events from server
 - fix: guard loader filetriggerpostun during loader removal
