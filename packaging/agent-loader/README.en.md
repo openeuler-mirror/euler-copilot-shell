@@ -45,9 +45,11 @@ Two additional components ship with the loader package:
 ### Why both `%posttrans` and file triggers?
 
 - `%posttrans` handles the case where the **loader package itself** is installed or upgraded and needs to create or refresh `/etc/opencode/opencode.json`.
-- `%transfiletriggerin` and `%transfiletriggerpostun` are the right tool for **sub-RPM lifecycle events**: they fire when files under `config.d`, `agents`, `skills`, or `plugins` directories are added or removed, even when the loader package is not part of the transaction.
+- `%transfiletriggerin` and `%filetriggerpostun` are the right tool for **sub-RPM lifecycle events**: they fire when files under `config.d`, `agents`, `skills`, or `plugins` directories are added or removed, even when the loader package is not part of the transaction. Removal uses the per-package `%filetriggerpostun` because `%transfiletriggerpostun` does not fire on package removal in rpm 4.17-4.19.
 
 This split keeps sub-RPMs as plain data packages while the loader package remains the sole owner of generated config.
+
+> When the loader package itself is erased, the monitored directories it owns are also removed, and rpm 4.18 may still run its own `%filetriggerpostun`. Since the hook script is already gone by then, an unconditional call fails with exit 127. The spec guards every hook invocation with `[ -x ... ]`, so a loader removal skips the rebuild cleanly.
 
 ### Failure policy
 

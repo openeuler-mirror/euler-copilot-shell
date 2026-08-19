@@ -45,9 +45,11 @@ Loader 包还附带两个辅助组件：
 ### 为什么同时需要 `%posttrans` 和文件触发器？
 
 - **Loader 包自身**安装或升级时，`%posttrans` 负责创建或刷新 `/etc/opencode/opencode.json`。
-- **子 RPM 的安装与卸载**应使用 `%transfiletriggerin` 和 `%transfiletriggerpostun`：这两个触发器会在 `config.d`、`agents`、`skills`、`plugins` 目录下的文件发生变动时自动触发，即使该次事务中并未涉及 loader 包。
+- **子 RPM 的安装与卸载**应使用 `%transfiletriggerin` 和 `%filetriggerpostun`：这两个触发器会在 `config.d`、`agents`、`skills`、`plugins` 目录下的文件发生变动时自动触发，即使该次事务中并未涉及 loader 包。卸载使用 per-package 的 `%filetriggerpostun`，因为 `%transfiletriggerpostun` 在 rpm 4.17-4.19 卸载包时不触发。
 
 这样子 RPM 只需打包数据文件，配置生成始终由 loader 包独自负责。
+
+> Loader 包自身卸载时，其拥有的受监控目录也会作为触发文件被删除，rpm 4.18 仍可能执行它自己的 `%filetriggerpostun`；此时 hook 脚本已被删除，直接调用会以 127 失败。spec 中已用 `[ -x ... ]` 保护所有 hook 调用，loader 卸载时会干净跳过重建。
 
 ### 失败策略
 

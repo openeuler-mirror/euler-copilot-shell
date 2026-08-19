@@ -244,7 +244,7 @@ Recommends:     witty-lite-rag
 子包**不声明任何 `%post` / `%postun` / trigger 脚本**。配置重建完全由 `witty-agent-loader` 的现有 hooks 负责：
 
 - `%transfiletriggerin` — 监控 `config.d` / `agents` / `skills` / `plugins` 目录，文件新增时触发重建
-- `%transfiletriggerpostun` — 文件删除时触发重建
+- `%filetriggerpostun` — 文件删除时触发重建（实现使用 per-package 触发器；`%transfiletriggerpostun` 在 rpm 4.17-4.19 卸载包时不触发）
 - `%posttrans` — loader 包自身安装/升级时的兜底
 
 ---
@@ -703,7 +703,7 @@ sequenceDiagram
 ```bash
 # 卸载时文件触发器自动清理配置
 dnf remove witty-builtin-agent
-# → transfiletriggerpostun 触发 → rebuild-managed-config.mjs
+# → filetriggerpostun 触发 → rebuild-managed-config.mjs
 # → /etc/opencode/opencode.json 自动移除 witty-builtin-agent 条目
 ```
 

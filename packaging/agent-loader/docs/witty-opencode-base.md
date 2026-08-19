@@ -113,15 +113,17 @@ Loader 包在 spec 中使用两类 RPM 钩子：
 
 - `%posttrans`
 - `%transfiletriggerin`
-- `%transfiletriggerpostun`
+- `%filetriggerpostun`（per-package；`%transfiletriggerpostun` 在 rpm 4.17-4.19 卸载包时不触发）
 
 行为如下：
 
 1. **安装/升级 loader 包本身**时，`%posttrans` 会重建托管配置。
 2. **安装新的 Agent / Skill / Plugin / 配置子包**时，只要事务中有文件落到受监控目录下，`%transfiletriggerin` 就会在事务结束后统一重建一次配置。
-3. **卸载 Agent / Skill / Plugin / 配置子包**时，`%transfiletriggerpostun` 会在事务结束后统一重建一次配置。
+3. **卸载 Agent / Skill / Plugin / 配置子包**时，`%filetriggerpostun` 会在包被删除后重建一次配置。
 
 这样可以避免每个子包在 `%post` / `%postun` 里各自修改 JSON，减少文件冲突和卸载残留。
+
+> Loader 包自身卸载时，它拥有的受监控目录也会触发它自己的 `%filetriggerpostun`（rpm 4.18 行为），而 hook 脚本此时已被删除，直接调用会 127 失败。spec 中用 `[ -x ... ]` 保护了所有 hook 调用，loader 卸载会干净跳过配置重建。
 
 对于放在**其他仓库**、由其他维护者单独发布的子包，推荐把 spec 编写约定视为一份稳定的"打包契约"，而不是复用本仓库里的 spec 片段。请直接参考：
 

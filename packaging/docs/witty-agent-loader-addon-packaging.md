@@ -106,7 +106,7 @@
 
 1. 在 config.d 碎片中声明 `plugin` 数组，条目为 `file://` 路径或 npm 包名
 2. Plugin 文件可安装到 `/usr/share/witty/opencode/plugins/<rpm-name>/`，也可放在子包自有路径（如 `/usr/lib/<rpm-name>/vendor/`）
-3. Plugin 文件的安装/卸载会被 `%transfiletriggerin` / `%transfiletriggerpostun` 监控，自动触发配置重建
+3. Plugin 文件的安装/卸载会被 `%transfiletriggerin` / `%filetriggerpostun` 监控，自动触发配置重建
 
 `plugin` 字段不在冲突命名空间中，多个子包可以各自声明自己的 plugin 条目。
 

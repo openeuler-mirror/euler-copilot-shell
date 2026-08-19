@@ -240,18 +240,28 @@ find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
 %{witty_managed_skills}/witty-builtin-agent
 
 %posttrans -n witty-agent-loader
-%{witty_managed_libexec}/run-managed-config-hook.sh posttrans
+if [ -x %{witty_managed_libexec}/run-managed-config-hook.sh ]; then
+  %{witty_managed_libexec}/run-managed-config-hook.sh posttrans
+fi
 
 %transfiletriggerin -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills} %{witty_managed_plugins}
-%{witty_managed_libexec}/run-managed-config-hook.sh transfiletriggerin
+if [ -x %{witty_managed_libexec}/run-managed-config-hook.sh ]; then
+  %{witty_managed_libexec}/run-managed-config-hook.sh transfiletriggerin
+fi
 
 # NOTE: use %filetriggerpostun (per-package) instead of %transfiletriggerpostun.
 # %transfiletriggerpostun does not fire on package removal in rpm 4.17-4.19
 # (rpm-software-management/rpm#2324, #3048), so the managed config would go
 # stale when an addon subpackage is uninstalled. %filetriggerpostun fires
 # reliably per removed package; the rebuild hook is idempotent.
+# Guard the call with -x: on rpm 4.18 the loader's own directories are
+# triggering files too, so when witty-agent-loader itself is erased this
+# trigger can still run after the hook script has already been removed
+# (exit 127). Skipping the rebuild is correct because the loader is gone.
 %filetriggerpostun -n witty-agent-loader -- %{witty_managed_config_dropins} %{witty_managed_agents} %{witty_managed_skills} %{witty_managed_plugins}
-%{witty_managed_libexec}/run-managed-config-hook.sh filetriggerpostun
+if [ -x %{witty_managed_libexec}/run-managed-config-hook.sh ]; then
+  %{witty_managed_libexec}/run-managed-config-hook.sh filetriggerpostun
+fi
 
 %post -n witty
 %systemd_post wittyd.service
@@ -265,6 +275,7 @@ find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
 %changelog
 * Tue Aug 11 2026 Witty Team <intelligence@openeuler.org> - 3.1.4-1
 - fix: timeout when ask receives no events from server
+- fix: guard loader filetriggerpostun during loader removal
 
 * Fri Aug 07 2026 Witty Team <intelligence@openeuler.org> - 3.1.3-1
 - feat: Handle session.error events from opencode
