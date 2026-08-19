@@ -7,15 +7,16 @@ Wants=network-online.target
 [Service]
 Type=simple
 ExecStart=/usr/bin/wittyd
-ExecStartPre=-/usr/bin/mkdir -p /run/wittyd /var/lib/witty
 Restart=on-failure
 RestartSec=5s
+RuntimeDirectory=wittyd
+StateDirectory=witty
 
 # Security hardening
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/etc/opencode /run/wittyd /var/lib/witty
+ReadWritePaths=/etc/opencode
 PrivateTmp=yes
 
 [Install]

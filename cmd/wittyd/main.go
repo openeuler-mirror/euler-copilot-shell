@@ -13,6 +13,12 @@ import (
 )
 
 func main() {
+	cfg, err := daemon.LoadConfig("")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "wittyd:", err)
+		os.Exit(1)
+	}
+
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	// wittyd is a system-wide janitor: it does NOT start any opencode server.
@@ -21,28 +27,34 @@ func main() {
 	// outdated servers get restarted on next use.
 
 	monitor := daemon.NewMonitor()
+	logger.Info("loaded daemon config",
+		"socket", cfg.SocketPath,
+		"idle_timeout_minutes", int(cfg.IdleTimeout.Minutes()),
+		"config_watch_file", cfg.ConfigFile,
+		"config_watch_dir", cfg.ConfigDir,
+	)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	// Idle reaper: stops servers idle > 30 min, but only if not busy.
 	reaper := daemon.NewReaper(monitor, daemon.ReaperOptions{
-		IdleTimeout:   30 * time.Minute,
+		IdleTimeout:   cfg.IdleTimeout,
 		CheckInterval: 60 * time.Second,
 		Logger:        logger,
 	})
 
 	// Config watcher: stops all servers when config changes.
 	configWatcher := daemon.NewConfigWatcher(monitor, daemon.ConfigWatcherOptions{
-		ConfigFile: "/etc/opencode/opencode.json",
-		ConfigDir:  "/usr/share/witty/opencode/config.d",
+		ConfigFile: cfg.ConfigFile,
+		ConfigDir:  cfg.ConfigDir,
 		Debounce:   2 * time.Second,
 		Logger:     logger,
 	})
 
 	// IPC server: receives TOUCH from witty CLI transport layer.
 	ipcServer := daemon.NewIPCServer(monitor, daemon.IPCOptions{
-		SocketPath: "/run/wittyd/wittyd.sock",
+		SocketPath: cfg.SocketPath,
 		Logger:     logger,
 	})
 
