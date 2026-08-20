@@ -61,3 +61,12 @@ i18n = ["locales/*.pot", "locales/*/LC_MESSAGES/*.po"]
 [tool.hatch.build.targets.sdist]
 include = ["LICENSE", "MANIFEST.in", "README.md", "requirements.txt", "src"]
 exclude = ["*.pyc", "__pycache__", ".DS_Store"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "distribution"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_ignores = true
+show_error_codes = true
+files = ["src"]

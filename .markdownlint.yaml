@@ -1,0 +1,10 @@
+# markdownlint 配置：先放宽适配存量文档，后续按需收紧
+default: true
+MD013: false   # 存量文档长行多，先关闭行宽规则，清理 PR 后再收紧
+MD033: false   # inline HTML
+MD041: false   # 首行必须是一级标题
+MD024: false   # 重复标题
+MD040: false   # 代码块缺语言标签（存量文档常见且不可自动修复；清理 PR 补语言后再收紧）
+MD036: false   # 强调代替标题（存量文档不可自动修复，清理 PR 处理）
+MD060: false   # 表格管道风格（markdownlint 0.49 新规则，存量表格差异大，清理 PR 归一化后再开启）
+# 按基线预检结果补充豁免；真实格式问题进清理 PR
