@@ -3,7 +3,8 @@ indent-width = 4
 target-version = "py311"
 
 [lint]
-select = ["ALL"]
+# 存量阶段仅启用错误类规则（E/F/I），按路线图逐步收紧到安全/最佳实践/风格类
+select = ["E", "F", "I"]
 ignore = [
     "ANN401",
     "ARG002",
