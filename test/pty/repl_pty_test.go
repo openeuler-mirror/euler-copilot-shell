@@ -10,8 +10,15 @@ import (
 	"testing"
 	"time"
 
+	"atomgit.com/openeuler/euler-copilot-shell/internal/config"
 	expect "github.com/Netflix/go-expect"
 )
+
+// replPrompt returns the REPL prompt prefix for the current default agent,
+// so tests stay in sync with config.DefaultAgent.
+func replPrompt() string {
+	return "witty [" + config.DefaultAgent
+}
 
 // TestRepl_SlashHelp verifies /help displays the slash command list and the REPL stays open.
 func TestRepl_SlashHelp(t *testing.T) {
@@ -36,7 +43,7 @@ func TestRepl_SlashHelp(t *testing.T) {
 	}
 
 	// Prompt should reappear — REPL stays open.
-	_, err = c.Expect(expect.WithTimeout(3*time.Second), expect.String("witty [build"))
+	_, err = c.Expect(expect.WithTimeout(3*time.Second), expect.String(replPrompt()))
 	if err != nil {
 		t.Fatalf("expected prompt after /help: %v", err)
 	}
@@ -65,7 +72,7 @@ func TestRepl_SlashNew(t *testing.T) {
 	}
 
 	// Prompt should reappear.
-	_, err = c.Expect(expect.WithTimeout(3*time.Second), expect.String("witty [build"))
+	_, err = c.Expect(expect.WithTimeout(3*time.Second), expect.String(replPrompt()))
 	if err != nil {
 		t.Fatalf("expected prompt after /new: %v", err)
 	}
@@ -120,7 +127,7 @@ func TestRepl_SlashAskGracefulError(t *testing.T) {
 	}
 
 	// Prompt should reappear.
-	_, err = c.Expect(expect.WithTimeout(3*time.Second), expect.String("witty [build"))
+	_, err = c.Expect(expect.WithTimeout(3*time.Second), expect.String(replPrompt()))
 	if err != nil {
 		t.Fatalf("expected prompt after /ask error: %v", err)
 	}
@@ -150,7 +157,7 @@ func TestRepl_SlashSessionListGracefulError(t *testing.T) {
 	}
 
 	// Prompt should reappear.
-	_, err = c.Expect(expect.WithTimeout(3*time.Second), expect.String("witty [build"))
+	_, err = c.Expect(expect.WithTimeout(3*time.Second), expect.String(replPrompt()))
 	if err != nil {
 		t.Fatalf("expected prompt after /session list error: %v", err)
 	}
@@ -177,7 +184,7 @@ func TestRepl_SlashSessionContinueGracefulError(t *testing.T) {
 	}
 
 	// Prompt should reappear.
-	_, err = c.Expect(expect.WithTimeout(3*time.Second), expect.String("witty [build"))
+	_, err = c.Expect(expect.WithTimeout(3*time.Second), expect.String(replPrompt()))
 	if err != nil {
 		t.Fatalf("expected prompt after /session continue error: %v", err)
 	}
@@ -273,7 +280,7 @@ func TestRepl_EmptyInputShowsPrompt(t *testing.T) {
 	waitForReplPrompt(t, c)
 
 	c.SendLine("")
-	_, err := c.Expect(expect.WithTimeout(5*time.Second), expect.String("witty [build"))
+	_, err := c.Expect(expect.WithTimeout(5*time.Second), expect.String(replPrompt()))
 	if err != nil {
 		t.Fatalf("expected prompt after empty line: %v", err)
 	}
@@ -325,9 +332,9 @@ func stopWitty(t *testing.T, cmd *exec.Cmd, c *expect.Console) {
 
 func waitForReplPrompt(t *testing.T, c *expect.Console) {
 	t.Helper()
-	_, err := c.Expect(expect.WithTimeout(5*time.Second), expect.String("witty [build"))
+	_, err := c.Expect(expect.WithTimeout(5*time.Second), expect.String(replPrompt()))
 	if err != nil {
-		t.Fatalf("expected REPL prompt 'witty [build] > ': %v", err)
+		t.Fatalf("expected REPL prompt %q: %v", replPrompt()+" > ", err)
 	}
 }
 
