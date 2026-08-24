@@ -1,4 +1,5 @@
 # Witty Assistant
+English | [简体中文](./README.md)
 
 Witty Assistant is a command-line client of openEuler Intelligence, providing AI-driven command-line interaction experience. It supports multiple LLM backends, integrates the Model Context Protocol (MCP), and provides a modern TUI.
 
