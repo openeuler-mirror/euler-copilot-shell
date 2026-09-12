@@ -453,6 +453,23 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
   }
 
   __witty_debug_hook() {
+    # Only the command line the user typed at the top level is routed.
+    #
+    # `extdebug` makes the DEBUG trap inherited by shell functions, command
+    # substitutions and subshells, so without this gate every simple command
+    # executed inside a function would be intercepted: it would rewrite the
+    # behaviour of user functions, PROMPT_COMMAND hooks and completion
+    # functions, and command-heavy completions (bash-completion's ssh host scan
+    # runs thousands of commands) would freeze the terminal.  `main` is ignored
+    # because some Bash versions append it to FUNCNAME for top-level commands.
+    local __witty_frame
+    for __witty_frame in "${FUNCNAME[@]}"; do
+      case "$__witty_frame" in
+      __witty_debug_hook | main) ;;
+      *) return 0 ;;
+      esac
+    done
+
     local cmd="${BASH_COMMAND:-}"
     [ -z "$cmd" ] && return 0
     local enabled="${WITTY_SHELL_ENABLE:-}"
