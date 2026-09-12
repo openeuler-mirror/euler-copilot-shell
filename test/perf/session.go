@@ -363,10 +363,12 @@ func writeFile(tb testing.TB, path, content string, mode os.FileMode) {
 	}
 }
 
-// trapCallsDuringCompletion is the mechanism-level signal behind completion
-// latency: it wraps the witty DEBUG trap with a counter and reports how often
-// the trap fired while a single completion ran.  A healthy adapter only traps
-// commands the user typed, so the count stays in the single digits.
+// trapCallsDuringCompletion wraps the witty DEBUG trap with a counter and
+// reports how often the trap fired while a single completion ran.  The count
+// says how heavy the completion is (bash-completion's ssh host scan fires it
+// ~8000 times); whether that is acceptable is decided by the latency budget,
+// which the adapter keeps green by returning early for anything that is not the
+// command line the user typed.
 func trapCallsDuringCompletion(tb testing.TB, home string, setup []string, keys string) int {
 	tb.Helper()
 	logPath := filepath.Join(tb.TempDir(), "trap-calls.log")
