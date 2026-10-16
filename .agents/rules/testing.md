@@ -7,12 +7,14 @@
 | 单元测试 | `go test ./internal/<package>/` | `*_test.go` 与源文件同目录 |
 | Golden Test | `go test -update` 更新快照 | `test/golden/` |
 | PTY 集成测试 | `go test -v -tags=pty ./test/pty/` | `test/pty/` |
+| Shell Adapter 性能回归测试 | `TERM=xterm-256color go test -v -tags=perf ./test/perf/` | `test/perf/` |
 | 接口回归测试 | OpenAPI spec 更新后执行 | `internal/event/`, `internal/transport/` |
 
 ## 关键规则
 
 - PTY 测试强制 `TERM=xterm-256color`
 - PTY 测试**必须**在 openEuler 环境中运行（不能在 macOS 上跑，依赖 Bash 5.x + readline）
+- 性能回归测试同样**必须**在 openEuler 环境中运行；修改 DEBUG trap、分类器或补全行为后必须执行
 - 测试数据放在 `test/testdata/` 目录
 - 覆盖率目标: 核心模块 > 80%
 - 每次代码修改后运行: `go test -count=1 ./...`

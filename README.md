@@ -33,6 +33,9 @@ go test -count=1 ./...
 # PTY 集成测试（需在 openEuler 环境执行）
 TERM=xterm-256color go test -v -tags=pty ./test/pty/
 
+# Shell Adapter 性能回归测试（PTY + 真实 readline，需在 openEuler 环境执行）
+TERM=xterm-256color go test -v -count=1 -tags=perf ./test/perf/
+
 # 集成测试（需要 127.0.0.1:4096 的 opencode server，不可达时自动跳过）
 go test -v -tags=integration ./test/integration/
 ```

@@ -56,6 +56,7 @@
 - [x] 如修改 OpenAPI spec：执行接口回归测试并确认生成代码仅在允许目录变更。
 - [x] 如修改 Renderer：执行 Markdown golden tests，人工确认快照变化合理。
 - [x] 如修改 Shell Adapter：执行 PTY 集成测试。
+- [x] 如修改 Shell Adapter 的 trap/分类器/补全行为：执行性能回归测试 `TERM=xterm-256color go test -v -count=1 -tags=perf ./test/perf/`（openEuler）。
 
 ### QG-3：集成测试（opencode 可用时）
 

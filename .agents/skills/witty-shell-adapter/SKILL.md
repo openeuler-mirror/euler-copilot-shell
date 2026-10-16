@@ -12,6 +12,7 @@ description: 开发 Shell Adapter 的 Bash 模板和 Go 桥接层。包括 witty
 - `internal/shellbridge/data.go` / `bashgen.go` — Bash 分类规则数据与代码生成
 - `internal/shellbridge/control.go` — Slash control 规格与 Go 解析
 - `internal/shellbridge/history.go` — History 命令管理
+- `test/perf/` — Shell Adapter 性能回归测试（PTY 驱动真实 readline）
 
 ## 开发流程
 
@@ -39,7 +40,18 @@ description: 开发 Shell Adapter 的 Bash 模板和 Go 桥接层。包括 witty
    go test -v -run TestBashInitGolden -update ./internal/shellinit/
    ```
 
-4. **运行 PTY 测试** (必须在 openEuler 环境中执行):
+4. **运行性能回归测试** (必须在 openEuler 环境中执行):
+
+   ```bash
+   TERM=xterm-256color go test -v -count=1 -tags=perf ./test/perf/
+   ```
+
+   该套件测量 `TAB` 补全延迟：DEBUG trap 配合 `extdebug` 会被 shell 函数继承，
+   一旦 trap 在补全函数内部执行，bash-completion 的 ssh 主机补全会从几十毫秒劣化到秒级。
+   预算为 openEuler 实测值的数倍，只在真实回归时失败；同时断言补全期间不会调用 `witty` 二进制。
+   慢机器可用 `WITTY_PERF_BUDGET_FACTOR=2` 放宽预算，`WITTY_PERF_REPORT_ONLY=1` 只记录不失败。
+
+5. **运行 PTY 测试** (必须在 openEuler 环境中执行):
 
    在进入 openEuler 远程环境前，先直接读取 `.agents/config.yaml`；不要先依赖 `find_path` 或目录扫描判断文件是否存在。该文件可能被 `.gitignore` 隐藏，但仍然真实存在。若直接读取失败，再回退参考 `.agents/config.template.yaml`。
 

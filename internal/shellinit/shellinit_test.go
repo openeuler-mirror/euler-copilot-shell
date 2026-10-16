@@ -51,6 +51,9 @@ func TestBashTemplate(t *testing.T) {
 		"__witty_has_command_nl_signal()",
 		"__witty_looks_like_shell_command()",
 		"__witty_command_exists()",
+		// The DEBUG trap is inherited by shell functions (extdebug); routing
+		// must stay limited to the command line the user typed.
+		`${FUNCNAME[@]}`,
 		"shopt -s extdebug",
 		"trap '__witty_debug_hook' DEBUG",
 		"BASH_COMMAND",

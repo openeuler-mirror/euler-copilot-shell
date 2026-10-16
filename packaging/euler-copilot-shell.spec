@@ -30,7 +30,7 @@
 %global witty_loader_source_dir %{_builddir}/witty-agent-loader-%{version}
 
 Name:           euler-copilot-shell
-Version:        3.1.5
+Version:        3.1.6
 Release:        1
 Summary:        openEuler terminal AI assistant
 
@@ -273,6 +273,11 @@ fi
 %systemd_postun_with_restart wittyd.service
 
 %changelog
+* Tue Sep 15 2026 Witty Team <intelligence@openeuler.org> - 3.1.6-1
+- fix(shellinit): route only top-level commands through the DEBUG trap, fixing multi-second TAB completion freezes (bash-completion ssh host scan ~5.7s -> ~0.13s) and commands inside functions being rewritten
+- test(perf): add Shell Adapter completion latency regression suite under test/perf (-tags=perf)
+- chore: update README, dev dependencies and REPL prompt tests
+
 * Wed Aug 19 2026 Witty Team <intelligence@openeuler.org> - 3.1.5-1
 - fix(wittyd): read /etc/witty/daemon.toml for socket path, idle timeout and config watch paths
 - fix(wittyd): create /run/wittyd and /var/lib/witty via RuntimeDirectory/StateDirectory to fix systemd startup on clean systems

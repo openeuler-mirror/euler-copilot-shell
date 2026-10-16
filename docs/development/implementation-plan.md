@@ -1168,6 +1168,7 @@ var TemplateFS embed.FS  // 嵌入整个目录（递归）
 | 单元测试 | `session`、`event`、`renderer`、`repl`、`shellbridge` | `go test` |
 | Golden Tests | `witty init bash` 输出、Markdown ANSI 渲染、tool/permission/error presenter 输出 | 快照比对 |
 | PTY 集成测试 | Shell Adapter 绑定、history 保真、路由正确性、permission/question TTY 交互 | `go-expect`（`TERM=xterm-256color`） |
+| Shell Adapter 性能回归测试 | TAB 补全延迟（DEBUG trap 是否被补全函数继承）、补全期间不得调用 `witty` | `creack/pty`（`TERM=xterm-256color`、`-tags=perf`） |
 
 **PTY 测试关键设置**：启动 bash 时必须设置 `TERM=xterm-256color`，否则 bash 不启用 readline：
 

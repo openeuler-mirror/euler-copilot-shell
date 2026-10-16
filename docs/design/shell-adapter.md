@@ -130,11 +130,23 @@ Shell Adapter 拆成 5 个小模块：
 
 1. `shopt -s extdebug` 启用扩展调试模式
 2. `trap '__witty_debug_hook' DEBUG` 注册 trap
-3. trap 函数通过 `BASH_COMMAND` 获取即将执行的简单命令
-4. 若当前 history 条目包含强 Shell 语法，使用该完整输入行分类；这是因为 Bash 会对管道中的每个简单命令分别触发 DEBUG trap
-5. 分类器判断路由：shell/empty 返回 0（正常执行），agent/control 返回 1（跳过执行并转交 dispatch）
+3. trap 函数只处理**顶层命令**（即用户敲下的那一行）；函数体、`PROMPT_COMMAND`、补全函数内部的命令一律不改写
+4. trap 函数通过 `BASH_COMMAND` 获取即将执行的简单命令
+5. 若当前 history 条目包含强 Shell 语法，使用该完整输入行分类；这是因为 Bash 会对管道中的每个简单命令分别触发 DEBUG trap
+6. 分类器判断路由：shell/empty 返回 0（正常执行），agent/control 返回 1（跳过执行并转交 dispatch）
 
 `extdebug` 的关键语义：当 DEBUG trap 函数返回非零值时，**当前命令被跳过不执行**。这让我们可以在 trap 中安全地拦截 agent/control 路由的命令，转而执行 `__witty_shell_dispatch`。
+
+> **作用域（关键）**：`extdebug` 同时开启函数跟踪，DEBUG trap 会被 shell 函数、命令替换和子 shell 继承。
+> 所以 `__witty_debug_hook` 的第一件事是检查 `FUNCNAME`：只要调用栈里出现 hook 自身和 `main` 之外的帧，
+> 就说明 trap 是在函数内部触发的（用户函数、`PROMPT_COMMAND`、bash-completion 的补全函数……），立即 `return 0`。
+> 缺了这道闸门会有两类后果：
+>
+> 1. **语义泄漏**：函数体内部的命令会被分类并改写，命中 agent/control 时原命令被静默跳过、改走 `witty ask`；
+> 2. **性能崩溃**：bash-completion 的 `ssh` 主机补全会扫描 known_hosts / ssh config，每条内部命令都触发一次 trap
+>    （实测一次 `ssh <TAB>` 触发约 8000 次），每次触发还要 fork 子 shell 跑分类器，终端会从几十毫秒劣化到**数秒**卡顿。
+>
+> 回归用例见 `test/perf/`（补全延迟门禁）与 `test/pty/TestShellbridge_OnlyTopLevelCommandsAreRouted`（作用域契约）。
 
 DEBUG trap 函数遵循以下逻辑：
 
@@ -592,7 +604,7 @@ Adapter 的责任只是**转发**，不是本地执行智能体生成的命令�
 | ---- | ---- |
 | DEBUG trap 冲突（用户或其他插件已设置 DEBUG trap） | 安装时保存已有 trap，卸载时恢复；可禁用能力 |
 | 多行输入的自然语言体验不是主目标 | 长段 prompt 仍推荐使用 `witty` REPL |
-| `extdebug` 会让 DEBUG trap 被函数、子 shell 和命令替换继承 | 查询 history 前临时关闭 `extdebug`，完成后立即恢复，避免 trap 递归 |
+| `extdebug` 会让 DEBUG trap 被函数、子 shell 和命令替换继承 | ① hook 首行用 `FUNCNAME` 限定只处理顶层命令（见 §5）；② 查询 history 前临时关闭 `extdebug`，完成后立即恢复，避免 trap 递归；③ `test/perf/` 守住补全延迟 |
 | history 细节差异（不同 Bash 版本与 `HISTCONTROL` / `HISTIGNORE` 组合） | 以真实终端行为验证为准 |
 | `BASH_COMMAND` 只包含复杂命令中的当前简单命令 | 当前命令已进入 history 时，用 `history 1` 读取完整输入并仅补足强 Shell 语法判断；history 不可用时回退到简单命令分类 |
 | 英文自然语言触发词误匹配（如 `hower`、`whatever`） | 触发词以空格结尾或作为独立 token 匹配；`explain` 而非 `explain` |
