@@ -249,11 +249,3 @@ def main() -> None:  # noqa: C901, PLR0911
 
 if __name__ == "__main__":
     sys.exit(main() or 0)
-
-
-# Gate verification probe (temporary, for CI gate pipeline validation only).
-def gate_verify_probe():
-    # intentional misspelling: recieve
-    status = undefined_gate_probe_variable
-    return status
-   

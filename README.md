@@ -489,6 +489,3 @@ smart-shell/
 ## 开源许可
 
 本项目采用 MulanPSL-2.0 许可证。详细信息请参见 [LICENSE](LICENSE) 文件。
-
-<!-- Gate verification probe (temporary, for CI gate pipeline validation only): intentional misspelling and trailing whitespace below. -->
-recieve   
