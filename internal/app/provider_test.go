@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +13,8 @@ import (
 	"testing"
 
 	"atomgit.com/openeuler/euler-copilot-shell/internal/config"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/server"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 )
 
 func TestListProviders_FiltersToAPIKeyProviders(t *testing.T) {
@@ -79,6 +83,61 @@ func TestListProviders_UnauthorizedExplainsServerAuth(t *testing.T) {
 		t.Fatalf("ListProviders() error = %q, want server-auth hint", err)
 	}
 }
+
+func TestListProviders_RetriesOnceAfterServerRestart(t *testing.T) {
+	oldServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	}))
+	defer oldServer.Close()
+
+	newServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/provider":
+			_, _ = w.Write([]byte(`{"all":[{"id":"deepseek","name":"DeepSeek","source":"api","env":["DEEPSEEK_API_KEY"],"options":{},"models":{}}],"default":{"deepseek":"deepseek-chat"},"connected":[]}`))
+		case "/provider/auth":
+			_, _ = w.Write([]byte(`{"deepseek":[{"type":"api","label":"API Key"}]}`))
+		default:
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+	}))
+	defer newServer.Close()
+
+	oldClient, err := transport.NewClient(transport.Options{BaseURL: oldServer.URL})
+	if err != nil {
+		t.Fatalf("NewClient(old) error = %v", err)
+	}
+	manager := &fakeEnsureManager{conn: server.Connection{URL: newServer.URL, Password: "new-password"}}
+	app := &App{
+		transport: oldClient,
+		serverMgr: manager,
+		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	providers, err := app.ListProviders(context.Background())
+	if err != nil {
+		t.Fatalf("ListProviders() error = %v", err)
+	}
+	if len(providers) != 1 || providers[0].ID != "deepseek" {
+		t.Fatalf("providers = %+v, want deepseek", providers)
+	}
+	if manager.ensureCalls != 1 {
+		t.Fatalf("Ensure calls = %d, want 1 retry", manager.ensureCalls)
+	}
+}
+
+type fakeEnsureManager struct {
+	server.Manager
+	conn        server.Connection
+	ensureCalls int
+}
+
+func (f *fakeEnsureManager) Ensure(context.Context) (server.Connection, error) {
+	f.ensureCalls++
+	return f.conn, nil
+}
+
+func (f *fakeEnsureManager) TouchLastUsed() {}
 
 func TestConnectProviderWithAPIKey_UsesEnvFallback(t *testing.T) {
 	t.Setenv("DEEPSEEK_API_KEY", "sk-env")

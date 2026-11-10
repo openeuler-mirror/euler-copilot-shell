@@ -97,6 +97,17 @@ func main() {
 	return bin
 }
 
+// slowOpenCodeBinary creates a temporary "opencode" binary that sleeps instead
+// of serving. It is used to force startServer's health-check timeout.
+func slowOpenCodeBinary(t *testing.T) string {
+	t.Helper()
+	bin := filepath.Join(t.TempDir(), "opencode")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\nsleep 5\n"), 0o755); err != nil {
+		t.Fatalf("write slow opencode binary: %v", err)
+	}
+	return bin
+}
+
 // mockHealthServer starts an httptest server responding to /global/health.
 func mockHealthServer(t *testing.T) (*httptest.Server, string) {
 	t.Helper()

@@ -28,7 +28,47 @@ func (a *App) ListProviders(ctx context.Context) ([]ProviderStatus, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve cwd: %w", err)
 	}
+	statuses, err := a.listAPIKeyProviders(ctx, cwd)
+	if err == nil {
+		return statuses, nil
+	}
+	// A concurrent witty command (provider connect, server stop, config
+	// refresh) can restart the server between Ensure and this request. The new
+	// server has a new password, so the in-flight client receives 401. Re-run
+	// Ensure once and retry with the refreshed connection before surfacing the
+	// error. Explicit --server-url connections have no manager to refresh.
+	if a.serverMgr == nil || !isServerAuthError(err) {
+		return nil, err
+	}
+	if refreshErr := a.refreshServerConnection(ctx); refreshErr != nil {
+		return nil, err
+	}
 	return a.listAPIKeyProviders(ctx, cwd)
+}
+
+// refreshServerConnection re-runs server discovery and replaces the transport
+// client with the current URL and password.
+func (a *App) refreshServerConnection(ctx context.Context) error {
+	conn, err := a.serverMgr.Ensure(ctx)
+	if err != nil {
+		return fmt.Errorf("refresh opencode server connection: %w", err)
+	}
+	client, err := transport.NewClient(transport.Options{
+		BaseURL:          conn.URL,
+		Logger:           a.logger,
+		Password:         conn.Password,
+		OnRequestSuccess: a.serverMgr.TouchLastUsed,
+	})
+	if err != nil {
+		return fmt.Errorf("reconnect opencode server: %w", err)
+	}
+	a.transport = client
+	return nil
+}
+
+func isServerAuthError(err error) bool {
+	var httpErr *transport.HTTPError
+	return errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusUnauthorized
 }
 
 func (a *App) ConnectProviderWithAPIKey(ctx context.Context, input, apiKey string) (ProviderStatus, error) {
