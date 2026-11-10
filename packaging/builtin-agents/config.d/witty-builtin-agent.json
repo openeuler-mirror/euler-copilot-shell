@@ -45,10 +45,12 @@
           "*rpm -i *": "ask",
           "*rpm -U *": "ask",
           "*rpm2cpio *": "ask",
-          "*npm install *": "ask",
+          "*npm install*": "ask",
           "*npm i *": "ask",
           "*npm ci*": "ask",
           "*npx *": "ask",
+          "*yarn add *": "ask",
+          "*pnpm add *": "ask",
           "*pip install *": "ask",
           "*pip3 install *": "ask",
           "*python -m pip install *": "ask",
@@ -76,6 +78,8 @@
           "*wget *-U *": "ask",
           "*user-agent*": "ask",
           "*User-Agent*": "ask",
+          "*USER_AGENT*": "ask",
+          "*user_agent*": "ask",
           "*kroki.io*": "ask",
           "*plantuml.com*": "ask"
         }

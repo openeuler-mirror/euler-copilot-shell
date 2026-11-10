@@ -43,14 +43,17 @@ func TestBuiltinAgentConfigSafetyRules(t *testing.T) {
 	for _, pattern := range []string{
 		"*dnf install *",
 		"*dnf download *",
-		"*npm install *",
+		"*npm install*",
 		"*npm i *",
 		"*npx *",
+		"*yarn add *",
+		"*pnpm add *",
 		"*rpm2cpio *",
 		"*pip install *",
 		"*kroki.io*",
 		"*plantuml.com*",
 		"*user-agent*",
+		"*USER_AGENT*",
 		"*curl *-A *",
 	} {
 		if got := agent.Permission.Bash[pattern]; got != "ask" {
