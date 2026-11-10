@@ -55,6 +55,31 @@ func TestListProviders_FiltersToAPIKeyProviders(t *testing.T) {
 	}
 }
 
+func TestListProviders_UnauthorizedExplainsServerAuth(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	container, err := New(context.Background(), Options{
+		Config:    config.LoadOptions{ConfigFiles: []string{}},
+		Stdout:    &bytes.Buffer{},
+		Stderr:    &bytes.Buffer{},
+		ServerURL: server.URL,
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	_, err = container.ListProviders(context.Background())
+	if err == nil {
+		t.Fatal("ListProviders() error = nil, want 401 error")
+	}
+	if !strings.Contains(err.Error(), "opencode server rejected authentication") || !strings.Contains(err.Error(), "witty server stop") {
+		t.Fatalf("ListProviders() error = %q, want server-auth hint", err)
+	}
+}
+
 func TestConnectProviderWithAPIKey_UsesEnvFallback(t *testing.T) {
 	t.Setenv("DEEPSEEK_API_KEY", "sk-env")
 	var authCalls atomic.Int32

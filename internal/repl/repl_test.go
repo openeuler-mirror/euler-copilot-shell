@@ -106,6 +106,15 @@ func (f *fakeTransport) ReplyQuestion(ctx context.Context, requestID string, _ s
 func (f *fakeTransport) RejectQuestion(ctx context.Context, requestID string, _ string) (bool, error) {
 	return false, nil
 }
+func (f *fakeTransport) ListQuestions(ctx context.Context, directory, workspace string) ([]transport.QuestionRequest, error) {
+	return nil, nil
+}
+func (f *fakeTransport) ListPermissions(ctx context.Context, directory, workspace string) ([]transport.PermissionRequest, error) {
+	return nil, nil
+}
+func (f *fakeTransport) AbortSession(ctx context.Context, sessionID, directory, workspace string) (bool, error) {
+	return false, nil
+}
 func (f *fakeTransport) SubscribeEvents(ctx context.Context, filter transport.EventFilter) (<-chan transport.RawEvent, <-chan error) {
 	return nil, nil
 }

@@ -13,6 +13,7 @@ import (
 	"atomgit.com/openeuler/euler-copilot-shell/internal/config"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/core"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/session"
+	"atomgit.com/openeuler/euler-copilot-shell/internal/transport"
 	"atomgit.com/openeuler/euler-copilot-shell/internal/version"
 )
 
@@ -112,6 +113,36 @@ func TestShellControlCommand_SessionControls(t *testing.T) {
 	if !strings.Contains(out.String(), "continued session ses_1") {
 		t.Fatalf("continue output = %q, want confirmation", out.String())
 	}
+}
+
+func TestShellControlCommand_ModelNoProviderPrintsHint(t *testing.T) {
+	fake := &fakeContainer{transportClient: &stubProviderTransport{providers: transport.ProviderList{}}}
+	cmd, out, _ := shellControlTestCommand(fake)
+	cmd.SetArgs([]string{"shell-control", "--", "/model"})
+
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("Execute(shell-control /model) error = %v", err)
+	}
+	got := out.String()
+	for _, want := range []string{
+		"[model] current: (auto: first connected provider)",
+		"no connected provider has models available yet",
+		"witty provider connect <provider>",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("output = %q, want %q", got, want)
+		}
+	}
+}
+
+type stubProviderTransport struct {
+	transport.Client
+	providers transport.ProviderList
+	err       error
+}
+
+func (s *stubProviderTransport) ListProviders(context.Context, string, string) (transport.ProviderList, error) {
+	return s.providers, s.err
 }
 
 func shellControlTestCommand(fake *fakeContainer) (*cobra.Command, *bytes.Buffer, *bytes.Buffer) {

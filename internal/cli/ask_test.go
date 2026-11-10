@@ -138,11 +138,12 @@ type fakeContainer struct {
 	continueSessionErr   error
 	configWriter         config.Writer
 	serverMgr            server.Manager
+	transportClient      transport.Client
 }
 
 func (f *fakeContainer) Config() config.Config           { return f.cfg }
 func (f *fakeContainer) Logger() *slog.Logger            { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
-func (f *fakeContainer) Transport() transport.Client     { return nil }
+func (f *fakeContainer) Transport() transport.Client     { return f.transportClient }
 func (f *fakeContainer) Events() event.Router            { return nil }
 func (f *fakeContainer) Sessions() session.Resolver      { return nil }
 func (f *fakeContainer) Renderer() renderer.TextRenderer { return nil }

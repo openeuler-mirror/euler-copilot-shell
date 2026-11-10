@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -22,6 +23,9 @@ type Transport interface {
 	ReplyPermission(ctx context.Context, requestID string, directory string, decision transport.PermissionDecision) (bool, error)
 	ReplyQuestion(ctx context.Context, requestID string, directory string, answers [][]string) (bool, error)
 	RejectQuestion(ctx context.Context, requestID string, directory string) (bool, error)
+	ListQuestions(ctx context.Context, directory, workspace string) ([]transport.QuestionRequest, error)
+	ListPermissions(ctx context.Context, directory, workspace string) ([]transport.PermissionRequest, error)
+	AbortSession(ctx context.Context, sessionID, directory, workspace string) (bool, error)
 }
 
 type PromptUI interface {
@@ -391,6 +395,108 @@ func (m *manager) rejectQuestion(ctx context.Context, requestID string) error {
 		return fmt.Errorf("reject question %q: server returned false", requestID)
 	}
 	return nil
+}
+
+// CancelStaleInteractions rejects pending questions and permissions that were
+// left behind when a previous client (for example an SSH session) disconnected
+// while an interaction prompt was open. Such a request keeps the session busy
+// forever: a new client can enqueue a prompt, but the server never emits
+// events for it. Rejecting the stale requests unblocks the session; aborting
+// the orphaned run keeps the new prompt from queuing behind abandoned work.
+//
+// The method is best-effort. Unsupported endpoints (older servers) are treated
+// as "nothing to cancel" so recovery never makes a normal ask fail.
+func (m *manager) CancelStaleInteractions(ctx context.Context, sessionID, directory string) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	if sessionID == "" {
+		return 0, nil
+	}
+	if directory == "" {
+		directory = m.directory
+	}
+	m.directory = directory
+
+	cancelled := 0
+	var firstErr error
+
+	questions, err := m.transport.ListQuestions(ctx, directory, "")
+	if err != nil {
+		if !isUnsupportedEndpoint(err) {
+			firstErr = fmt.Errorf("list pending questions: %w", err)
+		}
+	} else {
+		for _, question := range questions {
+			if question.SessionID != sessionID {
+				continue
+			}
+			if err := m.rejectQuestion(ctx, question.ID); err != nil {
+				if isEndpointGone(err) {
+					cancelled++
+					continue
+				}
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			cancelled++
+		}
+	}
+
+	permissions, err := m.transport.ListPermissions(ctx, directory, "")
+	if err != nil {
+		if !isUnsupportedEndpoint(err) && firstErr == nil {
+			firstErr = fmt.Errorf("list pending permissions: %w", err)
+		}
+	} else {
+		for _, permission := range permissions {
+			if permission.SessionID != sessionID {
+				continue
+			}
+			if err := m.replyPermission(ctx, permission.ID, transport.PermissionDecision{Reply: permissionReplyReject}); err != nil {
+				if isEndpointGone(err) {
+					cancelled++
+					continue
+				}
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			cancelled++
+		}
+	}
+
+	if cancelled == 0 {
+		return 0, firstErr
+	}
+
+	// Stop the orphaned run so the prompt being sent now is not executed after
+	// the abandoned work resumes. A false result means the session is already
+	// idle, which is exactly what we want.
+	if _, err := m.transport.AbortSession(ctx, sessionID, directory, ""); err != nil && !isEndpointGone(err) && firstErr == nil {
+		firstErr = fmt.Errorf("abort stale session: %w", err)
+	}
+
+	if err := m.writeLine(ctx, fmt.Sprintf("[recovery] cancelled %d stale interaction(s) left by a disconnected client; the abandoned run was stopped", cancelled)); err != nil && firstErr == nil {
+		firstErr = err
+	}
+	return cancelled, firstErr
+}
+
+func isUnsupportedEndpoint(err error) bool {
+	var httpErr *transport.HTTPError
+	if !errors.As(err, &httpErr) {
+		return false
+	}
+	return httpErr.StatusCode == http.StatusNotFound || httpErr.StatusCode == http.StatusMethodNotAllowed
+}
+
+func isEndpointGone(err error) bool {
+	var httpErr *transport.HTTPError
+	return errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound
 }
 
 // SetDirectory stores the session directory for scoping permission replies.

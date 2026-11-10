@@ -30,7 +30,7 @@
 %global witty_loader_source_dir %{_builddir}/witty-agent-loader-%{version}
 
 Name:           euler-copilot-shell
-Version:        3.1.6
+Version:        3.1.7
 Release:        1
 Summary:        openEuler terminal AI assistant
 
@@ -225,7 +225,7 @@ find %{buildroot}%{witty_managed_skills}/witty-builtin-agent/ \
 %doc %{_docdir}/witty-agent-loader/witty-opencode-base.md
 %doc %{_docdir}/witty-agent-loader/base-source-layout.md
 %dir %{_sysconfdir}/opencode
-%ghost %config(noreplace) %{_sysconfdir}/opencode/opencode.json
+%ghost %attr(0644, root, root) %config(noreplace) %{_sysconfdir}/opencode/opencode.json
 %{witty_managed_libexec}/rebuild-managed-config.mjs
 %{witty_managed_libexec}/run-managed-config-hook.sh
 %dir %{witty_managed_root}
@@ -273,6 +273,13 @@ fi
 %systemd_postun_with_restart wittyd.service
 
 %changelog
+* Tue Nov 10 2026 Witty Team <intelligence@openeuler.org> - 3.1.7-1
+- fix(shellinit): route prose containing unquoted parentheses or a bare "&" to the agent instead of letting Bash raise a syntax error or background half the sentence
+- fix(core): recover sessions left busy by a question/permission from a disconnected client; reject stale interactions, abort the orphaned run, then run the new prompt
+- fix(model): show the current model and an actionable provider hint when /model has no connected provider; report cancellation instead of printing nothing
+- fix(agent-loader): record 0644 root:root for the generated opencode.json and use opencode's {env:NAME} substitution for MCP tokens
+- chore(builtin-agent): require confirmation before installs/downloads, forbid public-service uploads and User-Agent spoofing, and redact third-party addresses
+
 * Tue Sep 15 2026 Witty Team <intelligence@openeuler.org> - 3.1.6-1
 - fix(shellinit): route only top-level commands through the DEBUG trap, fixing multi-second TAB completion freezes (bash-completion ssh host scan ~5.7s -> ~0.13s) and commands inside functions being rewritten
 - test(perf): add Shell Adapter completion latency regression suite under test/perf (-tags=perf)

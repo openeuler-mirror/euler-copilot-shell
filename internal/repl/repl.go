@@ -3,6 +3,7 @@ package repl
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -395,11 +396,25 @@ func (r *repl) handleModelControl(ctx context.Context, action shellbridge.Contro
 
 	if value == "" {
 		// Interactive: list providers and their models, let user select.
+		current := r.effectiveModel()
+		if current == "" {
+			current = "(auto: first connected provider)"
+		}
+		_, _ = fmt.Fprintf(r.stdout, "\n[model] current: %s\n", current)
 		selValue, err := r.interactiveModelSelect(ctx)
+		if errors.Is(err, transport.ErrNoConnectedModels) {
+			_, _ = fmt.Fprintln(r.stdout, "[model] no connected provider has models available yet.")
+			_, _ = fmt.Fprintln(r.stdout, "  Connect a provider first:")
+			_, _ = fmt.Fprintln(r.stdout, "    witty provider list")
+			_, _ = fmt.Fprintln(r.stdout, "    witty provider connect <provider>")
+			_, _ = fmt.Fprintln(r.stdout, "  Or set one directly: /model <provider/model>")
+			return true, nil
+		}
 		if err != nil {
 			return true, err
 		}
 		if selValue == "" {
+			_, _ = fmt.Fprintln(r.stdout, "[model] cancelled; current model unchanged")
 			return true, nil // cancelled
 		}
 		value = selValue
@@ -434,7 +449,7 @@ func (r *repl) handleModelControl(ctx context.Context, action shellbridge.Contro
 		_, _ = fmt.Fprintln(r.stdout)
 		v, vok := terminal.RunSelect(ctx, r.stdinFile, r.stdoutFile, "Select variant for "+value+":", options)
 		if !vok {
-			_, _ = fmt.Fprintln(r.stdout, "\n[cancelled]")
+			_, _ = fmt.Fprintln(r.stdout, "\n[model] cancelled; current model unchanged")
 			return true, nil
 		}
 		variant = v
@@ -469,38 +484,23 @@ func (r *repl) interactiveModelSelect(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("list providers: %w", err)
 	}
-	if len(providers.All) == 0 {
-		return "", fmt.Errorf("no providers available from server")
+	modelOptions := transport.ConnectedModelOptions(providers)
+	if len(modelOptions) == 0 {
+		return "", transport.ErrNoConnectedModels
 	}
 
-	var options []terminal.ListOption
-	connected := make(map[string]bool)
-	for _, c := range providers.Connected {
-		connected[c] = true
-	}
-
-	for _, p := range providers.All {
-		if !connected[p.ID] {
-			continue
+	options := make([]terminal.ListOption, len(modelOptions))
+	for i, model := range modelOptions {
+		options[i] = terminal.ListOption{
+			Label: fmt.Sprintf("%s/%s  — %s", model.ProviderID, model.ModelID, model.Name),
+			Value: model.ProviderID + "/" + model.ModelID,
 		}
-		models, _ := transport.ProviderModels(p)
-		for _, m := range models {
-			label := fmt.Sprintf("%s/%s  — %s", p.ID, m.ID, m.Name)
-			options = append(options, terminal.ListOption{
-				Label: label,
-				Value: p.ID + "/" + m.ID,
-			})
-		}
-	}
-
-	if len(options) == 0 {
-		return "", fmt.Errorf("no models available from connected providers")
 	}
 
 	_, _ = fmt.Fprintln(r.stdout)
 	value, ok := terminal.RunSelect(ctx, r.stdinFile, r.stdoutFile, "Select model:", options)
 	if !ok {
-		_, _ = fmt.Fprintln(r.stdout, "\n[cancelled]")
+		_, _ = fmt.Fprintln(r.stdout, "[model] cancelled; current model unchanged")
 		return "", nil
 	}
 	return value, nil

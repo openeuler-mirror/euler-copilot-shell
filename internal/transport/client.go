@@ -33,6 +33,12 @@ type Client interface {
 	ReplyPermission(ctx context.Context, requestID string, directory string, decision PermissionDecision) (bool, error)
 	ReplyQuestion(ctx context.Context, requestID string, directory string, answers [][]string) (bool, error)
 	RejectQuestion(ctx context.Context, requestID string, directory string) (bool, error)
+	// ListQuestions returns pending questions that block their sessions.
+	ListQuestions(ctx context.Context, directory, workspace string) ([]QuestionRequest, error)
+	// ListPermissions returns pending permission requests that block their sessions.
+	ListPermissions(ctx context.Context, directory, workspace string) ([]PermissionRequest, error)
+	// AbortSession stops the currently running operation in a session.
+	AbortSession(ctx context.Context, sessionID, directory, workspace string) (bool, error)
 	// Dispose calls POST /global/dispose to gracefully shut down all OpenCode
 	// instances on the server, releasing all resources.
 	Dispose(ctx context.Context) error
@@ -313,6 +319,49 @@ func (c *client) RejectQuestion(ctx context.Context, requestID string, directory
 	addString(query, "directory", directory)
 	var ok bool
 	endpoint := "/question/" + url.PathEscape(requestID) + "/reject"
+	if err := c.doJSON(ctx, http.MethodPost, endpoint, query, nil, &ok, http.StatusOK); err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+func (c *client) ListQuestions(ctx context.Context, directory, workspace string) ([]QuestionRequest, error) {
+	query := url.Values{}
+	addString(query, "directory", directory)
+	addString(query, "workspace", workspace)
+	var questions []QuestionRequest
+	if err := c.doJSON(ctx, http.MethodGet, "/question", query, nil, &questions, http.StatusOK); err != nil {
+		return nil, err
+	}
+	if questions == nil {
+		questions = []QuestionRequest{}
+	}
+	return questions, nil
+}
+
+func (c *client) ListPermissions(ctx context.Context, directory, workspace string) ([]PermissionRequest, error) {
+	query := url.Values{}
+	addString(query, "directory", directory)
+	addString(query, "workspace", workspace)
+	var permissions []PermissionRequest
+	if err := c.doJSON(ctx, http.MethodGet, "/permission", query, nil, &permissions, http.StatusOK); err != nil {
+		return nil, err
+	}
+	if permissions == nil {
+		permissions = []PermissionRequest{}
+	}
+	return permissions, nil
+}
+
+func (c *client) AbortSession(ctx context.Context, sessionID, directory, workspace string) (bool, error) {
+	if sessionID == "" {
+		return false, fmt.Errorf("session id is required")
+	}
+	query := url.Values{}
+	addString(query, "directory", directory)
+	addString(query, "workspace", workspace)
+	var ok bool
+	endpoint := "/session/" + url.PathEscape(sessionID) + "/abort"
 	if err := c.doJSON(ctx, http.MethodPost, endpoint, query, nil, &ok, http.StatusOK); err != nil {
 		return false, err
 	}

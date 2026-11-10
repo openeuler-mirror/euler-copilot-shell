@@ -95,6 +95,17 @@ func (r *askRunner) Run(ctx context.Context, req AskRequest) error {
 		}
 	}
 
+	// A previous client may have disconnected while a question or permission
+	// prompt was open. That request keeps the session busy, so a new prompt is
+	// accepted but produces no events. Reject the orphaned interactions (and
+	// stop the abandoned run) before subscribing to the new run.
+	var staleCleanupErr error
+	if cleaner, ok := r.permission.(staleInteractionCanceller); ok {
+		if _, err := cleaner.CancelStaleInteractions(runCtx, sessionCtx.ID, directory); err != nil {
+			staleCleanupErr = err
+		}
+	}
+
 	events, errs := r.events.Subscribe(runCtx, sessionCtx.ID, transport.EventFilter{Directory: directory})
 	promptReq := transport.PromptRequest{
 		Directory: directory,
@@ -119,11 +130,15 @@ func (r *askRunner) Run(ctx context.Context, req AskRequest) error {
 			_ = r.flushRenderer(context.WithoutCancel(runCtx))
 			return runCtx.Err()
 		case <-noEventTimer.C:
-			return fmt.Errorf(
+			message := fmt.Sprintf(
 				"opencode server %s: prompt accepted but no events received within %s for session %s; "+
 					"the session may be busy or the event stream directory does not match (try 'witty ask --new')",
 				r.serverURL, r.noEventTimeout, sessionCtx.ID,
 			)
+			if staleCleanupErr != nil {
+				message += fmt.Sprintf("; stale interaction cleanup failed: %v", staleCleanupErr)
+			}
+			return fmt.Errorf("%s", message)
 		case err, ok := <-errs:
 			if !ok {
 				errs = nil

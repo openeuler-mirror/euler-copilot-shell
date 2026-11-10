@@ -289,6 +289,49 @@ func TestAskRunner_Run_TimesOutWhenNoEventsArrive(t *testing.T) {
 	}
 }
 
+func TestAskRunner_Run_CleansStaleInteractionsBeforePrompt(t *testing.T) {
+	var order []string
+	permission := &fakeCleaningPermissionManager{order: &order}
+	transportClient := &fakeTransport{sendHook: func() { order = append(order, "send") }}
+	runner := mustRunner(t, Options{
+		Transport:  transportClient,
+		Events:     &fakeRouter{events: []event.AppEvent{{Kind: event.EventSessionIdle}}},
+		Sessions:   &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
+		Permission: permission,
+	})
+
+	if err := runner.Run(context.Background(), AskRequest{Prompt: "hello", CWD: "/work"}); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if !reflect.DeepEqual(order, []string{"cleanup", "send"}) {
+		t.Fatalf("order = %#v, want cleanup before send", order)
+	}
+	if permission.sessionID != "ses_1" || permission.directory != "/work" {
+		t.Fatalf("cleanup args = %q/%q, want ses_1/work", permission.sessionID, permission.directory)
+	}
+}
+
+func TestAskRunner_Run_NoEventTimeoutMentionsCleanupFailure(t *testing.T) {
+	permission := &fakeCleaningPermissionManager{err: errors.New("question endpoint unavailable")}
+	runner, err := newAskRunner(Options{
+		Transport:  &fakeTransport{},
+		Events:     &fakeRouter{holdOpen: true},
+		Sessions:   &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
+		Permission: permission,
+	}, 50*time.Millisecond)
+	if err != nil {
+		t.Fatalf("newAskRunner() error = %v", err)
+	}
+
+	err = runner.Run(context.Background(), AskRequest{Prompt: "hello", CWD: "/work"})
+	if err == nil {
+		t.Fatal("Run() error = nil, want no-event timeout")
+	}
+	if !strings.Contains(err.Error(), "stale interaction cleanup failed: question endpoint unavailable") {
+		t.Fatalf("Run() error = %q, want cleanup failure detail", err)
+	}
+}
+
 func TestAskRunner_Run_IgnoresSessionErrorWithoutSessionID(t *testing.T) {
 	runner := mustRunner(t, Options{
 		Transport: &fakeTransport{},
@@ -575,6 +618,23 @@ func (f *fakePresenter) PresentError(_ context.Context, _ error) error {
 
 func (f *fakePresenter) PresentSessionIdle(_ context.Context) error {
 	return nil
+}
+
+type fakeCleaningPermissionManager struct {
+	fakePermissionManager
+	order     *[]string
+	sessionID string
+	directory string
+	err       error
+}
+
+func (f *fakeCleaningPermissionManager) CancelStaleInteractions(_ context.Context, sessionID, directory string) (int, error) {
+	f.sessionID = sessionID
+	f.directory = directory
+	if f.order != nil {
+		*f.order = append(*f.order, "cleanup")
+	}
+	return 0, f.err
 }
 
 type fakePermissionManager struct {

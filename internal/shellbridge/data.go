@@ -37,7 +37,7 @@ var shellKeywords = []string{
 	"if", "then", "else", "elif", "fi",
 	"for", "while", "until", "do", "done",
 	"case", "esac", "function", "time", "coproc",
-	"select", "in",
+	"select", "in", "[[", "]]", "!", "{",
 }
 
 var knownCommands = []string{
