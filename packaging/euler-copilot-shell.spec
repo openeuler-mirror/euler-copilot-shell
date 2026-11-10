@@ -276,6 +276,8 @@ fi
 * Tue Nov 10 2026 Witty Team <intelligence@openeuler.org> - 3.1.7-1
 - fix(shellinit): route prose containing unquoted parentheses or a bare "&" to the agent instead of letting Bash raise a syntax error or background half the sentence
 - fix(core): recover sessions left busy by a question/permission from a disconnected client; reject stale interactions, abort the orphaned run, then run the new prompt
+- fix(core): abort the server-side run when an ask is canceled or times out, so an abandoned task cannot keep working behind a new prompt
+- fix(server): remove the passwordless fallback that turned a slow auto-start into a transient 401; make shared server state writes atomic and serialize password creation and last_used updates
 - fix(model): show the current model and an actionable provider hint when /model has no connected provider; report cancellation instead of printing nothing
 - fix(agent-loader): record 0644 root:root for the generated opencode.json and use opencode's {env:NAME} substitution for MCP tokens
 - chore(builtin-agent): require confirmation before installs/downloads, forbid public-service uploads and User-Agent spoofing, and redact third-party addresses
