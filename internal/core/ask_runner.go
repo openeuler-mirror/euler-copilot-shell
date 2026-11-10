@@ -127,6 +127,10 @@ func (r *askRunner) Run(ctx context.Context, req AskRequest) error {
 	for events != nil || errs != nil {
 		select {
 		case <-runCtx.Done():
+			// Ctrl+C cancels the local ask; stop the server-side run as well so
+			// it does not keep working on an abandoned task while the user
+			// starts a new prompt in the same session.
+			r.abortSession(runCtx, sessionCtx.ID, directory)
 			_ = r.flushRenderer(context.WithoutCancel(runCtx))
 			return runCtx.Err()
 		case <-noEventTimer.C:
@@ -138,6 +142,9 @@ func (r *askRunner) Run(ctx context.Context, req AskRequest) error {
 			if staleCleanupErr != nil {
 				message += fmt.Sprintf("; stale interaction cleanup failed: %v", staleCleanupErr)
 			}
+			// The prompt was accepted but nothing happened. Abort the session so
+			// the next ask in the same session is not queued behind a stuck run.
+			r.abortSession(runCtx, sessionCtx.ID, directory)
 			return fmt.Errorf("%s", message)
 		case err, ok := <-errs:
 			if !ok {
@@ -294,6 +301,19 @@ func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, 
 	default:
 		return false, nil
 	}
+}
+
+// abortSession stops the server-side run for a session on a best-effort
+// basis. The local context is usually already canceled, so a fresh short
+// timeout is used; failures are intentionally ignored.
+func (r *askRunner) abortSession(runCtx context.Context, sessionID, directory string) {
+	aborter, ok := r.transport.(sessionAborter)
+	if !ok || sessionID == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(runCtx), 2*time.Second)
+	defer cancel()
+	_, _ = aborter.AbortSession(ctx, sessionID, directory, "")
 }
 
 func (r *askRunner) flushRenderer(ctx context.Context) error {

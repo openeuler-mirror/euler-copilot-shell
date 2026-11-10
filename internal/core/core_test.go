@@ -268,8 +268,9 @@ func TestAskRunner_Run_SessionErrorReturnsError(t *testing.T) {
 }
 
 func TestAskRunner_Run_TimesOutWhenNoEventsArrive(t *testing.T) {
+	transportClient := &fakeTransport{}
 	runner, err := newAskRunner(Options{
-		Transport: &fakeTransport{},
+		Transport: transportClient,
 		Events:    &fakeRouter{holdOpen: true},
 		Sessions:  &fakeSessions{resolved: session.Context{ID: "ses_1", Directory: "/work"}},
 	}, 50*time.Millisecond)
@@ -286,6 +287,9 @@ func TestAskRunner_Run_TimesOutWhenNoEventsArrive(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "witty ask --new") {
 		t.Fatalf("Run() error = %q, want --new hint", err)
+	}
+	if transportClient.abortCalls != 1 {
+		t.Fatalf("abort calls = %d, want 1 after no-event timeout", transportClient.abortCalls)
 	}
 }
 
@@ -389,8 +393,9 @@ func TestAskRunner_Run_FlushesBeforePermissionAndQuestion(t *testing.T) {
 func TestAskRunner_Run_Cancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	renderer := &fakeTextRenderer{}
+	transportClient := &fakeTransport{sendHook: cancel}
 	runner := mustRunner(t, Options{
-		Transport: &fakeTransport{sendHook: cancel},
+		Transport: transportClient,
 		Events: &fakeRouter{
 			waitForCancel: true,
 		},
@@ -404,6 +409,9 @@ func TestAskRunner_Run_Cancelled(t *testing.T) {
 	}
 	if renderer.flushCount != 1 {
 		t.Fatalf("renderer flush count = %d, want 1 on cancel", renderer.flushCount)
+	}
+	if transportClient.abortCalls != 1 || transportClient.abortedSessionID != "ses_1" || transportClient.abortedDirectory != "/work" {
+		t.Fatalf("abort calls/session/dir = %d/%q/%q, want 1/ses_1//work", transportClient.abortCalls, transportClient.abortedSessionID, transportClient.abortedDirectory)
 	}
 }
 
@@ -500,6 +508,10 @@ type fakeTransport struct {
 	providerDefaultsErr       error
 	providerDefaultsCalls     int
 	providerDefaultsDirectory string
+	abortCalls                int
+	abortedSessionID          string
+	abortedDirectory          string
+	abortErr                  error
 }
 
 func (f *fakeTransport) ProviderDefaults(_ context.Context, directory, _ string) (transport.ProviderDefaults, error) {
@@ -519,6 +531,13 @@ func (f *fakeTransport) SendPromptAsync(_ context.Context, sessionID string, req
 		f.sendHook()
 	}
 	return f.sendErr
+}
+
+func (f *fakeTransport) AbortSession(_ context.Context, sessionID, directory, _ string) (bool, error) {
+	f.abortCalls++
+	f.abortedSessionID = sessionID
+	f.abortedDirectory = directory
+	return true, f.abortErr
 }
 
 type fakeRouter struct {

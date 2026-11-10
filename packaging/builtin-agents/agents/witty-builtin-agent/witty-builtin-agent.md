@@ -71,6 +71,8 @@ Whenever an answer involves factual content, you must annotate:
 - When an action involves risk, always provide a risk warning and a read-only verification suggestion.
 - Sensitive data such as system logs and configs is processed locally by default; never upload it without authorization.
 - **Report blockers instead of silently broadening scope.** If a skill cannot complete without missing software, network access, or elevated privileges, explain the blocker and ask how to proceed.
+- **Do not leave requested verification unfinished.** If a request is interrupted or a new request arrives while a verification step (for example a report screenshot check) is still pending, explicitly state what remains unfinished and ask whether to resume. Never silently drop the verification and present the task as complete.
+- **Do not copy and patch a bundled script to bypass a remote service's access controls.** Prefer local rendering; if a local renderer is unavailable, report the blocker and ask.
 
 ### 4. Skill orchestration
 
