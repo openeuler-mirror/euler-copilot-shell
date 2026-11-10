@@ -426,24 +426,6 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
       return 0
     fi
 
-    # Known commands only yield to narrow, command-prefixed question phrases.
-    if __witty_is_shell_command "$first"; then
-      if __witty_has_command_nl_signal "$first" "$rest"; then
-        printf 'agent\n'
-        return 0
-      fi
-      printf 'shell\n'
-      return 0
-    fi
-
-    # Glob patterns as first token (e.g., *.sh)
-    case "$first" in
-    *\** | *\?* | *\[*\]*)
-      printf 'shell\n'
-      return 0
-      ;;
-    esac
-
     # Arithmetic expressions: ((...))
     case "$compact" in
     \(\(*\)\))
@@ -452,17 +434,11 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
       ;;
     esac
 
-    if __witty_command_exists "$first"; then
-      printf 'shell\n'
-      return 0
-    fi
-
-    # Prose containing unquoted parentheses or a bare "&" is valid Bash
-    # syntax only by accident (parentheses are a parse error; "&" backgrounds
-    # the first half of the sentence). Route it to the agent before the
-    # generic command-shaped fallback below turns it into a shell command.
-    if [ "${__WITTY_HAS_UNQUOTED_PAREN:-0}" = "1" ] || [ "${__WITTY_HAS_UNQUOTED_AMP:-0}" = "1" ]; then
-      # Keep real shell constructs that legitimately contain parentheses.
+    # Unquoted parentheses in prose are a Bash syntax error: "Firewall status
+    # (Chinese & English)" never reaches command_not_found_handle because the
+    # parser rejects the line first. Keep real shell constructs that use
+    # parentheses, and route everything else to the agent.
+    if [ "${__WITTY_HAS_UNQUOTED_PAREN:-0}" = "1" ]; then
       case "$line" in
       \(*)
         printf 'shell\n'
@@ -491,6 +467,37 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
         return 0
         ;;
       esac
+      printf 'agent\n'
+      return 0
+    fi
+
+    # Known commands only yield to narrow, command-prefixed question phrases.
+    if __witty_is_shell_command "$first"; then
+      if __witty_has_command_nl_signal "$first" "$rest"; then
+        printf 'agent\n'
+        return 0
+      fi
+      printf 'shell\n'
+      return 0
+    fi
+
+    # Glob patterns as first token (e.g., *.sh)
+    case "$first" in
+    *\** | *\?* | *\[*\]*)
+      printf 'shell\n'
+      return 0
+      ;;
+    esac
+
+    if __witty_command_exists "$first"; then
+      printf 'shell\n'
+      return 0
+    fi
+
+    # A bare "&" in prose backgrounds the first half of the sentence. Known
+    # and installed commands were accepted above, so only command-shaped prose
+    # reaches this point; "sleep 100 &" still runs in the shell.
+    if [ "${__WITTY_HAS_UNQUOTED_AMP:-0}" = "1" ]; then
       printf 'agent\n'
       return 0
     fi
