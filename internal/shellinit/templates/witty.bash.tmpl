@@ -270,6 +270,58 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
     return 1
   }
 
+  # __witty_scan_unquoted_punctuation records punctuation that Bash cannot
+  # always parse the way a human wrote it. Parentheses in prose ("status
+  # (Chinese & English)") are a syntax error, and a bare "&" turns the rest of
+  # the sentence into a background job. Both are treated as natural-language
+  # signals only after the known-command and path checks have run.
+  __witty_scan_unquoted_punctuation() {
+    local line="${1:-}"
+    local quote=""
+    local char=""
+    local next=""
+    local prev=""
+    local i=0
+    local length="${#line}"
+
+    __WITTY_HAS_UNQUOTED_PAREN=0
+    __WITTY_HAS_UNQUOTED_AMP=0
+
+    while [ "$i" -lt "$length" ]; do
+      char="${line:i:1}"
+      if [ -z "$quote" ]; then
+        case "$char" in
+        \' | \")
+          quote="$char"
+          ;;
+        \\)
+          i=$((i + 1))
+          ;;
+        \( | \))
+          __WITTY_HAS_UNQUOTED_PAREN=1
+          ;;
+        \&)
+          next="${line:i+1:1}"
+          prev=""
+          if [ "$i" -gt 0 ]; then
+            prev="${line:i-1:1}"
+          fi
+          # &&, &>, >& are shell operators, not prose.
+          case "$next:$prev" in
+          '&:'* | '>:'* | *:'>') ;;
+          *) __WITTY_HAS_UNQUOTED_AMP=1 ;;
+          esac
+          ;;
+        esac
+      elif [ "$char" = "$quote" ]; then
+        quote=""
+      elif [ "$quote" = '"' ] && [ "$char" = "\\" ]; then
+        i=$((i + 1))
+      fi
+      i=$((i + 1))
+    done
+  }
+
   __witty_last_history_line() {
     local line=""
     line="$(HISTTIMEFORMAT='' builtin history 1 2>/dev/null)" || return 1
@@ -336,6 +388,7 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
     first="$__WITTY_FIRST"
     rest="$__WITTY_REST"
     first_quoted="$__WITTY_FIRST_QUOTED"
+    __witty_scan_unquoted_punctuation "$line"
 
     case "$first" in
     witty)
@@ -373,6 +426,51 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
       return 0
     fi
 
+    # Arithmetic expressions: ((...))
+    case "$compact" in
+    \(\(*\)\))
+      printf 'shell\n'
+      return 0
+      ;;
+    esac
+
+    # Unquoted parentheses in prose are a Bash syntax error: "Firewall status
+    # (Chinese & English)" never reaches command_not_found_handle because the
+    # parser rejects the line first. Keep real shell constructs that use
+    # parentheses, and route everything else to the agent.
+    if [ "${__WITTY_HAS_UNQUOTED_PAREN:-0}" = "1" ]; then
+      case "$line" in
+      \(*)
+        printf 'shell\n'
+        return 0
+        ;;
+      esac
+      case "$first" in
+      *'()'*)
+        printf 'shell\n'
+        return 0
+        ;;
+      esac
+      case "$rest" in
+      '()'*)
+        case "$first" in
+        [A-Za-z_]*)
+          printf 'shell\n'
+          return 0
+          ;;
+        esac
+        ;;
+      esac
+      case "$line" in
+      *'<('* | *'>('* | *'@('* | *'?('* | *'+('* | *'*('* | *'!('*)
+        printf 'shell\n'
+        return 0
+        ;;
+      esac
+      printf 'agent\n'
+      return 0
+    fi
+
     # Known commands only yield to narrow, command-prefixed question phrases.
     if __witty_is_shell_command "$first"; then
       if __witty_has_command_nl_signal "$first" "$rest"; then
@@ -391,16 +489,16 @@ if [ "${__WITTY_SHELL_INIT_LOADED:-}" != "1" ] || ! declare -F __witty_classify 
       ;;
     esac
 
-    # Arithmetic expressions: ((...))
-    case "$compact" in
-    \(\(*\)\))
-      printf 'shell\n'
-      return 0
-      ;;
-    esac
-
     if __witty_command_exists "$first"; then
       printf 'shell\n'
+      return 0
+    fi
+
+    # A bare "&" in prose backgrounds the first half of the sentence. Known
+    # and installed commands were accepted above, so only command-shaped prose
+    # reaches this point; "sleep 100 &" still runs in the shell.
+    if [ "${__WITTY_HAS_UNQUOTED_AMP:-0}" = "1" ]; then
+      printf 'agent\n'
       return 0
     fi
 

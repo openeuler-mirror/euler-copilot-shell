@@ -2,10 +2,16 @@ package transport
 
 import (
 	"encoding/json"
+	"errors"
+	"sort"
 	"time"
 
 	"atomgit.com/openeuler/euler-copilot-shell/internal/transport/generated"
 )
+
+// ErrNoConnectedModels indicates that the server exposes no models from
+// connected providers, so an interactive model selector has nothing to show.
+var ErrNoConnectedModels = errors.New("no models available from connected providers")
 
 const DefaultTimeout = 30 * time.Second
 
@@ -36,6 +42,15 @@ type ProviderAuthMethod = generated.ProviderAuthMethod
 type Agent = generated.Agent
 type Model = generated.Model
 
+// QuestionRequest is a pending question that blocks its session until it is
+// answered or rejected. It is used to recover sessions left behind by a
+// disconnected client.
+type QuestionRequest = generated.QuestionRequest
+
+// PermissionRequest is a pending permission request that blocks its session
+// until it is answered or rejected.
+type PermissionRequest = generated.PermissionRequest
+
 const (
 	AgentModeSubagent = generated.AgentModeSubagent
 	AgentModePrimary  = generated.AgentModePrimary
@@ -43,6 +58,43 @@ const (
 )
 
 type ProviderAuthMethods map[string][]ProviderAuthMethod
+
+// ModelOption identifies one model exposed by a connected provider.
+type ModelOption struct {
+	ProviderID string
+	ModelID    string
+	Name       string
+}
+
+// ConnectedModelOptions returns the models of connected providers in a
+// deterministic provider/model order.
+func ConnectedModelOptions(providers ProviderList) []ModelOption {
+	connected := make(map[string]struct{}, len(providers.Connected))
+	for _, id := range providers.Connected {
+		connected[id] = struct{}{}
+	}
+	options := make([]ModelOption, 0)
+	for _, provider := range providers.All {
+		if _, ok := connected[provider.ID]; !ok {
+			continue
+		}
+		models, _ := ProviderModels(provider)
+		for _, model := range models {
+			options = append(options, ModelOption{
+				ProviderID: provider.ID,
+				ModelID:    model.ID,
+				Name:       model.Name,
+			})
+		}
+	}
+	sort.Slice(options, func(i, j int) bool {
+		if options[i].ProviderID != options[j].ProviderID {
+			return options[i].ProviderID < options[j].ProviderID
+		}
+		return options[i].ModelID < options[j].ModelID
+	})
+	return options
+}
 
 // ProviderModels extracts Model objects from a Provider's Models map.
 func ProviderModels(p Provider) ([]Model, error) {

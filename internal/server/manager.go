@@ -118,17 +118,23 @@ func (m *manager) Ensure(ctx context.Context) (Connection, error) {
 		}
 	}
 
-	if state.Port > 0 && isPIDAlive(state.PID) {
-		if probePortWithAuth(ctx, host, state.Port, password) == authProbeMine {
+	if state.Port > 0 {
+		switch probePortWithAuth(ctx, host, state.Port, password) {
+		case authProbeMine:
 			baseURL := fmt.Sprintf("http://%s:%d", host, state.Port)
 			return Connection{URL: baseURL, Password: password}, nil
+		case authProbeForeign:
+			// The server on the recorded port rejects the recorded password;
+			// the endpoint is stale or belongs to a different server. Keep the
+			// password so concurrent processes still agree on it, but drop the
+			// unusable port/PID.
+			_ = m.stateStore.clearEndpoint()
+		default:
+			// The health probe failed but the port may simply be slow (a
+			// low-performance host under load). Keep the recorded endpoint and
+			// password; the scan/start path below reuses the password and
+			// overwrites the endpoint only after a real server is found.
 		}
-		// PID is alive but auth check failed (401 or unreachable).
-		// State is stale; remove it.
-		_ = m.stateStore.remove()
-	} else if state.Port > 0 {
-		// PID is dead → stale state.
-		_ = m.stateStore.remove()
 	}
 
 	// 2. Scan for an existing server with auth awareness.
@@ -157,18 +163,37 @@ func (m *manager) Ensure(ctx context.Context) (Connection, error) {
 	}
 
 	// 4. Auto-start: spawn with coalesce protection. If the opencode binary is
-	// not in PATH, surface an explicit error (the user must install it). Other
-	// startup failures (port conflict, health timeout) fall back to the default
-	// URL for backward compatibility.
+	// not in PATH, surface an explicit error (the user must install it). For
+	// other startup failures, retry discovery before giving up: another process
+	// may have won the startup race while this one was waiting for its child.
 	conn, err := m.autoStart(ctx, host, preferredPort, password)
 	if err != nil {
-		// Distinguish "binary not found" (a configuration problem the user
-		// must fix) from transient startup failures (port conflict, health
-		// timeout) which fall back to the default URL.
 		if errors.Is(err, exec.ErrNotFound) || errors.Is(err, fs.ErrNotExist) {
 			return Connection{}, fmt.Errorf("auto-start opencode server: %w (install opencode or set server.auto_start=false and start it manually)", ErrOpenCodeBinaryNotFound)
 		}
-		return defaultConn, nil
+
+		if conn, ok := m.tryReusePort(ctx, host, preferredPort, password); ok {
+			return conn, nil
+		}
+		if conn, ok := m.scanForExisting(ctx, host, preferredPort, password); ok {
+			return conn, nil
+		}
+
+		// Never return a passwordless connection to a port that may already be
+		// owned by another auth-protected server. That converts a startup
+		// timeout into a confusing HTTP 401 on the first request, especially on
+		// slow hosts where multiple users share a fixed server.port. Probe the
+		// preferred port once and explain the conflict instead.
+		switch probePortWithAuth(ctx, host, preferredPort, password) {
+		case authProbeMine:
+			return Connection{URL: defaultConn.URL, Password: password}, nil
+		case authProbeForeign:
+			return Connection{}, fmt.Errorf(
+				"opencode server at %s is protected by different credentials (another process or user owns the port); stop it or configure a free server.port: %w",
+				defaultConn.URL, err,
+			)
+		}
+		return Connection{}, fmt.Errorf("auto-start opencode server: %w", err)
 	}
 	return conn, nil
 }
@@ -177,20 +202,33 @@ func (m *manager) Ensure(ctx context.Context) (Connection, error) {
 // saved state, it generates a new one and persists it immediately. This ensures
 // the password survives across Ensure calls even before a server is spawned.
 func (m *manager) resolvePassword() (string, error) {
-	state, err := m.stateStore.load()
+	var password string
+	err := m.stateStore.withLock(func() error {
+		state, err := m.stateStore.load()
+		if err != nil {
+			return err
+		}
+		if state.Password != "" {
+			password = state.Password
+			return nil
+		}
+		generated, err := GeneratePassword()
+		if err != nil {
+			return err
+		}
+		// Persist the password unchanged until the server is actually started.
+		// Holding the state lock here makes every concurrent witty process agree
+		// on the same password instead of each generating and overwriting one.
+		state.Password = generated
+		if err := m.stateStore.save(state); err != nil {
+			return err
+		}
+		password = generated
+		return nil
+	})
 	if err != nil {
 		return "", err
 	}
-	if state.Password != "" {
-		return state.Password, nil
-	}
-	password, err := GeneratePassword()
-	if err != nil {
-		return "", err
-	}
-	// Persist the password immediately.
-	state.Password = password
-	_ = m.stateStore.save(state)
 	return password, nil
 }
 
@@ -544,12 +582,14 @@ func (m *manager) Discover(ctx context.Context) (Connection, bool) {
 // timestamp so the idle timeout does not fire during active use. Errors are
 // ignored (best-effort); a missing state file is a no-op.
 func (m *manager) TouchLastUsed() {
-	state, err := m.stateStore.load()
-	if err != nil || state.Port == 0 {
-		return
-	}
-	state.LastUsed = time.Now()
-	_ = m.stateStore.save(state)
+	_ = m.stateStore.withLock(func() error {
+		state, err := m.stateStore.load()
+		if err != nil || state.Port == 0 {
+			return nil
+		}
+		state.LastUsed = time.Now()
+		return m.stateStore.save(state)
+	})
 }
 
 // Close implements Manager. It cancels the idle monitor context so the

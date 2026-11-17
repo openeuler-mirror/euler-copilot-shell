@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -298,6 +299,130 @@ func TestManager_Ensure_IdentityIsolation(t *testing.T) {
 	code := healthCheckWithAuth(ctx, connA.URL, connB.Password)
 	if code == 200 {
 		t.Fatal("B's password successfully authenticated against A's server; want 401")
+	}
+}
+
+func TestManager_ResolvePasswordConcurrent(t *testing.T) {
+	managerAPI, err := NewManager(Options{StateDir: t.TempDir()})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	mgr := managerAPI.(*manager)
+
+	const workers = 24
+	start := make(chan struct{})
+	results := make(chan string, workers)
+	errs := make(chan error, workers)
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			password, err := mgr.resolvePassword()
+			if err != nil {
+				errs <- err
+				return
+			}
+			results <- password
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+	close(errs)
+
+	for err := range errs {
+		t.Fatalf("resolvePassword() error = %v", err)
+	}
+	var first string
+	for password := range results {
+		if password == "" {
+			t.Fatal("resolvePassword() returned an empty password")
+		}
+		if first == "" {
+			first = password
+			continue
+		}
+		if password != first {
+			t.Fatalf("concurrent resolvePassword() returned different passwords: %q vs %q", first, password)
+		}
+	}
+
+	state, err := mgr.stateStore.load()
+	if err != nil {
+		t.Fatalf("load state: %v", err)
+	}
+	if state.Password != first {
+		t.Fatalf("state password = %q, want %q", state.Password, first)
+	}
+}
+
+func TestManager_Ensure_AutoStartFailureDoesNotFallbackToForeignAuth(t *testing.T) {
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	// Another user's opencode server owns the preferred port and requires a
+	// password this manager does not know.
+	foreign, _ := mockAuthHealthServer(t, "foreign-password")
+	_, foreignPort := parseHostPort(t, foreign.URL)
+
+	mgr, err := NewManager(Options{
+		StateDir:           t.TempDir(),
+		AutoStart:          true,
+		PreferredPort:      foreignPort,
+		Hostname:           "127.0.0.1",
+		StartupTimeout:     200 * time.Millisecond,
+		OpenCodeBinaryPath: slowOpenCodeBinary(t),
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	conn, err := mgr.Ensure(ctx)
+	if err == nil {
+		t.Fatalf("Ensure() = %+v, nil; want an explicit startup/auth-conflict error", conn)
+	}
+	if !strings.Contains(err.Error(), "different credentials") {
+		t.Fatalf("Ensure() error = %v, want a different-credentials hint", err)
+	}
+	if conn.URL != "" || conn.Password != "" {
+		t.Fatalf("Ensure() connection = %+v, want zero connection on failure", conn)
+	}
+}
+
+func TestManager_Ensure_ReusesStateWithoutPID(t *testing.T) {
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	srv, _ := mockAuthHealthServer(t, "known-password")
+	_, port := parseHostPort(t, srv.URL)
+	stateDir := t.TempDir()
+	writeFileState(t, stateDir, State{Port: port, Password: "known-password"})
+
+	mgr, err := NewManager(Options{
+		StateDir:      stateDir,
+		AutoStart:     false,
+		PreferredPort: port,
+		Hostname:      "127.0.0.1",
+	})
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+
+	conn, err := mgr.Ensure(ctx)
+	if err != nil {
+		t.Fatalf("Ensure() error = %v", err)
+	}
+	if conn.URL != srv.URL || conn.Password != "known-password" {
+		t.Fatalf("Ensure() = %+v, want the state-recorded server", conn)
+	}
+	state, err := mgr.(*manager).stateStore.load()
+	if err != nil {
+		t.Fatalf("load state: %v", err)
+	}
+	if state.Port != port || state.Password != "known-password" {
+		t.Fatalf("state = %+v, want it preserved", state)
 	}
 }
 

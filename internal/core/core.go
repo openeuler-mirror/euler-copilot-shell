@@ -80,6 +80,19 @@ type InteractionManager interface {
 	SetDirectory(dir string)
 }
 
+// sessionAborter is implemented by transports that can stop a running
+// session. It is optional so simple test doubles keep working.
+type sessionAborter interface {
+	AbortSession(ctx context.Context, sessionID, directory, workspace string) (bool, error)
+}
+
+// staleInteractionCanceller is implemented by interaction managers that can
+// recover a session blocked by a question or permission left open by a
+// disconnected client. It is optional so simple test doubles keep working.
+type staleInteractionCanceller interface {
+	CancelStaleInteractions(ctx context.Context, sessionID, directory string) (int, error)
+}
+
 // Transport sends prompts to the server.
 type Transport interface {
 	ProviderDefaults(ctx context.Context, directory, workspace string) (transport.ProviderDefaults, error)

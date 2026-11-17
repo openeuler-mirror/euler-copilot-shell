@@ -69,6 +69,13 @@ Each drop-in must be a valid `opencode.json` fragment:
 
 If any managed namespace (`agent`, `command`, `mode`, `mcp`) contains duplicate names, the generator aborts before any atomic rename, leaving the previous config intact.
 
+## Generated file permissions and credentials
+
+- `/etc/opencode/opencode.json` is always `0644 root:root`; the generator explicitly `chmod 0644` before the rename, independent of the caller's umask.
+- 0644 is intentional: on a multi-user host, an opencode process auto-started as a normal user must be able to read the file. Mode 0600 would break that deployment.
+- The file **must contain only `{env:NAME}` references, never real credentials**. opencode expands MCP tokens from the process environment when it starts the MCP server; provide them through systemd `Environment=`/`EnvironmentFile=` or the user's shell.
+- If stricter access control is required, use a dedicated opencode user/group plus ACLs rather than weakening the file mode.
+
 ## Directory contents
 
 - `bin/rebuild-managed-config.mjs` — config generation script

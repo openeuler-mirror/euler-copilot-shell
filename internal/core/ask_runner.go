@@ -95,6 +95,17 @@ func (r *askRunner) Run(ctx context.Context, req AskRequest) error {
 		}
 	}
 
+	// A previous client may have disconnected while a question or permission
+	// prompt was open. That request keeps the session busy, so a new prompt is
+	// accepted but produces no events. Reject the orphaned interactions (and
+	// stop the abandoned run) before subscribing to the new run.
+	var staleCleanupErr error
+	if cleaner, ok := r.permission.(staleInteractionCanceller); ok {
+		if _, err := cleaner.CancelStaleInteractions(runCtx, sessionCtx.ID, directory); err != nil {
+			staleCleanupErr = err
+		}
+	}
+
 	events, errs := r.events.Subscribe(runCtx, sessionCtx.ID, transport.EventFilter{Directory: directory})
 	promptReq := transport.PromptRequest{
 		Directory: directory,
@@ -116,14 +127,25 @@ func (r *askRunner) Run(ctx context.Context, req AskRequest) error {
 	for events != nil || errs != nil {
 		select {
 		case <-runCtx.Done():
+			// Ctrl+C cancels the local ask; stop the server-side run as well so
+			// it does not keep working on an abandoned task while the user
+			// starts a new prompt in the same session.
+			r.abortSession(runCtx, sessionCtx.ID, directory)
 			_ = r.flushRenderer(context.WithoutCancel(runCtx))
 			return runCtx.Err()
 		case <-noEventTimer.C:
-			return fmt.Errorf(
+			message := fmt.Sprintf(
 				"opencode server %s: prompt accepted but no events received within %s for session %s; "+
 					"the session may be busy or the event stream directory does not match (try 'witty ask --new')",
 				r.serverURL, r.noEventTimeout, sessionCtx.ID,
 			)
+			if staleCleanupErr != nil {
+				message += fmt.Sprintf("; stale interaction cleanup failed: %v", staleCleanupErr)
+			}
+			// The prompt was accepted but nothing happened. Abort the session so
+			// the next ask in the same session is not queued behind a stuck run.
+			r.abortSession(runCtx, sessionCtx.ID, directory)
+			return fmt.Errorf("%s", message)
 		case err, ok := <-errs:
 			if !ok {
 				errs = nil
@@ -279,6 +301,19 @@ func (r *askRunner) handleEvent(ctx context.Context, evt event.AppEvent) (bool, 
 	default:
 		return false, nil
 	}
+}
+
+// abortSession stops the server-side run for a session on a best-effort
+// basis. The local context is usually already canceled, so a fresh short
+// timeout is used; failures are intentionally ignored.
+func (r *askRunner) abortSession(runCtx context.Context, sessionID, directory string) {
+	aborter, ok := r.transport.(sessionAborter)
+	if !ok || sessionID == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(runCtx), 2*time.Second)
+	defer cancel()
+	_, _ = aborter.AbortSession(ctx, sessionID, directory, "")
 }
 
 func (r *askRunner) flushRenderer(ctx context.Context) error {

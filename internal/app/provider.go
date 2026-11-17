@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -26,7 +28,47 @@ func (a *App) ListProviders(ctx context.Context) ([]ProviderStatus, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve cwd: %w", err)
 	}
+	statuses, err := a.listAPIKeyProviders(ctx, cwd)
+	if err == nil {
+		return statuses, nil
+	}
+	// A concurrent witty command (provider connect, server stop, config
+	// refresh) can restart the server between Ensure and this request. The new
+	// server has a new password, so the in-flight client receives 401. Re-run
+	// Ensure once and retry with the refreshed connection before surfacing the
+	// error. Explicit --server-url connections have no manager to refresh.
+	if a.serverMgr == nil || !isServerAuthError(err) {
+		return nil, err
+	}
+	if refreshErr := a.refreshServerConnection(ctx); refreshErr != nil {
+		return nil, err
+	}
 	return a.listAPIKeyProviders(ctx, cwd)
+}
+
+// refreshServerConnection re-runs server discovery and replaces the transport
+// client with the current URL and password.
+func (a *App) refreshServerConnection(ctx context.Context) error {
+	conn, err := a.serverMgr.Ensure(ctx)
+	if err != nil {
+		return fmt.Errorf("refresh opencode server connection: %w", err)
+	}
+	client, err := transport.NewClient(transport.Options{
+		BaseURL:          conn.URL,
+		Logger:           a.logger,
+		Password:         conn.Password,
+		OnRequestSuccess: a.serverMgr.TouchLastUsed,
+	})
+	if err != nil {
+		return fmt.Errorf("reconnect opencode server: %w", err)
+	}
+	a.transport = client
+	return nil
+}
+
+func isServerAuthError(err error) bool {
+	var httpErr *transport.HTTPError
+	return errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusUnauthorized
 }
 
 func (a *App) ConnectProviderWithAPIKey(ctx context.Context, input, apiKey string) (ProviderStatus, error) {
@@ -141,13 +183,25 @@ func (a *App) listAPIKeyProviders(ctx context.Context, cwd string) ([]ProviderSt
 func (a *App) loadProviderCatalog(ctx context.Context, cwd string) (transport.ProviderList, transport.ProviderAuthMethods, error) {
 	providers, err := a.transport.ListProviders(ctx, cwd, "")
 	if err != nil {
-		return transport.ProviderList{}, nil, fmt.Errorf("list providers: %w", err)
+		return transport.ProviderList{}, nil, fmt.Errorf("list providers: %w", serverAuthHint(err))
 	}
 	authMethods, err := a.transport.ListProviderAuthMethods(ctx, cwd, "")
 	if err != nil {
-		return transport.ProviderList{}, nil, fmt.Errorf("list provider auth methods: %w", err)
+		return transport.ProviderList{}, nil, fmt.Errorf("list provider auth methods: %w", serverAuthHint(err))
 	}
 	return providers, authMethods, nil
+}
+
+// serverAuthHint turns a bare HTTP 401 from the opencode server into an
+// actionable message. A 401 here usually means the client password and the
+// running server's password disagree (for example after a manual restart or a
+// state file written by another user), not that the AI provider key is bad.
+func serverAuthHint(err error) error {
+	var httpErr *transport.HTTPError
+	if !errors.As(err, &httpErr) || httpErr.StatusCode != http.StatusUnauthorized {
+		return err
+	}
+	return fmt.Errorf("%w (the opencode server rejected authentication; run 'witty doctor', then 'witty server stop' and retry, or check server.password / OPENCODE_SERVER_PASSWORD)", err)
 }
 
 func newProviderStatus(provider transport.Provider, providers transport.ProviderList) ProviderStatus {

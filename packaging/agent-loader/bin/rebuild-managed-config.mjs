@@ -251,7 +251,12 @@ async function writeJsonAtomic(outputPath, value) {
     `.${path.basename(outputPath)}.${process.pid}.${Date.now()}.tmp`
   );
   const text = `${JSON.stringify(value, null, 2)}\n`;
+  // The managed config is read by opencode processes running as any local
+  // user. It contains only {env:...} references, never secret values, so keep
+  // it world-readable regardless of the caller's umask; the RPM metadata and
+  // rpm -V expectations use 0644 as well.
   await fs.writeFile(tempPath, text, "utf8");
+  await fs.chmod(tempPath, 0o644);
   await fs.rename(tempPath, outputPath);
 }
 

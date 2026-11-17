@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -161,29 +163,27 @@ func runShellAgentControl(cmd *cobra.Command, opts *rootOptions, action shellbri
 func runShellModelControl(cmd *cobra.Command, opts *rootOptions, action shellbridge.ControlAction) error {
 	value := strings.TrimSpace(action.Value)
 
-	if value == "" {
-		container, err := opts.loadApp(cmd.Context(), cmd)
-		if err != nil {
-			return err
-		}
-		transportClient := container.Transport()
-		if transportClient == nil {
-			return fmt.Errorf("transport not available; use /model <provider/model> to set directly")
-		}
+	container, err := opts.loadApp(cmd.Context(), cmd)
+	if err != nil {
+		return err
+	}
+	out := cmd.OutOrStdout()
 
-		selValue, err := interactiveShellModelSelect(cmd, transportClient)
+	if value == "" {
+		_, _ = fmt.Fprintf(out, "[model] current: %s\n", displayCurrentModel(container.Config().DefaultModel))
+		selValue, err := interactiveShellModelSelect(cmd, container.Transport())
+		if errors.Is(err, transport.ErrNoConnectedModels) {
+			writeModelProviderHint(cmd)
+			return nil
+		}
 		if err != nil {
 			return err
 		}
 		if selValue == "" {
+			_, _ = fmt.Fprintln(out, "[model] cancelled; current model unchanged")
 			return nil
 		}
 		value = selValue
-	}
-
-	container, err := opts.loadApp(cmd.Context(), cmd)
-	if err != nil {
-		return err
 	}
 
 	providerID, modelID, ok := strings.Cut(value, "/")
@@ -211,6 +211,7 @@ func runShellModelControl(cmd *cobra.Command, opts *rootOptions, action shellbri
 		if inFile != nil && outFile != nil {
 			v, vok := terminal.RunSelect(cmd.Context(), inFile, outFile, "Select variant for "+value+":", options)
 			if !vok {
+				_, _ = fmt.Fprintln(out, "[model] cancelled; current model unchanged")
 				return nil
 			}
 			variant = v
@@ -228,53 +229,59 @@ func runShellModelControl(cmd *cobra.Command, opts *rootOptions, action shellbri
 	}
 
 	if variant != "" {
-		_, err = fmt.Fprintf(cmd.OutOrStdout(), "[model] set to %q (variant: %s, saved to %s)\n", modelStr, variant, container.WriteConfig(cmd.Context()).ConfigPath())
+		_, err = fmt.Fprintf(out, "[model] set to %q (variant: %s, saved to %s)\n", modelStr, variant, container.WriteConfig(cmd.Context()).ConfigPath())
 	} else {
-		_, err = fmt.Fprintf(cmd.OutOrStdout(), "[model] set to %q (saved to %s)\n", modelStr, container.WriteConfig(cmd.Context()).ConfigPath())
+		_, err = fmt.Fprintf(out, "[model] set to %q (saved to %s)\n", modelStr, container.WriteConfig(cmd.Context()).ConfigPath())
 	}
 	return err
 }
 
-func interactiveShellModelSelect(cmd *cobra.Command, client transport.Client) (string, error) {
+func displayCurrentModel(model string) string {
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return "(auto: first connected provider)"
+	}
+	return model
+}
+
+func writeModelProviderHint(cmd *cobra.Command) {
+	out := cmd.OutOrStdout()
+	_, _ = fmt.Fprintln(out, "[model] no connected provider has models available yet.")
+	_, _ = fmt.Fprintln(out, "  Connect a provider first:")
+	_, _ = fmt.Fprintln(out, "    witty provider list")
+	_, _ = fmt.Fprintln(out, "    witty provider connect <provider>")
+	_, _ = fmt.Fprintln(out, "  Or set one directly: /model <provider/model>")
+}
+
+type providerLister interface {
+	ListProviders(ctx context.Context, directory, workspace string) (transport.ProviderList, error)
+}
+
+func interactiveShellModelSelect(cmd *cobra.Command, client providerLister) (string, error) {
 	if client == nil {
-		return "", fmt.Errorf("transport not available")
+		return "", fmt.Errorf("transport not available; use /model <provider/model> to set directly")
 	}
 	providers, err := client.ListProviders(cmd.Context(), "", "")
 	if err != nil {
 		return "", fmt.Errorf("list providers: %w", err)
 	}
-	if len(providers.All) == 0 {
-		return "", fmt.Errorf("no providers available")
+	modelOptions := transport.ConnectedModelOptions(providers)
+	if len(modelOptions) == 0 {
+		return "", transport.ErrNoConnectedModels
 	}
 
-	var options []terminal.ListOption
-	connected := make(map[string]bool)
-	for _, c := range providers.Connected {
-		connected[c] = true
-	}
-
-	for _, p := range providers.All {
-		if !connected[p.ID] {
-			continue
+	options := make([]terminal.ListOption, len(modelOptions))
+	for i, model := range modelOptions {
+		options[i] = terminal.ListOption{
+			Label: fmt.Sprintf("%s/%s  — %s", model.ProviderID, model.ModelID, model.Name),
+			Value: model.ProviderID + "/" + model.ModelID,
 		}
-		models, _ := transport.ProviderModels(p)
-		for _, m := range models {
-			label := fmt.Sprintf("%s/%s  — %s", p.ID, m.ID, m.Name)
-			options = append(options, terminal.ListOption{
-				Label: label,
-				Value: p.ID + "/" + m.ID,
-			})
-		}
-	}
-
-	if len(options) == 0 {
-		return "", fmt.Errorf("no models available from connected providers")
 	}
 
 	inFile, _ := cmd.InOrStdin().(*os.File)
 	outFile, _ := cmd.OutOrStdout().(*os.File)
 	if inFile == nil || outFile == nil {
-		return "", fmt.Errorf("interactive model selection requires a terminal")
+		return "", fmt.Errorf("interactive model selection requires a terminal; use /model <provider/model> to set directly")
 	}
 
 	value, ok := terminal.RunSelect(cmd.Context(), inFile, outFile, "Select model:", options)
@@ -284,7 +291,7 @@ func interactiveShellModelSelect(cmd *cobra.Command, client transport.Client) (s
 	return value, nil
 }
 
-func findShellModel(cmd *cobra.Command, client transport.Client, providerID, modelID string) *transport.Model {
+func findShellModel(cmd *cobra.Command, client providerLister, providerID, modelID string) *transport.Model {
 	if client == nil {
 		return nil
 	}

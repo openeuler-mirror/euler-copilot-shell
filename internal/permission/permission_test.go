@@ -200,6 +200,108 @@ func TestManager_HandleEvent_ContextCanceled(t *testing.T) {
 	}
 }
 
+func TestManager_CancelStaleInteractions(t *testing.T) {
+	var out bytes.Buffer
+	transport := &fakeTransport{
+		questions: []transport.QuestionRequest{
+			{ID: "que_stale", SessionID: "ses_target"},
+			{ID: "que_other", SessionID: "ses_other"},
+		},
+		permissions: []transport.PermissionRequest{
+			{ID: "per_stale", SessionID: "ses_target"},
+			{ID: "per_other", SessionID: "ses_other"},
+		},
+	}
+	manager := mustManager(t, Options{Transport: transport, Writer: &out})
+	cleaner := manager.(interface {
+		CancelStaleInteractions(context.Context, string, string) (int, error)
+	})
+
+	cancelled, err := cleaner.CancelStaleInteractions(context.Background(), "ses_target", "/work")
+	if err != nil {
+		t.Fatalf("CancelStaleInteractions() error = %v", err)
+	}
+	if cancelled != 2 {
+		t.Fatalf("cancelled = %d, want 2", cancelled)
+	}
+	if !reflect.DeepEqual(transport.questionRejects, []string{"que_stale"}) {
+		t.Fatalf("question rejects = %#v, want only stale question", transport.questionRejects)
+	}
+	if len(transport.permissionReplies) != 1 || transport.permissionReplies[0].requestID != "per_stale" || transport.permissionReplies[0].decision.Reply != "reject" {
+		t.Fatalf("permission replies = %#v, want only stale permission rejected", transport.permissionReplies)
+	}
+	if !reflect.DeepEqual(transport.aborts, []string{"ses_target"}) {
+		t.Fatalf("aborts = %#v, want target session", transport.aborts)
+	}
+	if !strings.Contains(out.String(), "cancelled 2 stale interaction") {
+		t.Fatalf("output = %q, want recovery notice", out.String())
+	}
+}
+
+func TestManager_CancelStaleInteractions_NoPending(t *testing.T) {
+	var out bytes.Buffer
+	transport := &fakeTransport{}
+	manager := mustManager(t, Options{Transport: transport, Writer: &out})
+	cleaner := manager.(interface {
+		CancelStaleInteractions(context.Context, string, string) (int, error)
+	})
+
+	cancelled, err := cleaner.CancelStaleInteractions(context.Background(), "ses_target", "/work")
+	if err != nil {
+		t.Fatalf("CancelStaleInteractions() error = %v", err)
+	}
+	if cancelled != 0 {
+		t.Fatalf("cancelled = %d, want 0", cancelled)
+	}
+	if len(transport.aborts) != 0 {
+		t.Fatalf("aborts = %#v, want none", transport.aborts)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("output = %q, want no notice", out.String())
+	}
+}
+
+func TestManager_CancelStaleInteractions_UnsupportedEndpoint(t *testing.T) {
+	transport := &fakeTransport{
+		listQuestionsErr:   &transport.HTTPError{StatusCode: 404, Endpoint: "/question"},
+		listPermissionsErr: &transport.HTTPError{StatusCode: 404, Endpoint: "/permission"},
+	}
+	manager := mustManager(t, Options{Transport: transport})
+	cleaner := manager.(interface {
+		CancelStaleInteractions(context.Context, string, string) (int, error)
+	})
+
+	cancelled, err := cleaner.CancelStaleInteractions(context.Background(), "ses_target", "/work")
+	if err != nil {
+		t.Fatalf("CancelStaleInteractions() error = %v, want nil for unsupported endpoints", err)
+	}
+	if cancelled != 0 {
+		t.Fatalf("cancelled = %d, want 0", cancelled)
+	}
+}
+
+func TestManager_CancelStaleInteractions_AlreadyGone(t *testing.T) {
+	transport := &fakeTransport{
+		questions:         []transport.QuestionRequest{{ID: "que_gone", SessionID: "ses_target"}},
+		rejectQuestionErr: &transport.HTTPError{StatusCode: 404, Endpoint: "/question/que_gone/reject"},
+	}
+	manager := mustManager(t, Options{Transport: transport})
+	cleaner := manager.(interface {
+		CancelStaleInteractions(context.Context, string, string) (int, error)
+	})
+
+	cancelled, err := cleaner.CancelStaleInteractions(context.Background(), "ses_target", "/work")
+	if err != nil {
+		t.Fatalf("CancelStaleInteractions() error = %v", err)
+	}
+	if cancelled != 1 {
+		t.Fatalf("cancelled = %d, want 1 for already-cleared question", cancelled)
+	}
+	if !reflect.DeepEqual(transport.aborts, []string{"ses_target"}) {
+		t.Fatalf("aborts = %#v, want target session", transport.aborts)
+	}
+}
+
 func mustManager(t *testing.T, opts Options) Manager {
 	t.Helper()
 	manager, err := NewManager(opts)
@@ -215,6 +317,15 @@ type fakeTransport struct {
 	permissionReplies []permissionReply
 	questionReplies   [][][]string
 	questionRejects   []string
+
+	questions          []transport.QuestionRequest
+	permissions        []transport.PermissionRequest
+	listQuestionsErr   error
+	listPermissionsErr error
+	aborts             []string
+	abortErr           error
+	rejectQuestionErr  error
+	replyPermissionErr error
 }
 
 type permissionReply struct {
@@ -223,6 +334,9 @@ type permissionReply struct {
 }
 
 func (f *fakeTransport) ReplyPermission(_ context.Context, requestID string, _ string, decision transport.PermissionDecision) (bool, error) {
+	if f.replyPermissionErr != nil {
+		return false, f.replyPermissionErr
+	}
 	f.permissionReplies = append(f.permissionReplies, permissionReply{requestID: requestID, decision: decision})
 	return true, nil
 }
@@ -237,8 +351,24 @@ func (f *fakeTransport) ReplyQuestion(_ context.Context, requestID string, _ str
 }
 
 func (f *fakeTransport) RejectQuestion(_ context.Context, requestID string, _ string) (bool, error) {
+	if f.rejectQuestionErr != nil {
+		return false, f.rejectQuestionErr
+	}
 	f.questionRejects = append(f.questionRejects, requestID)
 	return true, nil
+}
+
+func (f *fakeTransport) ListQuestions(context.Context, string, string) ([]transport.QuestionRequest, error) {
+	return f.questions, f.listQuestionsErr
+}
+
+func (f *fakeTransport) ListPermissions(context.Context, string, string) ([]transport.PermissionRequest, error) {
+	return f.permissions, f.listPermissionsErr
+}
+
+func (f *fakeTransport) AbortSession(_ context.Context, sessionID, _, _ string) (bool, error) {
+	f.aborts = append(f.aborts, sessionID)
+	return true, f.abortErr
 }
 
 type scriptedPrompt struct {

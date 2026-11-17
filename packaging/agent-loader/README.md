@@ -69,6 +69,13 @@ Loader 包还附带两个辅助组件：
 
 如果 `agent`、`command`、`mode`、`mcp` 等受管命名空间出现重名，生成器会在任何原子重命名操作发生前直接报错退出，保留原有配置不变。
 
+## 生成文件的权限与凭据
+
+- `/etc/opencode/opencode.json` 固定为 `0644 root:root`，生成器在 rename 前显式 `chmod 0644`，不受调用者 umask 影响。
+- 0644 是刻意的：多用户机器上，以普通用户身份自动拉起的 opencode 进程必须能读取该文件；改成 0600 会破坏这种部署方式。
+- 该文件**只能保存 `{env:NAME}` 引用，不得写入真实凭据**。MCP 令牌由 opencode 在启动 MCP 时从进程环境展开；部署时通过 systemd `Environment=`/`EnvironmentFile=` 或用户 shell 导出。
+- 如果确实需要更严格的访问控制，应使用独立的 opencode 运行用户/组 + ACL，而不是直接降低文件权限。
+
 ## 本目录包含的文件
 
 - `bin/rebuild-managed-config.mjs` —— 配置生成脚本

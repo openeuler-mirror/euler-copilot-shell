@@ -289,6 +289,77 @@ func TestClient_PermissionAndQuestionReplies(t *testing.T) {
 	}
 }
 
+func TestClient_ListPendingInteractionsAndAbort(t *testing.T) {
+	seen := map[string]bool{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("directory"); got != "/work" {
+			t.Fatalf("directory query = %q, want /work", got)
+		}
+		seen[r.Method+" "+r.URL.Path] = true
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/question":
+			_, _ = w.Write([]byte(`[{"id":"que_1","sessionID":"ses_1","questions":[{"question":"Continue?"}]}]`))
+		case "/permission":
+			_, _ = w.Write([]byte(`[{"id":"per_1","sessionID":"ses_1","permission":"bash","patterns":["rm *"],"metadata":{},"always":[]}]`))
+		case "/session/ses_1/abort":
+			_, _ = w.Write([]byte(`true`))
+		default:
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	client := mustClient(t, Options{BaseURL: server.URL})
+	questions, err := client.ListQuestions(context.Background(), "/work", "")
+	if err != nil {
+		t.Fatalf("ListQuestions() error = %v", err)
+	}
+	if len(questions) != 1 || questions[0].ID != "que_1" || questions[0].SessionID != "ses_1" {
+		t.Fatalf("questions = %+v, want que_1 in ses_1", questions)
+	}
+	permissions, err := client.ListPermissions(context.Background(), "/work", "")
+	if err != nil {
+		t.Fatalf("ListPermissions() error = %v", err)
+	}
+	if len(permissions) != 1 || permissions[0].ID != "per_1" || permissions[0].SessionID != "ses_1" {
+		t.Fatalf("permissions = %+v, want per_1 in ses_1", permissions)
+	}
+	ok, err := client.AbortSession(context.Background(), "ses_1", "/work", "")
+	if err != nil || !ok {
+		t.Fatalf("AbortSession() = %v, %v; want true, nil", ok, err)
+	}
+	for _, key := range []string{"GET /question", "GET /permission", "POST /session/ses_1/abort"} {
+		if !seen[key] {
+			t.Fatalf("%s was not called", key)
+		}
+	}
+}
+
+func TestClient_ListPendingInteractionsEmptyArrays(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`null`))
+	}))
+	defer server.Close()
+
+	client := mustClient(t, Options{BaseURL: server.URL})
+	questions, err := client.ListQuestions(context.Background(), "", "")
+	if err != nil {
+		t.Fatalf("ListQuestions() error = %v", err)
+	}
+	if questions == nil || len(questions) != 0 {
+		t.Fatalf("questions = %#v, want empty non-nil slice", questions)
+	}
+	permissions, err := client.ListPermissions(context.Background(), "", "")
+	if err != nil {
+		t.Fatalf("ListPermissions() error = %v", err)
+	}
+	if permissions == nil || len(permissions) != 0 {
+		t.Fatalf("permissions = %#v, want empty non-nil slice", permissions)
+	}
+}
+
 func TestClient_HTTPErrorIncludesContext(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "bad things", http.StatusTeapot)

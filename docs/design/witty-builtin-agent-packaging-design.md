@@ -292,9 +292,9 @@ Recommends:     witty-lite-rag
       "type": "local",
       "command": ["npx", "-y", "openeuler-portal-mcp"],
       "environment": {
-        "OPENEULER_TOKEN": "${OPENEULER_TOKEN}",
-        "GITCODE_TOKEN": "${GITCODE_TOKEN}",
-        "FORUM_TOKEN": "${FORUM_TOKEN}"
+        "OPENEULER_TOKEN": "{env:OPENEULER_TOKEN}",
+        "GITCODE_TOKEN": "{env:GITCODE_TOKEN}",
+        "FORUM_TOKEN": "{env:FORUM_TOKEN}"
       },
       "enabled": true,
       "timeout": 30000
@@ -687,9 +687,9 @@ sequenceDiagram
       "type": "local",
       "command": ["npx", "-y", "openeuler-portal-mcp"],
       "environment": {
-        "OPENEULER_TOKEN": "${OPENEULER_TOKEN}",
-        "GITCODE_TOKEN": "${GITCODE_TOKEN}",
-        "FORUM_TOKEN": "${FORUM_TOKEN}"
+        "OPENEULER_TOKEN": "{env:OPENEULER_TOKEN}",
+        "GITCODE_TOKEN": "{env:GITCODE_TOKEN}",
+        "FORUM_TOKEN": "{env:FORUM_TOKEN}"
       },
       "enabled": true,
       "timeout": 30000
@@ -721,6 +721,9 @@ dnf install witty witty-experience-skill
 export OPENEULER_TOKEN="your_openeuler_portal_token"
 export GITCODE_TOKEN="your_gitcode_token"
 export FORUM_TOKEN="your_forum_token"
+# 配置文件只保存 {env:...} 引用，不保存令牌值。上述变量必须出现在
+# opencode/wittyd 进程的环境中（systemd 部署时写入 Environment= 或
+# EnvironmentFile=），否则 MCP 收到空值。
 
 # 3. 配置 LLM 后端（opencode 首次运行时会引导）
 opencode setup
